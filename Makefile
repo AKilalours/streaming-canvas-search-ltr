@@ -1,11 +1,10 @@
 PYTHONPATH=src
 DATASET=configs/dataset.yaml
-TRAIN=configs/train.yaml
 EVAL=configs/eval.yaml
 SERVE=configs/serve.yaml
 GATES=configs/gates.yaml
 
-.PHONY: help setup lint format test data index-bm25 index-faiss eval serve repro gates clean
+.PHONY: help setup lint format test data index-bm25 index-faiss eval serve repro clean
 
 help:
 	@echo "Targets:"
@@ -13,14 +12,13 @@ help:
 	@echo "  lint        - ruff check"
 	@echo "  format      - ruff format"
 	@echo "  test        - pytest"
-	@echo "  data        - download + build processed dataset"
+	@echo "  data        - build processed dataset"
 	@echo "  index-bm25  - build BM25 artifacts"
-	@echo "  index-faiss - build FAISS embedding index artifacts"
-	@echo "  eval        - run offline evaluation (multi-method)"
+	@echo "  index-faiss - build dense embeddings (+ faiss index) artifacts"
+	@echo "  eval        - run offline evaluation"
+	@echo "  repro       - end-to-end run -> reports/<run_id>/ and reports/latest/"
 	@echo "  serve       - run FastAPI server"
-	@echo "  repro       - end-to-end run producing reports/<run_id>/ (later)"
-	@echo "  gates       - run regression gates on a run folder (later)"
-	@echo "  clean       - remove local caches (keeps venv)"
+	@echo "  clean       - remove caches (keeps venv + data)"
 
 setup:
 	uv venv
@@ -47,14 +45,11 @@ index-faiss:
 eval:
 	PYTHONPATH=$(PYTHONPATH) uv run python -m eval.evaluate --config $(EVAL)
 
+repro:
+	PYTHONPATH=$(PYTHONPATH) uv run python -m pipelines.repro --dataset $(DATASET) --eval $(EVAL)
+
 serve:
 	PYTHONPATH=$(PYTHONPATH) uv run python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-repro:
-	PYTHONPATH=$(PYTHONPATH) uv run python -m pipelines.repro --dataset $(DATASET) --eval $(EVAL) --gates $(GATES)
-
-gates:
-	PYTHONPATH=$(PYTHONPATH) uv run python -m pipelines.gates --gates $(GATES) --run_dir $(RUN_DIR)
 
 clean:
 	rm -rf .pytest_cache .ruff_cache __pycache__

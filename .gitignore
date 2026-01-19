@@ -18,6 +18,8 @@ data/processed/
 artifacts/
 reports/*/
 !reports/.gitkeep
+!reports/latest/
+!reports/latest/.gitkeep
 
 # OS
 .DS_Store

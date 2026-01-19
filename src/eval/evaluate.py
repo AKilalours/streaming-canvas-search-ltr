@@ -92,6 +92,11 @@ def _dense_retrieve(
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, help="Path to configs/eval.yaml")
+    ap.add_argument(
+        "--out_dir",
+        default=None,
+        help="Optional output directory override (e.g., reports/<run_id>/). If omitted, writes to reports/latest_eval/.",
+    )
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
@@ -102,9 +107,13 @@ def main() -> None:
     queries_map, qrels_all = _load_split(processed_dir, split)
     log.info("Loaded %d queries for split=%s", len(queries_map), split)
 
-    out_dir = ensure_dir(Path(cfg["reporting"]["out_dir"]) / "latest_eval")
-    # start clean output each run
-    (out_dir / "results.jsonl").write_text("", encoding="utf-8")
+    # Output directory:
+    # - if --out_dir provided: use it
+    # - else: default to reports/latest_eval
+    if args.out_dir:
+        out_dir = ensure_dir(Path(args.out_dir))
+    else:
+        out_dir = ensure_dir(Path(cfg["reporting"]["out_dir"]) / "latest_eval")
 
     bm25_obj = None
     bm25_methods = [m for m in cfg["methods"] if m["type"] in ("bm25", "hybrid")]
@@ -156,7 +165,9 @@ def main() -> None:
         else:
             raise ValueError(f"Unknown method type: {mtype}")
 
-        ndcgs, maps, recalls = [], [], []
+        ndcgs: list[float] = []
+        maps: list[float] = []
+        recalls: list[float] = []
 
         for qid, hits in cand.items():
             qrels = qrels_all.get(qid, {})
@@ -168,14 +179,20 @@ def main() -> None:
             recalls.append(ms[f"recall@{k}"])
 
             per_query_rows.append(
-                {"method": name, "query_id": qid, "ndcg": ms[f"ndcg@{k}"], "map": ms[f"map@{k}"], "recall": ms[f"recall@{k}"]}
+                {
+                    "method": name,
+                    "query_id": qid,
+                    "ndcg": ms[f"ndcg@{k}"],
+                    "map": ms[f"map@{k}"],
+                    "recall": ms[f"recall@{k}"],
+                }
             )
 
         summary = {
             "method": name,
-            f"ndcg@{k}": float(np.mean(ndcgs)),
-            f"map@{k}": float(np.mean(maps)),
-            f"recall@{k}": float(np.mean(recalls)),
+            f"ndcg@{k}": float(np.mean(ndcgs)) if ndcgs else 0.0,
+            f"map@{k}": float(np.mean(maps)) if maps else 0.0,
+            f"recall@{k}": float(np.mean(recalls)) if recalls else 0.0,
             "num_queries": len(queries_map),
             "split": split,
         }
@@ -203,3 +220,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
