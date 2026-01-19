@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Data + artifacts
+data/raw/
+data/processed/
+artifacts/
+reports/*/
+!reports/.gitkeep
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+

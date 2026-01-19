@@ -1,0 +1,15 @@
+train:
+  dataset_processed_dir: data/processed/scifact
+  split: train
+  candidates_k: 50
+
+ltr:
+  model_out: artifacts/ltr/lgbm_ltr.txt
+  params:
+    objective: lambdarank
+    metric: ndcg
+    learning_rate: 0.05
+    num_leaves: 63
+    min_data_in_leaf: 20
+    n_estimators: 500
+

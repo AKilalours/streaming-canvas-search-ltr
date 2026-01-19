@@ -1,0 +1,7 @@
+gates:
+  metric:
+    name: ndcg@10
+    min_value: 0.20
+  latency_ms:
+    p95_max: 250
+

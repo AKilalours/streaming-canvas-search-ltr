@@ -1,0 +1,18 @@
+dataset:
+  name: scifact
+  provider: beir
+  raw_dir: data/raw/beir
+  processed_dir: data/processed/scifact
+
+fields:
+  doc_id: doc_id
+  title: title
+  text: text
+  query_id: query_id
+  query_text: text
+
+build:
+  # Which split to export as processed.
+  # BEIR provides standard splits; we will export all (train/dev/test) into processed_dir.
+  export_splits: ["train", "test"]
+

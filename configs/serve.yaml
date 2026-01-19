@@ -1,0 +1,5 @@
+serve:
+  bm25_artifact: artifacts/bm25/scifact_bm25.pkl
+  default_k: 10
+  max_k: 50
+
