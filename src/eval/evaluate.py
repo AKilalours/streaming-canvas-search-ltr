@@ -14,17 +14,19 @@ from utils.logging import get_logger
 log = get_logger("eval.evaluate")
 
 
-def _load_split(processed_dir: Path, split: str):
+def _load_split(processed_dir: Path, split: str) -> tuple[dict[str, str], dict, Path]:
     split_dir = processed_dir / split
-    corpus = read_jsonl(split_dir / "corpus.jsonl")
-    queries = read_jsonl(split_dir / "queries.jsonl")
-    qrels = read_json(split_dir / "qrels.json")
-    queries_map = [(r["query_id"], r["text"]) for r in queries]
-    return corpus, queries, qrels, dict(queries)
+    queries_rows = read_jsonl(split_dir / "queries.jsonl")
+    qrels_all = read_json(split_dir / "qrels.json")
+
+    # Correct: map query_id -> query_text
+    queries_map = {r["query_id"]: r["text"] for r in queries_rows}
+
+    return queries_map, qrels_all, split_dir
 
 
 def _bm25_retrieve(bm25_obj, queries_map: dict[str, str], k: int) -> dict[str, list[tuple[str, float]]]:
-    out = {}
+    out: dict[str, list[tuple[str, float]]] = {}
     for qid, qtext in queries_map.items():
         out[qid] = bm25_obj.query(qtext, k=k)
     return out
@@ -54,7 +56,7 @@ def _faiss_retrieve(
 ) -> dict[str, list[tuple[str, float]]]:
     from sentence_transformers import SentenceTransformer
 
-    index, doc_ids, meta = _faiss_load(faiss_dir)
+    index, doc_ids, _meta = _faiss_load(faiss_dir)
 
     model = SentenceTransformer(model_name)
     qids = list(queries_map.keys())
@@ -69,9 +71,9 @@ def _faiss_retrieve(
     ).astype(np.float32)
 
     scores, idxs = index.search(q_emb, k)
-    out = {}
+    out: dict[str, list[tuple[str, float]]] = {}
     for i, qid in enumerate(qids):
-        hits = []
+        hits: list[tuple[str, float]] = []
         for j in range(k):
             di = int(idxs[i, j])
             if di < 0:
@@ -99,22 +101,24 @@ def main() -> None:
     split = cfg["eval"]["split"]
     k = int(cfg["eval"]["k"])
 
-    _corpus, _queries_rows, qrels_all, queries_map = _load_split(processed_dir, split)
+    queries_map, qrels_all, _split_dir = _load_split(processed_dir, split)
+    log.info("Loaded %d queries for split=%s", len(queries_map), split)
 
     out_dir = ensure_dir(Path(cfg["reporting"]["out_dir"]) / "latest_eval")
 
-    method_summaries = []
-    per_query_rows = []
-
-    # Pre-load BM25 if any method needs it
+    # Load BM25 once if needed
     bm25_obj = None
-    if any(m["type"] in ("bm25", "hybrid") for m in cfg["methods"]):
-        bm25_path = Path([m for m in cfg["methods"] if "bm25_artifact" in m][0]["bm25_artifact"])
+    bm25_methods = [m for m in cfg["methods"] if m["type"] in ("bm25", "hybrid")]
+    if bm25_methods:
+        bm25_path = Path(bm25_methods[0]["bm25_artifact"])
         with bm25_path.open("rb") as f:
             bm25_obj = pickle.load(f)
 
-    # Precompute FAISS retrieval if used (shared model/index per config entry)
+    # Cache FAISS retrievals
     faiss_cache: dict[str, dict[str, list[tuple[str, float]]]] = {}
+
+    method_summaries: list[dict] = []
+    per_query_rows: list[dict] = []
 
     for method in cfg["methods"]:
         name = method["name"]
@@ -164,13 +168,13 @@ def main() -> None:
         else:
             raise ValueError(f"Unknown method type: {mtype}")
 
-        # Aggregate metrics
         ndcgs, maps, recalls = [], [], []
 
         for qid, hits in cand.items():
             qrels = qrels_all.get(qid, {})
             ranked_ids = [d for d, _ in hits[:k]]
             ms = _compute_metrics(ranked_ids, qrels, k)
+
             ndcgs.append(ms[f"ndcg@{k}"])
             maps.append(ms[f"map@{k}"])
             recalls.append(ms[f"recall@{k}"])
@@ -195,19 +199,17 @@ def main() -> None:
         }
         method_summaries.append(summary)
 
-    # Write outputs
     metrics = {"k": k, "split": split, "methods": method_summaries}
     write_json(out_dir / "metrics.json", metrics)
 
-    # Write ablations.csv
+    # Write ablations.csv with a trailing newline (so cat output doesn't glue to next output)
     csv_path = out_dir / "ablations.csv"
     cols = ["method", f"ndcg@{k}", f"map@{k}", f"recall@{k}", "num_queries", "split"]
     lines = [",".join(cols)]
     for row in method_summaries:
         lines.append(",".join(str(row[c]) for c in cols))
-    csv_path.write_text("\n".join(lines), encoding="utf-8")
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    # Per-query results (jsonl)
     results_path = out_dir / "results.jsonl"
     with results_path.open("w", encoding="utf-8") as f:
         for r in per_query_rows:
