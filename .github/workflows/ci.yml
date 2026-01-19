@@ -22,7 +22,7 @@ jobs:
 
       - name: Install deps
         run: |
-          uv sync --dev
+          uv sync 
 
       - name: Lint
         run: |

@@ -19,6 +19,8 @@ help:
 	@echo "  repro      - end-to-end run producing reports/<run_id>/"
 	@echo "  gates      - run regression gates on a run folder"
 	@echo "  clean      - remove local caches (keeps venv)"
+        @echo "  index-faiss - build FAISS embedding index artifacts"
+
 
 setup:
 	uv venv
@@ -54,4 +56,6 @@ clean:
 	rm -rf .pytest_cache .ruff_cache __pycache__
 format:
 	PYTHONPATH=$(PYTHONPATH) uv run ruff format src tests
+index-faiss:
+	PYTHONPATH=$(PYTHONPATH) uv run python -m retrieval.embed_index --config $(DATASET)
 

@@ -4,6 +4,12 @@ dataset:
   raw_dir: data/raw/beir
   processed_dir: data/processed/scifact
 
+embeddings:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  batch_size: 64
+  normalize: true
+
+
 fields:
   doc_id: doc_id
   title: title
