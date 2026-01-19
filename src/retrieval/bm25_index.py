@@ -34,7 +34,9 @@ def pick_split_dir(processed_dir: Path, preferred: str | None = None) -> Path:
     if preferred:
         p = processed_dir / preferred
         if not p.exists():
-            raise FileNotFoundError(f"Requested split '{preferred}' not found under {processed_dir}")
+            raise FileNotFoundError(
+                f"Requested split '{preferred}' not found under {processed_dir}"
+            )
         return p
 
     for split in ["train", "test", "dev"]:
@@ -42,7 +44,9 @@ def pick_split_dir(processed_dir: Path, preferred: str | None = None) -> Path:
         if p.exists():
             return p
 
-    raise FileNotFoundError(f"No processed splits found under {processed_dir} (expected train/test/dev)")
+    raise FileNotFoundError(
+        f"No processed splits found under {processed_dir} (expected train/test/dev)"
+    )
 
 
 def main() -> None:

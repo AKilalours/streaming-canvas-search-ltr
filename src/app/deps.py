@@ -1,6 +1,5 @@
 import pickle
 from pathlib import Path
-from typing import Any, Optional
 
 import yaml
 
@@ -34,4 +33,3 @@ def load_artifacts(serve_config_path: str) -> None:
     else:
         STORE.bm25 = None
         log.info("BM25 artifact missing: %s (API will return empty hits)", bm25_path)
-

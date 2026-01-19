@@ -25,11 +25,12 @@ setup:
 	uv sync --dev
 
 lint:
-	PYTHONPATH=$(PYTHONPATH) uv run python -m ruff check src tests
+	PYTHONPATH=$(PYTHONPATH) uv run ruff check src tests
+
 
 test:
 
-	PYTHONPATH=$(PYTHONPATH) uv run python -m pytest
+	PYTHONPATH=$(PYTHONPATH) uv run pytest
 
 data:
 	PYTHONPATH=$(PYTHONPATH) uv run python -m dataio.build_dataset --config $(DATASET)
@@ -51,4 +52,6 @@ gates:
 
 clean:
 	rm -rf .pytest_cache .ruff_cache __pycache__
+format:
+	PYTHONPATH=$(PYTHONPATH) uv run ruff format src tests
 

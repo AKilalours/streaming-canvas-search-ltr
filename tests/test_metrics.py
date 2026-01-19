@@ -1,4 +1,4 @@
-from eval.metrics import ndcg_at_k, average_precision_at_k, recall_at_k
+from eval.metrics import average_precision_at_k, ndcg_at_k, recall_at_k
 
 
 def test_metrics_sanity_perfect_ranking():
@@ -14,4 +14,3 @@ def test_metrics_sanity_worse_ranking():
     ranked = ["dX", "d2", "d1"]
     assert ndcg_at_k(ranked, qrels, 3) < 1.0
     assert average_precision_at_k(ranked, qrels, 3) < 1.0
-

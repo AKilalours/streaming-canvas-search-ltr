@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Tuple
 
 from beir.datasets.data_loader import GenericDataLoader
 from beir.util import download_and_unzip
@@ -28,4 +27,3 @@ def load_beir_split(dataset_dir: Path, split: str):
     # split in {"train","dev","test"}
     corpus, queries, qrels = GenericDataLoader(str(dataset_dir)).load(split=split)
     return corpus, queries, qrels
-

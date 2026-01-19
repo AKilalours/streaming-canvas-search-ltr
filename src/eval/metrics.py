@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
 
-
-def _dcg(rels: List[float]) -> float:
+def _dcg(rels: list[float]) -> float:
     # DCG = sum (2^rel - 1) / log2(i+2)
     import math
 
@@ -13,7 +11,7 @@ def _dcg(rels: List[float]) -> float:
     return s
 
 
-def ndcg_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: int) -> float:
+def ndcg_at_k(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -> float:
     if k <= 0:
         return 0.0
     gains = [float(qrels.get(d, 0)) for d in ranked_doc_ids[:k]]
@@ -23,7 +21,7 @@ def ndcg_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: int) -> float
     return 0.0 if idcg == 0 else dcg / idcg
 
 
-def average_precision_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: int) -> float:
+def average_precision_at_k(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -> float:
     # Binary AP@k: relevance > 0 counts as relevant
     if k <= 0:
         return 0.0
@@ -39,7 +37,7 @@ def average_precision_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: 
     return sum_prec / min(total_relevant, k)
 
 
-def recall_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: int) -> float:
+def recall_at_k(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -> float:
     if k <= 0:
         return 0.0
     relevant = {d for d, r in qrels.items() if r > 0}
@@ -47,4 +45,3 @@ def recall_at_k(ranked_doc_ids: List[str], qrels: Dict[str, int], k: int) -> flo
         return 0.0
     retrieved = set(ranked_doc_ids[:k])
     return len(relevant & retrieved) / len(relevant)
-

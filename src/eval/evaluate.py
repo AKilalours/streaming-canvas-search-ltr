@@ -1,7 +1,6 @@
 import argparse
 import pickle
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import yaml
 
@@ -91,4 +90,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

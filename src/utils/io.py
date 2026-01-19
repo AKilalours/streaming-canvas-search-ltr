@@ -1,6 +1,7 @@
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any
 
 
 def ensure_dir(path: str | Path) -> Path:
@@ -17,8 +18,8 @@ def write_json(path: str | Path, obj: Any) -> None:
     Path(path).write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def read_jsonl(path: str | Path) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     with Path(path).open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -28,8 +29,7 @@ def read_jsonl(path: str | Path) -> List[Dict[str, Any]]:
     return out
 
 
-def write_jsonl(path: str | Path, rows: Iterable[Dict[str, Any]]) -> None:
+def write_jsonl(path: str | Path, rows: Iterable[dict[str, Any]]) -> None:
     with Path(path).open("w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-

@@ -17,4 +17,3 @@ class SearchResponse(BaseModel):
     k: int
     hits: list[SearchHit]
     timings_ms: dict[str, float] | None = None
-
