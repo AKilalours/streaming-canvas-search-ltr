@@ -1,7 +1,3 @@
-# Commit 4: implement FAISS semantic index build + query
-# - encode corpus with sentence-transformers
-# - build faiss index
-# - save artifacts/faiss/{index.faiss, doc_ids.json, embeddings.npy}
 import argparse
 import json
 from pathlib import Path
@@ -9,9 +5,8 @@ from pathlib import Path
 import numpy as np
 import yaml
 from sentence_transformers import SentenceTransformer
-from tqdm.auto import tqdm
 
-from utils.io import ensure_dir, read_jsonl, write_json
+from utils.io import ensure_dir, write_json
 from utils.logging import get_logger
 
 log = get_logger("retrieval.embed_index")
@@ -54,14 +49,20 @@ def main() -> None:
     if not corpus_path.exists():
         raise FileNotFoundError(f"Missing corpus.jsonl at: {corpus_path}")
 
-    corpus = read_jsonl(corpus_path)
+    # Load corpus
+    corpus = []
+    with corpus_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                corpus.append(json.loads(line))
+
     doc_ids = [r["doc_id"] for r in corpus]
     texts = [(r.get("title", "") or "") + " " + (r.get("text", "") or "") for r in corpus]
 
     log.info("Loading embed model: %s", model_name)
     model = SentenceTransformer(model_name)
 
-    # Encode
     log.info("Encoding %d docs (batch_size=%d, normalize=%s)", len(texts), batch_size, normalize)
     embs = model.encode(
         texts,
@@ -71,25 +72,16 @@ def main() -> None:
         normalize_embeddings=normalize,
     ).astype(np.float32)
 
-    dim = embs.shape[1]
-
-    # Build FAISS index
-    import faiss  # local import
-
-    log.info("Building FAISS IndexFlatIP (dim=%d)", dim)
-    index = faiss.IndexFlatIP(dim)
-    index.add(embs)
+    dim = int(embs.shape[1])
 
     model_slug = _slug(model_name)
     out_dir = ensure_dir(Path("artifacts/faiss") / f"{dataset}_{model_slug}")
-    index_path = out_dir / "index.faiss"
-    doc_ids_path = out_dir / "doc_ids.json"
-    meta_path = out_dir / "meta.json"
 
-    faiss.write_index(index, str(index_path))
-    doc_ids_path.write_text(json.dumps(doc_ids, ensure_ascii=False), encoding="utf-8")
+    # Save dense artifacts for stable eval
+    np.save(out_dir / "embeddings.npy", embs)
+    (out_dir / "doc_ids.json").write_text(json.dumps(doc_ids, ensure_ascii=False), encoding="utf-8")
     write_json(
-        meta_path,
+        out_dir / "meta.json",
         {
             "dataset": dataset,
             "model_name": model_name,
@@ -97,15 +89,23 @@ def main() -> None:
             "normalize_embeddings": normalize,
             "num_docs": len(doc_ids),
             "dim": dim,
-            "index_type": "IndexFlatIP",
+            "retrieval": "dense_dot",
         },
     )
+    log.info("Saved dense embeddings: %s", out_dir / "embeddings.npy")
 
-    log.info("Saved FAISS index: %s", index_path)
-    log.info("Saved doc_ids: %s", doc_ids_path)
-    log.info("Saved meta: %s", meta_path)
+    # Keep FAISS build too (optional) — but eval will not depend on it
+    try:
+        import faiss
+
+        log.info("Building FAISS IndexFlatIP (dim=%d)", dim)
+        index = faiss.IndexFlatIP(dim)
+        index.add(embs)
+        faiss.write_index(index, str(out_dir / "index.faiss"))
+        log.info("Saved FAISS index: %s", out_dir / "index.faiss")
+    except Exception as e:
+        log.info("FAISS build skipped (non-fatal): %s", e)
 
 
 if __name__ == "__main__":
     main()
-

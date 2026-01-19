@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from sentence_transformers import SentenceTransformer
 
 from eval.metrics import average_precision_at_k, ndcg_at_k, recall_at_k
 from retrieval.hybrid import hybrid_merge
@@ -14,15 +15,20 @@ from utils.logging import get_logger
 log = get_logger("eval.evaluate")
 
 
-def _load_split(processed_dir: Path, split: str) -> tuple[dict[str, str], dict, Path]:
+def _load_split(processed_dir: Path, split: str) -> tuple[dict[str, str], dict]:
     split_dir = processed_dir / split
     queries_rows = read_jsonl(split_dir / "queries.jsonl")
     qrels_all = read_json(split_dir / "qrels.json")
-
-    # Correct: map query_id -> query_text
     queries_map = {r["query_id"]: r["text"] for r in queries_rows}
+    return queries_map, qrels_all
 
-    return queries_map, qrels_all, split_dir
+
+def _compute_metrics(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -> dict[str, float]:
+    return {
+        f"ndcg@{k}": ndcg_at_k(ranked_doc_ids, qrels, k),
+        f"map@{k}": average_precision_at_k(ranked_doc_ids, qrels, k),
+        f"recall@{k}": recall_at_k(ranked_doc_ids, qrels, k),
+    }
 
 
 def _bm25_retrieve(bm25_obj, queries_map: dict[str, str], k: int) -> dict[str, list[tuple[str, float]]]:
@@ -32,31 +38,36 @@ def _bm25_retrieve(bm25_obj, queries_map: dict[str, str], k: int) -> dict[str, l
     return out
 
 
-def _faiss_load(faiss_dir: Path):
-    import faiss  # local import
-
-    index_path = faiss_dir / "index.faiss"
-    doc_ids_path = faiss_dir / "doc_ids.json"
-    meta_path = faiss_dir / "meta.json"
-
-    if not index_path.exists() or not doc_ids_path.exists():
-        raise FileNotFoundError(f"Missing FAISS artifacts in {faiss_dir}. Run `make index-faiss`.")
-
-    index = faiss.read_index(str(index_path))
-    doc_ids = json.loads(doc_ids_path.read_text(encoding="utf-8"))
-    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
-    return index, doc_ids, meta
+def _dense_load(emb_dir: Path) -> tuple[np.ndarray, list[str]]:
+    emb_path = emb_dir / "embeddings.npy"
+    ids_path = emb_dir / "doc_ids.json"
+    if not emb_path.exists() or not ids_path.exists():
+        raise FileNotFoundError(f"Missing dense artifacts in {emb_dir}. Run `make index-faiss`.")
+    embs = np.load(emb_path).astype(np.float32)
+    doc_ids = json.loads(ids_path.read_text(encoding="utf-8"))
+    return embs, doc_ids
 
 
-def _faiss_retrieve(
+def _topk_dot(q_emb: np.ndarray, doc_embs: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    # q_emb: [Q, D], doc_embs: [N, D]
+    scores = q_emb @ doc_embs.T  # [Q, N]
+    k = min(k, scores.shape[1])
+    idx = np.argpartition(-scores, kth=k - 1, axis=1)[:, :k]
+    row = np.arange(scores.shape[0])[:, None]
+    s = scores[row, idx]
+    order = np.argsort(-s, axis=1)
+    idx = idx[row, order]
+    s = s[row, order]
+    return s, idx
+
+
+def _dense_retrieve(
     queries_map: dict[str, str],
     model_name: str,
-    faiss_dir: Path,
+    emb_dir: Path,
     k: int,
 ) -> dict[str, list[tuple[str, float]]]:
-    from sentence_transformers import SentenceTransformer
-
-    index, doc_ids, _meta = _faiss_load(faiss_dir)
+    doc_embs, doc_ids = _dense_load(emb_dir)
 
     model = SentenceTransformer(model_name)
     qids = list(queries_map.keys())
@@ -70,25 +81,12 @@ def _faiss_retrieve(
         normalize_embeddings=True,
     ).astype(np.float32)
 
-    scores, idxs = index.search(q_emb, k)
+    scores, idxs = _topk_dot(q_emb, doc_embs, k)
     out: dict[str, list[tuple[str, float]]] = {}
     for i, qid in enumerate(qids):
-        hits: list[tuple[str, float]] = []
-        for j in range(k):
-            di = int(idxs[i, j])
-            if di < 0:
-                continue
-            hits.append((doc_ids[di], float(scores[i, j])))
+        hits = [(doc_ids[int(idxs[i, j])], float(scores[i, j])) for j in range(scores.shape[1])]
         out[qid] = hits
     return out
-
-
-def _compute_metrics(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -> dict[str, float]:
-    return {
-        f"ndcg@{k}": ndcg_at_k(ranked_doc_ids, qrels, k),
-        f"map@{k}": average_precision_at_k(ranked_doc_ids, qrels, k),
-        f"recall@{k}": recall_at_k(ranked_doc_ids, qrels, k),
-    }
 
 
 def main() -> None:
@@ -101,12 +99,13 @@ def main() -> None:
     split = cfg["eval"]["split"]
     k = int(cfg["eval"]["k"])
 
-    queries_map, qrels_all, _split_dir = _load_split(processed_dir, split)
+    queries_map, qrels_all = _load_split(processed_dir, split)
     log.info("Loaded %d queries for split=%s", len(queries_map), split)
 
     out_dir = ensure_dir(Path(cfg["reporting"]["out_dir"]) / "latest_eval")
+    # start clean output each run
+    (out_dir / "results.jsonl").write_text("", encoding="utf-8")
 
-    # Load BM25 once if needed
     bm25_obj = None
     bm25_methods = [m for m in cfg["methods"] if m["type"] in ("bm25", "hybrid")]
     if bm25_methods:
@@ -114,8 +113,7 @@ def main() -> None:
         with bm25_path.open("rb") as f:
             bm25_obj = pickle.load(f)
 
-    # Cache FAISS retrievals
-    faiss_cache: dict[str, dict[str, list[tuple[str, float]]]] = {}
+    dense_cache: dict[str, dict[str, list[tuple[str, float]]]] = {}
 
     method_summaries: list[dict] = []
     per_query_rows: list[dict] = []
@@ -127,42 +125,32 @@ def main() -> None:
         if mtype == "bm25":
             cand = _bm25_retrieve(bm25_obj, queries_map, k=k)
 
-        elif mtype == "faiss":
+        elif mtype == "dense":
             model_name = method["model_name"]
-            faiss_dir = Path(method["faiss_dir"])
+            emb_dir = Path(method["emb_dir"])
             cand_k = int(method.get("candidate_k", k))
-            cache_key = f"{model_name}::{faiss_dir}::{cand_k}"
-            if cache_key not in faiss_cache:
-                faiss_cache[cache_key] = _faiss_retrieve(
-                    queries_map=queries_map,
-                    model_name=model_name,
-                    faiss_dir=faiss_dir,
-                    k=cand_k,
-                )
-            cand = faiss_cache[cache_key]
+            cache_key = f"{model_name}::{emb_dir}::{cand_k}"
+            if cache_key not in dense_cache:
+                dense_cache[cache_key] = _dense_retrieve(queries_map, model_name, emb_dir, cand_k)
+            cand = dense_cache[cache_key]
 
         elif mtype == "hybrid":
             alpha = float(method.get("alpha", 0.5))
             bm25_k = int(method.get("bm25_candidate_k", 50))
-            faiss_k = int(method.get("faiss_candidate_k", 50))
+            dense_k = int(method.get("dense_candidate_k", 50))
             model_name = method["model_name"]
-            faiss_dir = Path(method["faiss_dir"])
+            emb_dir = Path(method["emb_dir"])
 
             bm25_c = _bm25_retrieve(bm25_obj, queries_map, k=bm25_k)
 
-            cache_key = f"{model_name}::{faiss_dir}::{faiss_k}"
-            if cache_key not in faiss_cache:
-                faiss_cache[cache_key] = _faiss_retrieve(
-                    queries_map=queries_map,
-                    model_name=model_name,
-                    faiss_dir=faiss_dir,
-                    k=faiss_k,
-                )
-            faiss_c = faiss_cache[cache_key]
+            cache_key = f"{model_name}::{emb_dir}::{dense_k}"
+            if cache_key not in dense_cache:
+                dense_cache[cache_key] = _dense_retrieve(queries_map, model_name, emb_dir, dense_k)
+            dense_c = dense_cache[cache_key]
 
             cand = {}
             for qid in queries_map:
-                merged = hybrid_merge(bm25_c[qid], faiss_c[qid], alpha=alpha)
+                merged = hybrid_merge(bm25_c[qid], dense_c[qid], alpha=alpha)
                 cand[qid] = merged[:k]
 
         else:
@@ -180,20 +168,14 @@ def main() -> None:
             recalls.append(ms[f"recall@{k}"])
 
             per_query_rows.append(
-                {
-                    "method": name,
-                    "query_id": qid,
-                    "ndcg": ms[f"ndcg@{k}"],
-                    "map": ms[f"map@{k}"],
-                    "recall": ms[f"recall@{k}"],
-                }
+                {"method": name, "query_id": qid, "ndcg": ms[f"ndcg@{k}"], "map": ms[f"map@{k}"], "recall": ms[f"recall@{k}"]}
             )
 
         summary = {
             "method": name,
-            f"ndcg@{k}": float(np.mean(ndcgs)) if ndcgs else 0.0,
-            f"map@{k}": float(np.mean(maps)) if maps else 0.0,
-            f"recall@{k}": float(np.mean(recalls)) if recalls else 0.0,
+            f"ndcg@{k}": float(np.mean(ndcgs)),
+            f"map@{k}": float(np.mean(maps)),
+            f"recall@{k}": float(np.mean(recalls)),
             "num_queries": len(queries_map),
             "split": split,
         }
@@ -202,7 +184,6 @@ def main() -> None:
     metrics = {"k": k, "split": split, "methods": method_summaries}
     write_json(out_dir / "metrics.json", metrics)
 
-    # Write ablations.csv with a trailing newline (so cat output doesn't glue to next output)
     csv_path = out_dir / "ablations.csv"
     cols = ["method", f"ndcg@{k}", f"map@{k}", f"recall@{k}", "num_queries", "split"]
     lines = [",".join(cols)]

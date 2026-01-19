@@ -8,10 +8,10 @@ methods:
     type: bm25
     bm25_artifact: artifacts/bm25/scifact_bm25.pkl
 
-  - name: faiss
-    type: faiss
+  - name: dense
+    type: dense
     model_name: sentence-transformers/all-MiniLM-L6-v2
-    faiss_dir: artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2
+    emb_dir: artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2
     candidate_k: 50
 
   - name: hybrid
@@ -19,9 +19,9 @@ methods:
     alpha: 0.5
     bm25_artifact: artifacts/bm25/scifact_bm25.pkl
     model_name: sentence-transformers/all-MiniLM-L6-v2
-    faiss_dir: artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2
+    emb_dir: artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2
     bm25_candidate_k: 50
-    faiss_candidate_k: 50
+    dense_candidate_k: 50
 
 reporting:
   out_dir: reports
