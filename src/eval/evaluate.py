@@ -31,6 +31,15 @@ def _compute_metrics(ranked_doc_ids: list[str], qrels: dict[str, int], k: int) -
     }
 
 
+def _oracle_ndcg_at_k(candidate_doc_ids: list[str], qrels: dict[str, int], k: int) -> float:
+    # Upper bound achievable with a perfect reranker, restricted to candidate set.
+    # We rank candidates by ground-truth relevance and compute NDCG against global ideal.
+    if not candidate_doc_ids:
+        return 0.0
+    ranked_by_truth = sorted(candidate_doc_ids, key=lambda d: int(qrels.get(d, 0)), reverse=True)
+    return ndcg_at_k(ranked_by_truth, qrels, k)
+
+
 def _bm25_retrieve(bm25_obj, queries_map: dict[str, str], k: int) -> dict[str, list[tuple[str, float]]]:
     out: dict[str, list[tuple[str, float]]] = {}
     for qid, qtext in queries_map.items():
@@ -104,12 +113,13 @@ def main() -> None:
     split = cfg["eval"]["split"]
     k = int(cfg["eval"]["k"])
 
+    # Diagnostics defaults (can add to configs later; no need now)
+    recall_k = int(cfg.get("eval", {}).get("diagnostics_recall_k", 100))
+    oracle_k = int(cfg.get("eval", {}).get("diagnostics_oracle_k", k))
+
     queries_map, qrels_all = _load_split(processed_dir, split)
     log.info("Loaded %d queries for split=%s", len(queries_map), split)
 
-    # Output directory:
-    # - if --out_dir provided: use it
-    # - else: default to reports/latest_eval
     if args.out_dir:
         out_dir = ensure_dir(Path(args.out_dir))
     else:
@@ -131,13 +141,18 @@ def main() -> None:
         name = method["name"]
         mtype = method["type"]
 
+        # Ensure candidates are large enough for diagnostics
+        # Always retrieve at least max(k, recall_k).
+        min_needed = max(k, recall_k)
+
         if mtype == "bm25":
-            cand = _bm25_retrieve(bm25_obj, queries_map, k=k)
+            cand = _bm25_retrieve(bm25_obj, queries_map, k=min_needed)
 
         elif mtype == "dense":
             model_name = method["model_name"]
             emb_dir = Path(method["emb_dir"])
-            cand_k = int(method.get("candidate_k", k))
+            cand_k = int(method.get("candidate_k", min_needed))
+            cand_k = max(cand_k, min_needed)
             cache_key = f"{model_name}::{emb_dir}::{cand_k}"
             if cache_key not in dense_cache:
                 dense_cache[cache_key] = _dense_retrieve(queries_map, model_name, emb_dir, cand_k)
@@ -150,6 +165,9 @@ def main() -> None:
             model_name = method["model_name"]
             emb_dir = Path(method["emb_dir"])
 
+            bm25_k = max(bm25_k, min_needed)
+            dense_k = max(dense_k, min_needed)
+
             bm25_c = _bm25_retrieve(bm25_obj, queries_map, k=bm25_k)
 
             cache_key = f"{model_name}::{emb_dir}::{dense_k}"
@@ -160,31 +178,46 @@ def main() -> None:
             cand = {}
             for qid in queries_map:
                 merged = hybrid_merge(bm25_c[qid], dense_c[qid], alpha=alpha)
-                cand[qid] = merged[:k]
+                # keep enough candidates for diagnostics
+                cand[qid] = merged[:min_needed]
 
         else:
             raise ValueError(f"Unknown method type: {mtype}")
 
         ndcgs: list[float] = []
         maps: list[float] = []
-        recalls: list[float] = []
+        recalls_k: list[float] = []
+        recalls_100: list[float] = []
+        oracle_ndcgs: list[float] = []
 
         for qid, hits in cand.items():
             qrels = qrels_all.get(qid, {})
-            ranked_ids = [d for d, _ in hits[:k]]
-            ms = _compute_metrics(ranked_ids, qrels, k)
 
+            # Candidate ids for diagnostics
+            cand_ids = [d for d, _ in hits]
+
+            # Main metrics at k
+            ranked_ids_k = cand_ids[:k]
+            ms = _compute_metrics(ranked_ids_k, qrels, k)
             ndcgs.append(ms[f"ndcg@{k}"])
             maps.append(ms[f"map@{k}"])
-            recalls.append(ms[f"recall@{k}"])
+            recalls_k.append(ms[f"recall@{k}"])
+
+            # Diagnostics
+            recall100 = recall_at_k(cand_ids, qrels, recall_k)
+            oracle = _oracle_ndcg_at_k(cand_ids, qrels, oracle_k)
+            recalls_100.append(recall100)
+            oracle_ndcgs.append(oracle)
 
             per_query_rows.append(
                 {
                     "method": name,
                     "query_id": qid,
-                    "ndcg": ms[f"ndcg@{k}"],
-                    "map": ms[f"map@{k}"],
-                    "recall": ms[f"recall@{k}"],
+                    f"ndcg@{k}": ms[f"ndcg@{k}"],
+                    f"map@{k}": ms[f"map@{k}"],
+                    f"recall@{k}": ms[f"recall@{k}"],
+                    f"recall@{recall_k}": recall100,
+                    f"oracle_ndcg@{oracle_k}": oracle,
                 }
             )
 
@@ -192,17 +225,33 @@ def main() -> None:
             "method": name,
             f"ndcg@{k}": float(np.mean(ndcgs)) if ndcgs else 0.0,
             f"map@{k}": float(np.mean(maps)) if maps else 0.0,
-            f"recall@{k}": float(np.mean(recalls)) if recalls else 0.0,
+            f"recall@{k}": float(np.mean(recalls_k)) if recalls_k else 0.0,
+            f"recall@{recall_k}": float(np.mean(recalls_100)) if recalls_100 else 0.0,
+            f"oracle_ndcg@{oracle_k}": float(np.mean(oracle_ndcgs)) if oracle_ndcgs else 0.0,
             "num_queries": len(queries_map),
             "split": split,
         }
         method_summaries.append(summary)
 
-    metrics = {"k": k, "split": split, "methods": method_summaries}
+    metrics = {
+        "k": k,
+        "split": split,
+        "diagnostics": {"recall_k": recall_k, "oracle_k": oracle_k},
+        "methods": method_summaries,
+    }
     write_json(out_dir / "metrics.json", metrics)
 
     csv_path = out_dir / "ablations.csv"
-    cols = ["method", f"ndcg@{k}", f"map@{k}", f"recall@{k}", "num_queries", "split"]
+    cols = [
+        "method",
+        f"ndcg@{k}",
+        f"map@{k}",
+        f"recall@{k}",
+        f"recall@{recall_k}",
+        f"oracle_ndcg@{oracle_k}",
+        "num_queries",
+        "split",
+    ]
     lines = [",".join(cols)]
     for row in method_summaries:
         lines.append(",".join(str(row[c]) for c in cols))
