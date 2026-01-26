@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from typing import Any
-from collections.abc import Iterable
 
 from fastapi import FastAPI, HTTPException
 
@@ -172,7 +172,9 @@ def _context_and_sources(query: str, hits: list[Any], context_k: int) -> tuple[s
     return "\n".join(blocks), srcs
 
 
-def _validate_llm_output(llm_out: dict[str, Any], *, num_sources: int) -> tuple[str, list[int], str | None]:
+def _validate_llm_output(
+    llm_out: dict[str, Any], *, num_sources: int
+) -> tuple[str, list[int], str | None]:
     """
     Enforces: factual answer => in-range citations.
     If model violates, we keep answer but return warning and empty citations.
@@ -196,7 +198,11 @@ def _validate_llm_output(llm_out: dict[str, Any], *, num_sources: int) -> tuple[
 
     bad = [c for c in citations if c < 1 or c > num_sources]
     if bad:
-        return answer, [], warning or f"Model returned out-of-range citations: {bad} (sources={num_sources})."
+        return (
+            answer,
+            [],
+            warning or f"Model returned out-of-range citations: {bad} (sources={num_sources}).",
+        )
 
     return answer, citations, warning
 
@@ -245,7 +251,9 @@ def search(req: SearchRequest) -> SearchResponse:
 
     method = req.method.strip().lower()
     if method not in {"bm25", "dense", "hybrid", "hybrid_ltr"}:
-        raise HTTPException(status_code=400, detail="method must be one of: bm25, dense, hybrid, hybrid_ltr")
+        raise HTTPException(
+            status_code=400, detail="method must be one of: bm25, dense, hybrid, hybrid_ltr"
+        )
 
     t0 = _now_ms()
     timings: dict[str, float] = {}
@@ -261,7 +269,9 @@ def search(req: SearchRequest) -> SearchResponse:
 
     if method in {"dense", "hybrid", "hybrid_ltr"}:
         if st.dense is None:
-            raise HTTPException(status_code=503, detail="Dense artifacts not loaded. Build embeddings first.")
+            raise HTTPException(
+                status_code=503, detail="Dense artifacts not loaded. Build embeddings first."
+            )
         a = _now_ms()
         dense_hits = st.dense.search(req.query, k=req.candidate_k)
         timings["dense_ms"] = _now_ms() - a
@@ -444,5 +454,7 @@ def agent_answer(req: AnswerRequest) -> AnswerResponse:
             "final_context_k": float(trace[-1].context_k) if trace else float(req.context_k),
         },
         warning=warning,
-        raw={"agent_trace": [t.model_dump() for t in trace], "llm": payload.get("raw")} if req.debug else None,
+        raw={"agent_trace": [t.model_dump() for t in trace], "llm": payload.get("raw")}
+        if req.debug
+        else None,
     )

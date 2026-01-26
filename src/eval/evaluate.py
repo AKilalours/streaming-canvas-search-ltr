@@ -5,7 +5,7 @@ import argparse
 import json
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import yaml
@@ -35,7 +35,8 @@ def _pick_paths(cfg: dict[str, Any]) -> dict[str, str]:
             "qrels_path": p["qrels_path"],
             "bm25_artifact": p.get("bm25_artifact") or cfg["artifacts"]["bm25_artifact"],
             "emb_dir": p.get("emb_dir") or cfg["artifacts"]["emb_dir"],
-            "ltr_path": p.get("ltr_path") or cfg["artifacts"].get("ltr_path", "artifacts/ltr/ltr.pkl"),
+            "ltr_path": p.get("ltr_path")
+            or cfg["artifacts"].get("ltr_path", "artifacts/ltr/ltr.pkl"),
         }
 
     # Style B: dataset/artifacts/eval
@@ -60,7 +61,9 @@ def _pick_paths(cfg: dict[str, Any]) -> dict[str, str]:
         "queries_path": queries_path,
         "qrels_path": qrels_path,
         "bm25_artifact": artifacts.get("bm25_artifact", "artifacts/bm25/scifact_bm25.pkl"),
-        "emb_dir": artifacts.get("emb_dir", "artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2"),
+        "emb_dir": artifacts.get(
+            "emb_dir", "artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2"
+        ),
         "ltr_path": artifacts.get("ltr_path", "artifacts/ltr/ltr.pkl"),
     }
 
@@ -72,7 +75,9 @@ def _dense_topk(
     doc_ids: list[str],
     k: int,
 ) -> list[tuple[str, float]]:
-    q = model.encode([query], normalize_embeddings=True, convert_to_numpy=True).astype(np.float32)[0]
+    q = model.encode([query], normalize_embeddings=True, convert_to_numpy=True).astype(np.float32)[
+        0
+    ]
     scores = doc_embs @ q
     k = min(k, scores.shape[0])
     idx = np.argpartition(-scores, kth=k - 1)[:k]
@@ -217,7 +222,9 @@ def main() -> None:
             {
                 "method": method_name,
                 **agg,
-                "oracle_ndcg@10": float(sum(oracle[method_name]) / max(1, len(oracle[method_name]))),
+                "oracle_ndcg@10": float(
+                    sum(oracle[method_name]) / max(1, len(oracle[method_name]))
+                ),
                 "split": split_name,
             }
         )
