@@ -1,0 +1,54 @@
+{
+  "k": 10,
+  "split": "test",
+  "diagnostics": {
+    "num_docs": 5183,
+    "num_queries": 300,
+    "has_ltr": true,
+    "embed_model": "all-MiniLM-L6-v2",
+    "candidate_k": 200,
+    "rerank_k": 50
+  },
+  "methods": [
+    {
+      "method": "bm25",
+      "ndcg@10": 0.652284944994416,
+      "map@10": 0.6071134920634922,
+      "recall@10": 0.7756666666666666,
+      "recall@100": 0.7756666666666666,
+      "num_queries": 300.0,
+      "oracle_ndcg@10": 0.904711988050051,
+      "split": "test"
+    },
+    {
+      "method": "dense",
+      "ndcg@10": 0.6450816521455768,
+      "map@10": 0.5959314814814813,
+      "recall@10": 0.7833333333333333,
+      "recall@100": 0.7833333333333333,
+      "num_queries": 300.0,
+      "oracle_ndcg@10": 0.96,
+      "split": "test"
+    },
+    {
+      "method": "hybrid",
+      "ndcg@10": 0.7069714420396992,
+      "map@10": 0.6632410714285715,
+      "recall@10": 0.827,
+      "recall@100": 0.827,
+      "num_queries": 300.0,
+      "oracle_ndcg@10": 0.9666666666666667,
+      "split": "test"
+    },
+    {
+      "method": "hybrid_ltr",
+      "ndcg@10": 0.7683733858862525,
+      "map@10": 0.7366152998236329,
+      "recall@10": 0.8575555555555555,
+      "recall@100": 0.8575555555555555,
+      "num_queries": 300.0,
+      "oracle_ndcg@10": 0.9340155622929935,
+      "split": "test"
+    }
+  ]
+}

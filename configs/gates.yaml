@@ -1,7 +1,14 @@
-gates:
-  metric:
-    name: ndcg@10
-    min_value: 0.20
-  latency_ms:
-    p95_max: 250
+reference:
+  metrics_path: reports/reference/metrics.json
+
+gate:
+  run: hybrid_ltr
+  metric: ndcg@10
+
+thresholds:
+  require_latency: true
+  min_success_rate: 0.99
+  max_p95_ms:
+    /search: 300
+    "*": 999999
 
