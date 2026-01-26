@@ -54,3 +54,6 @@ serve:
 clean:
 	rm -rf .pytest_cache .ruff_cache __pycache__
 
+train-ltr:
+	PYTHONPATH=$(PYTHONPATH) uv run python -m ranking.ltr_train --config configs/train.yaml
+
