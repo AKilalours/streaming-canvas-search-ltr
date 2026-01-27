@@ -57,3 +57,23 @@ clean:
 train-ltr:
 	PYTHONPATH=$(PYTHONPATH) uv run python -m ranking.ltr_train --config configs/train.yaml
 
+
+reports_latest:
+	mkdir -p reports/latest
+	touch reports/latest/.gitkeep
+
+multi_eval:
+	PYTHONPATH=src uv run python -m pipelines.multi_eval --config configs/multi_eval.yaml
+
+failure_report:
+	PYTHONPATH=src uv run python -m eval.failure_analysis --config configs/eval.yaml --out reports/latest/failure_cases.md
+
+reports_latest:
+	mkdir -p reports/latest
+	touch reports/latest/.gitkeep
+
+multi_eval:
+	PYTHONPATH=src uv run python -m pipelines.multi_eval --config configs/multi_eval.yaml
+
+failure_report:
+	PYTHONPATH=src uv run python -m eval.failure_analysis --config configs/eval.yaml --out reports/latest/failure_cases.md

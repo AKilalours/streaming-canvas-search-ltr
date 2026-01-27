@@ -1,0 +1,9 @@
+run:
+  out_dir: reports/multi_eval
+  k: 10
+  candidate_k: 200
+  rerank_k: 50
+  alpha: 0.5
+  datasets:
+    - name: scifact
+      config: configs/datasets/scifact.yaml
