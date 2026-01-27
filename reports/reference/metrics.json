@@ -1,54 +1,51 @@
 {
   "k": 10,
-  "split": "test",
+  "split": "movielens/test",
   "diagnostics": {
-    "num_docs": 5183,
-    "num_queries": 300,
+    "num_docs": 9742,
+    "num_queries": 150,
     "has_ltr": true,
-    "embed_model": "all-MiniLM-L6-v2",
+    "embed_model": "sentence-transformers/all-MiniLM-L6-v2",
     "candidate_k": 200,
-    "rerank_k": 50
+    "rerank_k": 50,
+    "alpha": 0.5
   },
   "methods": [
     {
       "method": "bm25",
-      "ndcg@10": 0.652284944994416,
-      "map@10": 0.6071134920634922,
-      "recall@10": 0.7756666666666666,
-      "recall@100": 0.7756666666666666,
-      "num_queries": 300.0,
-      "oracle_ndcg@10": 0.904711988050051,
-      "split": "test"
+      "ndcg@10": 0.6064944718128008,
+      "map@10": 0.12694844534170002,
+      "recall@10": 0.1618439242477083,
+      "recall@100": 0.1618439242477083,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.9689405641954014
     },
     {
       "method": "dense",
-      "ndcg@10": 0.6450816521455768,
-      "map@10": 0.5959314814814813,
-      "recall@10": 0.7833333333333333,
-      "recall@100": 0.7833333333333333,
-      "num_queries": 300.0,
-      "oracle_ndcg@10": 0.96,
-      "split": "test"
+      "ndcg@10": 0.30306742049610996,
+      "map@10": 0.03221808334756934,
+      "recall@10": 0.05228483852329557,
+      "recall@100": 0.05228483852329557,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.7180399535978346
     },
     {
       "method": "hybrid",
-      "ndcg@10": 0.7069714420396992,
-      "map@10": 0.6632410714285715,
-      "recall@10": 0.827,
-      "recall@100": 0.827,
-      "num_queries": 300.0,
-      "oracle_ndcg@10": 0.9666666666666667,
-      "split": "test"
+      "ndcg@10": 0.47461451928947973,
+      "map@10": 0.07162421231848239,
+      "recall@10": 0.0996864406064435,
+      "recall@100": 0.0996864406064435,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.9384599275246783
     },
     {
       "method": "hybrid_ltr",
-      "ndcg@10": 0.7683733858862525,
-      "map@10": 0.7366152998236329,
-      "recall@10": 0.8575555555555555,
-      "recall@100": 0.8575555555555555,
-      "num_queries": 300.0,
-      "oracle_ndcg@10": 0.9340155622929935,
-      "split": "test"
+      "ndcg@10": 0.7914850769875104,
+      "map@10": 0.18736825575973626,
+      "recall@10": 0.18768322820567923,
+      "recall@100": 0.18768322820567923,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.7954984480830585
     }
   ]
 }
