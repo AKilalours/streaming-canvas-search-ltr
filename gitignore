@@ -1,0 +1,47 @@
+# ── Secrets ──────────────────────────────────────────────────────────────────
+docker-compose.yml
+.env
+*.env
+env.example
+
+# ── Large artifacts (trained models, datasets, eval outputs) ─────────────────
+artifacts/
+data/
+reports/
+metaflow_card_cache/
+deliverables/
+
+# ── Runtime ──────────────────────────────────────────────────────────────────
+dump.rdb
+*.rdb
+*.db
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.python-version
+
+# ── Build / Lock ─────────────────────────────────────────────────────────────
+uv.lock
+*.egg-info/
+dist/
+build/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Backup files ─────────────────────────────────────────────────────────────
+*.bak
+*.bak.*
+docker-compose.yml.bak*
+src/app/main.py.bak*
+src/app/deps.py.bak*
