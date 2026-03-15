@@ -1,0 +1,16 @@
+dataset:
+  processed_dir: data/processed
+  split: movielens/test
+
+artifacts:
+  bm25_artifact: artifacts/bm25/movielens_bm25.pkl
+  emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+  ltr_path: artifacts/ltr/ltr.pkl
+  embed_model: sentence-transformers/all-MiniLM-L6-v2
+
+eval:
+  k: 10
+  candidates_k: 200
+  rerank_k: 50
+  alpha: 0.5
+  split: movielens/test

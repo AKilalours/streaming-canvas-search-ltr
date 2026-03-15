@@ -1,0 +1,18 @@
+dataset:
+  id: nfcorpus
+  split: test
+  paths:
+    corpus: data/processed/nfcorpus/test/corpus.jsonl
+  artifacts:
+    bm25: artifacts/bm25/nfcorpus_bm25.pkl
+    dense_dir_glob: artifacts/faiss/nfcorpus_sentence-transformers_paraphrase-multilingual-MiniLM-L12-v2*
+    ltr: artifacts/ltr/ltr.pkl
+
+retrieval:
+  alpha: 0.5
+  candidate_k: 1000
+  rerank_k: 200
+
+personalization:
+  enabled: true
+  boost_weight: 0.15

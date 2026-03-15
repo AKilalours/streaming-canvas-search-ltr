@@ -1,0 +1,21 @@
+.venv
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+
+# big folders
+data/
+artifacts/
+reports/
+runs/
+.metaflow/
+
+# git
+.git/
+.gitignore
+
+# misc
+*.log

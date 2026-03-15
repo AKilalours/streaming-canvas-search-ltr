@@ -1,0 +1,18 @@
+dataset:
+  id: movielens
+  split: test
+  paths:
+    corpus: data/processed/movielens/test/corpus.jsonl
+  artifacts:
+    bm25: artifacts/bm25/movielens_bm25.pkl
+    dense_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+    ltr: artifacts/ltr/movielens_ltr.pkl
+
+retrieval:
+  alpha: 0.5
+  candidate_k: 1000
+  rerank_k: 200
+
+personalization:
+  enabled: true
+  boost_weight: 0.15

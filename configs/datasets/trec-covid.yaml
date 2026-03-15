@@ -1,0 +1,17 @@
+dataset:
+  name: trec-covid
+  raw_dir: data/raw/beir/trec-covid/trec-covid
+  processed_dir: data/processed/trec-covid
+  split: test
+
+artifacts:
+  bm25_artifact: artifacts/bm25/trec-covid_bm25.pkl
+  emb_dir: artifacts/faiss/trec-covid_sentence-transformers_paraphrase-multilingual-MiniLM-L12-v2
+  ltr_path: artifacts/ltr/trec-covid_ltr.pkl
+  embed_model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+
+eval:
+  k: 10
+  candidates_k: 200
+  rerank_k: 50
+  alpha: 0.5

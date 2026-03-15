@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Netflix-style Search + LTR + Agentic RAG</title>
+  <link rel="stylesheet" href="/demo/ui/styles.css"/>
+</head>
+<body>
+  <!-- Login overlay (demo-only) -->
+  <div id="login" class="overlay">
+    <div class="login-card">
+      <h1>Sign In</h1>
+      <p class="muted">Demo only — any email/password works.</p>
+      <input id="email" placeholder="Email"/>
+      <input id="pw" type="password" placeholder="Password"/>
+      <button id="loginBtn" class="btn btn-red">Continue</button>
+    </div>
+  </div>
+
+  <!-- Profile picker -->
+  <div id="profiles" class="overlay hidden">
+    <div class="profile-card">
+      <h1>Who's watching?</h1>
+      <div class="profile-grid">
+        <button class="profile" data-profile="chrisen"><span>C</span><b>Chrisen</b></button>
+        <button class="profile" data-profile="gilbert"><span>G</span><b>Gilbert</b></button>
+      </div>
+      <p class="muted">Profiles change suggestion style + row seeds (A/B ready).</p>
+    </div>
+  </div>
+
+  <!-- Top nav -->
+  <header class="nav">
+    <div class="brand">STREAMING SEARCH LTR</div>
+
+    <div class="nav-center">
+      <select id="langSelect" class="select"></select>
+
+      <div class="search">
+        <input id="q" placeholder="Search titles, genres, tags… e.g., gritty crime thriller"/>
+        <div id="typeahead" class="typeahead hidden"></div>
+      </div>
+
+      <button id="searchBtn" class="btn">Search</button>
+    </div>
+
+    <div class="nav-right">
+      <span id="apiPill" class="pill">API: …</span>
+      <span id="liftPill" class="pill">Lift: …</span>
+      <button id="refreshBtn" class="btn">Refresh</button>
+      <button id="helpBtn" class="btn btn-ghost">What am I seeing?</button>
+      <button id="switchBtn" class="btn btn-ghost">Switch Profile</button>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Search + LTR + Agentic RAG</h1>
+      <p>
+        Netflix-style discovery demo powered by your backend:
+        <b>hybrid retrieval</b> → <b>LambdaRank rerank</b> → <b>grounded “Why this?”</b> → <b>agent retry</b>.
+      </p>
+      <div class="hero-actions">
+        <button id="reloadRowsBtn" class="btn btn-white">▶ Refresh Rows</button>
+        <button id="openExplainBtn" class="btn btn-ghost">ℹ Explain the pipeline</button>
+      </div>
+      <div class="hero-meta">
+        <span id="tip" class="pill">Tip: click a tile → “Why this?” → Voice</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rows -->
+  <main id="rows" class="rows"></main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-inner">
+      <button id="closeModal" class="x">×</button>
+
+      <div class="modal-header">
+        <div>
+          <h2 id="mTitle">—</h2>
+          <div class="mMeta">
+            <span id="mMatch" class="match">—</span>
+            <span id="mDoc" class="muted mono">—</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="whyBtn" class="btn btn-red">Why this?</button>
+          <button id="agentWhyBtn" class="btn">Agent retry</button>
+          <button id="speakBtn" class="btn btn-ghost">🔊 Voice</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="panel">
+          <h3>Explanation (grounded)</h3>
+          <div id="mWhy" class="box">—</div>
+          <div id="mWarn" class="warn hidden"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Sources</h3>
+          <div id="mSources" class="sources"></div>
+        </div>
+
+        <div class="panel">
+          <h3>Raw (debug)</h3>
+          <pre id="mRaw" class="pre">—</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div id="help" class="modal hidden">
+    <div class="modal-inner">
+      <button id="closeHelp" class="x">×</button>
+      <h2>What you’re looking at</h2>
+      <div class="helpGrid">
+        <div class="helpCard">
+          <h3>1) Hybrid Retrieval</h3>
+          <p>
+            Combines BM25 lexical matching with dense semantic embeddings.
+            This makes search robust to typos + natural language (“feel good family movie”).
+          </p>
+        </div>
+        <div class="helpCard">
+          <h3>2) LambdaRank (LTR)</h3>
+          <p>
+            Re-ranks the top candidates using learned features to optimize nDCG@10.
+            You show the lift in the top bar (offline evaluation).
+          </p>
+        </div>
+        <div class="helpCard">
+          <h3>3) Grounded + Agentic RAG</h3>
+          <p>
+            “Why this?” answers are generated ONLY from retrieved metadata (citations).
+            If grounding is weak, the agent retries with more candidates/context.
+          </p>
+        </div>
+        <div class="helpCard">
+          <h3>Multilingual Voice</h3>
+          <p>
+            Browser voices often fail for Tamil/Telugu/Malayalam.
+            This demo uses <b>server-side edge-tts</b> for consistent multilingual TTS.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="ttsPlayer"></audio>
+
+  <script src="/demo/ui/app.js"></script>
+</body>
+</html>

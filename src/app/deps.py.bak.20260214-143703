@@ -1,0 +1,230 @@
+# src/app/deps.py
+from __future__ import annotations
+
+import json
+import os
+import pickle
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from utils.logging import get_logger
+
+log = get_logger("app.deps")
+
+
+def _load_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if s:
+                rows.append(json.loads(s))
+    return rows
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:  # pragma: no cover
+        raise RuntimeError(
+            "PyYAML is required to load config. Install it in the api image/env: pip install pyyaml"
+        ) from e
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return data or {}
+
+
+def _first_existing(patterns: list[str]) -> Path | None:
+    for pat in patterns:
+        hits = sorted(Path(".").glob(pat))
+        if hits:
+            return hits[0]
+    return None
+
+
+def _require(path: Path | None, msg: str) -> Path:
+    if path is None or not path.exists():
+        raise FileNotFoundError(msg)
+    return path
+
+
+def _select_config_path() -> Path:
+    # Allows easy switching: APP_CONFIG=config/app.nfcorpus.yaml docker compose up ...
+    p = Path(os.environ.get("APP_CONFIG", "config/app.yaml"))
+    if p.exists():
+        return p
+    # fallback for older layouts
+    p2 = Path("configs/app.yaml")
+    if p2.exists():
+        return p2
+    raise FileNotFoundError("No config found. Expected config/app.yaml (or set APP_CONFIG=...).")
+
+
+def _dataset_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
+    ds = cfg.get("dataset") or {}
+    if not isinstance(ds, dict):
+        return {}
+    return ds
+
+
+def _resolve_corpus_path(ds: dict[str, Any]) -> Path:
+    # explicit path wins
+    p = (ds.get("paths") or {}).get("corpus")
+    if p:
+        return Path(p)
+
+    # sensible defaults (avoid “most recent” guessing)
+    dsid = str(ds.get("id") or "nfcorpus")
+    split = str(ds.get("split") or "test")
+    return Path(f"data/processed/{dsid}/{split}/corpus.jsonl")
+
+
+def _resolve_bm25_path(ds: dict[str, Any]) -> Path:
+    a = ds.get("artifacts") or {}
+    p = a.get("bm25")
+    if p:
+        return Path(p)
+
+    dsid = str(ds.get("id") or "nfcorpus")
+    # fallback patterns
+    cand = _first_existing([f"artifacts/bm25/{dsid}*.pkl", "artifacts/bm25/*.pkl"])
+    return _require(cand, f"Could not find BM25 artifact for dataset='{dsid}' under artifacts/bm25/.")
+
+
+def _resolve_dense_paths(ds: dict[str, Any]) -> tuple[Path | None, Path | None, Path | None]:
+    a = ds.get("artifacts") or {}
+
+    # Optional: you can set dense_dir_glob: artifacts/faiss/movielens*
+    dense_dir_glob = a.get("dense_dir_glob")
+    if dense_dir_glob:
+        d = _first_existing([dense_dir_glob])
+        if d and d.is_dir():
+            emb = d / "embeddings.npy"
+            ids = d / "doc_ids.json"
+            meta = d / "meta.json"
+            return (emb if emb.exists() else None, ids if ids.exists() else None, meta if meta.exists() else None)
+
+    # fallback: try dataset-specific first, then any
+    dsid = str(ds.get("id") or "nfcorpus")
+    emb = _first_existing([f"artifacts/faiss/**/{dsid}*/embeddings.npy", "artifacts/faiss/**/embeddings.npy"])
+    ids = _first_existing([f"artifacts/faiss/**/{dsid}*/doc_ids.json", "artifacts/faiss/**/doc_ids.json"])
+    meta = None
+    if emb is not None:
+        mp = emb.parent / "meta.json"
+        if mp.exists():
+            meta = mp
+    return emb, ids, meta
+
+
+def _resolve_ltr_path(ds: dict[str, Any]) -> Path | None:
+    a = ds.get("artifacts") or {}
+    p = a.get("ltr")
+    if p and Path(p).exists():
+        return Path(p)
+
+    dsid = str(ds.get("id") or "nfcorpus")
+    return _first_existing([f"artifacts/ltr/{dsid}*.pkl", "artifacts/ltr/ltr.pkl", "artifacts/ltr/*.pkl"])
+
+
+@dataclass
+class DenseIndex:
+    model_name: str
+    doc_embs: np.ndarray
+    doc_ids: list[str]
+    model: SentenceTransformer
+
+    def search(self, query: str, k: int) -> list[tuple[str, float]]:
+        q = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True).astype(np.float32)[0]
+        scores = self.doc_embs @ q
+        k = min(k, scores.shape[0])
+        idx = np.argpartition(-scores, kth=k - 1)[:k]
+        idx = idx[np.argsort(-scores[idx])]
+        return [(self.doc_ids[int(i)], float(scores[int(i)])) for i in idx]
+
+
+class AppState:
+    def __init__(self) -> None:
+        self.ready = False
+        self.dataset_id: str = "unknown"
+        self.corpus: dict[str, dict[str, Any]] = {}
+        self.bm25_obj: Any | None = None
+        self.dense: DenseIndex | None = None
+        self.ltr_path: Path | None = None
+
+    def bm25_query(self, query: str, k: int) -> list[tuple[str, float]]:
+        if self.bm25_obj is None:
+            return []
+        if hasattr(self.bm25_obj, "query"):
+            return list(self.bm25_obj.query(query, k=k))
+        if hasattr(self.bm25_obj, "search"):
+            return list(self.bm25_obj.search(query, top_k=k))  # type: ignore[attr-defined]
+        raise RuntimeError("BM25 object does not support .query() or .search().")
+
+
+def load_state() -> AppState:
+    st = AppState()
+
+    cfg_path = _select_config_path()
+    cfg = _load_yaml(cfg_path)
+    ds = _dataset_cfg(cfg)
+
+    st.dataset_id = str(ds.get("id") or "nfcorpus")
+    log.info("Loading AppState from config=%s dataset=%s", cfg_path, st.dataset_id)
+
+    # ---- corpus (EXPLICIT) ----
+    corpus_path = _resolve_corpus_path(ds)
+    _require(corpus_path, f"Corpus not found: {corpus_path} (dataset={st.dataset_id})")
+
+    corpus_rows = _load_jsonl(corpus_path)
+    # require doc_id key
+    if corpus_rows and "doc_id" not in corpus_rows[0]:
+        raise KeyError(f"Corpus rows must contain 'doc_id'. First row keys: {list(corpus_rows[0].keys())}")
+
+    st.corpus = {r["doc_id"]: r for r in corpus_rows}
+    log.info("Loaded corpus: %s (docs=%d)", corpus_path, len(st.corpus))
+
+    # ---- BM25 (dataset-matched) ----
+    bm25_path = _resolve_bm25_path(ds)
+    with bm25_path.open("rb") as f:
+        st.bm25_obj = pickle.load(f)
+    log.info("Loaded BM25 artifact: %s", bm25_path)
+
+    # ---- Dense (optional, dataset-matched + correct model) ----
+    emb_path, ids_path, meta_path = _resolve_dense_paths(ds)
+    if emb_path and ids_path and emb_path.exists() and ids_path.exists():
+        doc_embs = np.load(emb_path).astype(np.float32)
+        doc_ids = list(_load_json(ids_path))
+
+        # normalize defensively
+        norms = np.linalg.norm(doc_embs, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        doc_embs = doc_embs / norms
+
+        model_name = "sentence-transformers/all-MiniLM-L6-v2"
+        if meta_path and meta_path.exists():
+            meta = _load_json(meta_path)
+            model_name = str(meta.get("model_name") or meta.get("encoder") or model_name)
+
+        model = SentenceTransformer(model_name)
+        st.dense = DenseIndex(model_name=model_name, doc_embs=doc_embs, doc_ids=doc_ids, model=model)
+        log.info("Loaded dense artifacts: %s + %s (model=%s)", emb_path, ids_path, model_name)
+    else:
+        log.info("Dense artifacts not found for dataset=%s; dense/hybrid methods may be degraded.", st.dataset_id)
+
+    # ---- LTR (dataset-matched) ----
+    ltr_path = _resolve_ltr_path(ds)
+    if ltr_path and ltr_path.exists():
+        st.ltr_path = ltr_path
+        log.info("Found LTR artifact: %s", ltr_path)
+    else:
+        log.info("LTR artifact not found for dataset=%s; hybrid_ltr will behave like hybrid.", st.dataset_id)
+
+    st.ready = True
+    return st

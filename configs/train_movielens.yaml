@@ -1,0 +1,35 @@
+train:
+  dataset_processed_dir: data/processed/movielens
+  corpus_split: train
+  query_split: train
+  qrels_split: train
+
+  bm25_artifact: artifacts/bm25/movielens_bm25.pkl
+  emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+  embed_model: sentence-transformers/all-MiniLM-L6-v2
+
+  bm25_candidate_k: 200
+  dense_candidate_k: 200
+  alpha: 0.5
+  train_feature_k: 200
+  min_relevance: 1
+
+  random_seed: 7
+  val_frac: 0.15
+
+lightgbm:
+  objective: lambdarank
+  n_estimators: 250
+  learning_rate: 0.05
+  num_leaves: 63
+  min_child_samples: 20
+  subsample: 0.8
+  colsample_bytree: 0.8
+  random_state: 7
+  n_jobs: -1
+  eval_at: [10]
+
+artifacts:
+  ltr_dir: artifacts/ltr
+  model_name: movielens_ltr.pkl
+  meta_name: movielens_ltr_meta.json

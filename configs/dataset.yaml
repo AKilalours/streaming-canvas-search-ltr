@@ -1,8 +1,8 @@
 dataset:
-  name: scifact
+  name: nfcorpus
   provider: beir
   raw_dir: data/raw/beir
-  processed_dir: data/processed/scifact
+  processed_dir: data/processed/nfcorpus
 
 embeddings:
   model_name: sentence-transformers/all-MiniLM-L6-v2

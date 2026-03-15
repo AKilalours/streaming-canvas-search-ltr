@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Netflix-style Search Demo (LTR + Grounded RAG)</title>
+  <link rel="stylesheet" href="/demo/static/styles.css"/>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="loginScreen" class="screen screen--login">
+    <div class="loginBox">
+      <h1>Sign In</h1>
+      <form id="loginForm">
+        <input id="email" type="email" placeholder="Email or phone number" required />
+        <input id="password" type="password" placeholder="Password" required />
+        <button class="btn btn--red" type="submit">Sign In</button>
+      </form>
+      <p class="hint">Demo: use any email/password to continue</p>
+    </div>
+  </div>
+
+  <!-- PROFILE SELECT -->
+  <div id="profileScreen" class="screen screen--profiles hidden">
+    <h1>Who's watching?</h1>
+    <div class="profiles">
+      <button class="profileCard" data-user="chrisen">
+        <div class="avatar avatar--blue">C</div>
+        <div class="name">Chrisen</div>
+      </button>
+      <button class="profileCard" data-user="gilbert">
+        <div class="avatar avatar--pink">G</div>
+        <div class="name">Gilbert</div>
+      </button>
+    </div>
+    <button class="btn btn--ghost">Manage Profiles</button>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="app hidden">
+    <header class="nav" id="navbar">
+      <div class="brand">STREAMING SEARCH DEMO</div>
+
+      <nav class="links">
+        <a href="#" class="active">Home</a>
+        <a href="#">TV Shows</a>
+        <a href="#">Movies</a>
+        <a href="#">New & Popular</a>
+        <a href="#">My List</a>
+      </nav>
+
+      <div class="right">
+        <div class="searchWrap">
+          <input id="searchInput" placeholder="Search titles, genres, tags…" autocomplete="off"/>
+          <div id="typeahead" class="typeahead hidden"></div>
+        </div>
+
+        <div class="statusPills">
+          <span id="apiPill" class="pill">API: …</span>
+          <span id="liftPill" class="pill">Offline lift: …</span>
+        </div>
+
+        <button id="switchProfile" class="profileMini">
+          <span id="profileBadge" class="badge">U</span>
+          <span id="profileName">User</span>
+          <span class="caret">▼</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <div class="hero__fade"></div>
+      <div class="hero__content">
+        <h1 id="heroTitle">Search demo</h1>
+        <p id="heroDesc">
+          LTR re-ranking + grounded / agentic RAG explanations over a MovieLens-style streaming catalog.
+        </p>
+
+        <div class="hero__actions">
+          <button id="heroPlay" class="btn btn--white">▶ Play</button>
+          <button id="heroInfo" class="btn btn--muted">ℹ More Info</button>
+          <button id="heroWhy" class="btn btn--ghost">✨ Why this?</button>
+        </div>
+
+        <div class="hero__meta">
+          <span class="kpi" id="latKpi">p95 /search: —</span>
+          <span class="kpi">method: <b>hybrid_ltr</b></span>
+          <span class="kpi">candidate_k: <b>200</b> · rerank_k: <b>50</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROWS -->
+    <main class="rows" id="rows"></main>
+
+    <!-- MODAL -->
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal__backdrop" id="modalBackdrop"></div>
+      <div class="modal__panel">
+        <button class="modal__close" id="modalClose">×</button>
+
+        <div class="modal__top">
+          <div class="poster" id="modalPoster"></div>
+          <div class="modal__info">
+            <h2 id="modalTitle">Title</h2>
+            <div class="modal__meta">
+              <span class="match" id="modalMatch">—</span>
+              <span id="modalGenres">Genres: —</span>
+              <span id="modalTags">Tags: —</span>
+            </div>
+
+            <div class="modal__actions">
+              <button id="btnSearchLikeThis" class="btn btn--white">🔎 Search like this</button>
+              <button id="btnGroundedWhy" class="btn btn--red">Answer (Grounded)</button>
+              <button id="btnAgentWhy" class="btn btn--redOutline">Agent Retry</button>
+              <button id="btnSpeak" class="btn btn--ghost">🔊 Speak</button>
+              <button id="btnStop" class="btn btn--ghost">■ Stop</button>
+            </div>
+
+            <p class="modal__desc" id="modalDesc">
+              Uses the catalog metadata as “retrieval context”. The answer is forced to cite retrieved sources.
+            </p>
+          </div>
+        </div>
+
+        <div class="modal__bottom">
+          <div class="panel">
+            <div class="panel__hdr">
+              <h3>Explanation</h3>
+              <span id="explainTimings" class="mono small">—</span>
+            </div>
+            <div id="explainText" class="explainBox">—</div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__hdr">
+              <h3>Sources (citations)</h3>
+              <span class="small">Top retrieved docs</span>
+            </div>
+            <div id="sourcesList" class="sources"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__hdr">
+              <h3>Raw (debug)</h3>
+              <span class="small">Useful for recruiters</span>
+            </div>
+            <pre id="rawBox" class="raw">—</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/demo/static/app.js"></script>
+</body>
+</html>

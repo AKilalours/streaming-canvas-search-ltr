@@ -1,0 +1,47 @@
+[MFLOG|0|2026-02-10T06:53:27.663331Z|runtime|48eb1afe-ff28-47e2-ada2-89bc89522ff7][latency] Cannot reach API at http://127.0.0.1:8000. Start the server first.
+[MFLOG|0|2026-02-10T06:53:27.675676Z|runtime|4c7cbe2b-52bc-4ba3-a6d1-f7b121390de6]Run in another terminal:
+[MFLOG|0|2026-02-10T06:53:27.675743Z|runtime|79b0d5d8-fadd-418a-86f2-3d2439635a72]  PYTHONPATH=src uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+[MFLOG|0|2026-02-10T06:53:27.675764Z|runtime|683b9ab4-9626-4e74-8d98-4b3a584f4a06]Original error: [Errno 61] Connection refused
+[MFLOG|0|2026-02-10T06:53:27.675787Z|runtime|69595639-5f7e-4fc2-8970-be0128f8d9d9]<flow StreamingSearchLTRFlow step latency> failed:
+[MFLOG|0|2026-02-10T06:53:27.679235Z|runtime|fe979167-56d7-49af-9818-4d185a4dd118]    Internal error
+[MFLOG|0|2026-02-10T06:53:27.680932Z|runtime|3d76dc9b-f72b-48c1-a606-9ff7d18f0edf]Traceback (most recent call last):
+[MFLOG|0|2026-02-10T06:53:27.680955Z|runtime|223b026e-5a10-4ea1-90a6-931f8b5fefbf]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-02-10T06:53:27.680973Z|runtime|2087b2fa-7f80-4852-8de2-961ae904697c]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-02-10T06:53:27.680988Z|runtime|341c77fd-28af-4f18-bbb8-38d9c679bc2c]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-02-10T06:53:27.681009Z|runtime|b9c6ee8b-71b6-4b13-8d0b-fb42109ec484]    return self.main(args, kwargs)
+[MFLOG|0|2026-02-10T06:53:27.696617Z|runtime|58fa2fe2-cbea-48f8-8ce1-8ad7dd5634c0]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696692Z|runtime|0044464e-9dd0-4281-bda1-5494087e2483]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-02-10T06:53:27.696720Z|runtime|b1bb5808-1e31-4ac2-b065-9723ef87d618]    rv = self.invoke(ctx)
+[MFLOG|0|2026-02-10T06:53:27.696735Z|runtime|9b23900b-5278-4cc6-b68a-caadbdc11547]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696747Z|runtime|643df2e5-74eb-4e1a-9ab0-bff728f15ce6]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-02-10T06:53:27.696766Z|runtime|4dfd4c33-2e60-4d2b-b042-03400b8623bc]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-02-10T06:53:27.696789Z|runtime|8abd1651-a983-4ac1-9525-01130f8b5b83]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696802Z|runtime|4537666e-1563-469c-afb7-8459f3ba504b]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-02-10T06:53:27.696817Z|runtime|31a40ac6-9f35-4c57-a594-3ba66a423e07]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-02-10T06:53:27.696835Z|runtime|1f72fbd9-1640-4dab-9d58-d43d83b5fe41]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696850Z|runtime|5b8780aa-61fa-49c6-8401-a933a49c158e]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-02-10T06:53:27.696873Z|runtime|63ba7a59-bb8a-43ea-92f5-116f1611858e]    return callback(args, kwargs)
+[MFLOG|0|2026-02-10T06:53:27.696887Z|runtime|99e19649-6a19-4a85-82ea-435edd30f9cf]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696903Z|runtime|0b539b33-50ce-4f1a-b203-f9ebf45ba6bd]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-02-10T06:53:27.696920Z|runtime|1d601fe4-ae43-438a-b2ec-4f099ccefe6c]    return func(args, kwargs)
+[MFLOG|0|2026-02-10T06:53:27.696933Z|runtime|fab0d2ba-1078-4db1-873c-1b23b6b4587d]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696945Z|runtime|6c569e15-183a-49a3-aae1-92377853a9a8]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-02-10T06:53:27.696957Z|runtime|7fc49e07-9fe6-4f65-8131-beb711c6371d]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-02-10T06:53:27.696970Z|runtime|428186c1-7919-46f2-baf2-00818decd646]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T06:53:27.696983Z|runtime|a60afe89-9ea7-45f8-9d36-4e3aedb5b05c]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-02-10T06:53:27.696995Z|runtime|69359b4a-3e37-4cc4-9972-77d5dce3bcd8]    task.run_step(
+[MFLOG|0|2026-02-10T06:53:27.697010Z|runtime|39f9d323-c9f5-48ed-a200-faeff702a4f9]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-02-10T06:53:27.697024Z|runtime|bc6f08e4-c416-4799-bc8b-c1bcfaf3b17e]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-02-10T06:53:27.697038Z|runtime|0f137062-9ba4-459f-bb07-6097f7822f16]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-02-10T06:53:27.697050Z|runtime|02d704bc-9099-490d-9b06-22f5a96d18eb]    raise raised_exception
+[MFLOG|0|2026-02-10T06:53:27.697062Z|runtime|c116e695-7f70-421a-85af-d592f34d7b3f]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-02-10T06:53:27.697074Z|runtime|da8ac2bd-6607-4d6a-9454-785fa9f44639]    step_function()
+[MFLOG|0|2026-02-10T06:53:27.697086Z|runtime|f7b41379-4060-4d68-8b98-33e3002bae67]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streaming_search_flow.py", line 180, in latency
+[MFLOG|0|2026-02-10T06:53:27.697099Z|runtime|d8d9a9a1-2486-48bb-a6a3-22535c2f8f64]    _run("python src/eval/latency_bench.py")
+[MFLOG|0|2026-02-10T06:53:27.697111Z|runtime|6c30671c-e5d1-4a9f-8ff0-c3c8c185d494]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streaming_search_flow.py", line 14, in _run
+[MFLOG|0|2026-02-10T06:53:27.697123Z|runtime|2367bc88-a6af-431b-b579-18e04ca40555]    subprocess.check_call(cmd, shell=True)
+[MFLOG|0|2026-02-10T06:53:27.697138Z|runtime|720e1e97-d8ca-4b39-9833-df2107754699]  File "/Users/akilalourdes/.local/share/uv/python/cpython-3.11.14-macos-aarch64-none/lib/python3.11/subprocess.py", line 413, in check_call
+[MFLOG|0|2026-02-10T06:53:27.697150Z|runtime|828c8069-1cc3-415f-a180-0f04450ef3ac]    raise CalledProcessError(retcode, cmd)
+[MFLOG|0|2026-02-10T06:53:27.697161Z|runtime|c0c8630c-90d9-421e-b053-707f2a4fe8c8]subprocess.CalledProcessError: Command 'python src/eval/latency_bench.py' returned non-zero exit status 1.
+[MFLOG|0|2026-02-10T06:53:27.697173Z|runtime|f3abf327-2a2c-4908-bc14-7d3882f5c1ec]
+[MFLOG|0|2026-02-10T06:53:27.697533Z|runtime|cb87d6dc-6dc6-44b0-8a7f-6f240280b725]Task failed.

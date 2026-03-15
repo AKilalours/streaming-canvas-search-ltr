@@ -73,10 +73,7 @@ def _pick_method_entry(methods: list[dict[str, Any]], want_run: str) -> dict[str
             if isinstance(name, str) and "ltr" in _norm(name):
                 return x
 
-    _fail(
-        f"Metric run '{want_run}' not found in metrics.json methods. "
-        f"Available methods: {names}"
-    )
+    _fail(f"Metric run '{want_run}' not found in metrics.json methods. Available methods: {names}")
     raise AssertionError("unreachable")
 
 

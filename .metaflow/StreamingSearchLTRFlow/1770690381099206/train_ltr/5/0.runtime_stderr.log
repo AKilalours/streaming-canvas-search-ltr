@@ -1,0 +1,55 @@
+[MFLOG|0|2026-02-10T02:27:26.411665Z|runtime|8feaf433-a4e8-4417-b93e-7ac6401f7fbe]Traceback (most recent call last):
+[MFLOG|0|2026-02-10T02:27:26.411779Z|runtime|b07b2f1c-7692-4ec8-890f-b5fcd78a0dad]  File "<frozen runpy>", line 198, in _run_module_as_main
+[MFLOG|0|2026-02-10T02:27:26.411820Z|runtime|9919fb45-027b-4c03-8981-aeb878515cbc]  File "<frozen runpy>", line 88, in _run_code
+[MFLOG|0|2026-02-10T02:27:26.411841Z|runtime|2fc9cb56-3724-4312-8795-07ba2a0a3f5b]  File "/Users/akilalourdes/streaming-canvas-search-ltr/src/ranking/ltr_train.py", line 243, in <module>
+[MFLOG|0|2026-02-10T02:27:26.411861Z|runtime|eb2b5784-e785-403c-a87c-de9166086552]    main()
+[MFLOG|0|2026-02-10T02:27:26.412585Z|runtime|3ad66114-2169-46b6-af20-92d920d5cdda]  File "/Users/akilalourdes/streaming-canvas-search-ltr/src/ranking/ltr_train.py", line 123, in main
+[MFLOG|0|2026-02-10T02:27:26.412637Z|runtime|fc397335-d522-433d-a1d5-a560f9090e82]    doc_embs = np.load(emb_dir / "embeddings.npy").astype(np.float32)
+[MFLOG|0|2026-02-10T02:27:26.412697Z|runtime|ec69940e-87e4-4155-a755-a54cbf6e1e2c]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.412922Z|runtime|68de2b3b-e69e-4229-8ed9-11ea06fa8553]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py", line 454, in load
+[MFLOG|0|2026-02-10T02:27:26.412955Z|runtime|c6ed3590-f026-4cc0-8d12-729acec03457]    fid = stack.enter_context(open(os.fspath(file), "rb"))
+[MFLOG|0|2026-02-10T02:27:26.722721Z|runtime|27178ee3-1192-4748-b1ed-8ebc61233534]                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.722784Z|runtime|c186d4b9-9e09-4b0e-b664-896d3be33453]FileNotFoundError: [Errno 2] No such file or directory: 'artifacts/faiss/scifact_sentence-transformers_all-MiniLM-L6-v2/embeddings.npy'
+[MFLOG|0|2026-02-10T02:27:26.722810Z|runtime|3cdd6bae-a46a-4a36-b878-d9ae8d91bb2f]<flow StreamingSearchLTRFlow step train_ltr> failed:
+[MFLOG|0|2026-02-10T02:27:26.726690Z|runtime|5444a504-71f2-4846-9866-8c9019255396]    Internal error
+[MFLOG|0|2026-02-10T02:27:26.728388Z|runtime|30402924-4d40-45f2-87fc-c84774312b18]Traceback (most recent call last):
+[MFLOG|0|2026-02-10T02:27:26.728410Z|runtime|f1d663c3-f006-45ce-a236-384624e27c30]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-02-10T02:27:26.728428Z|runtime|5a592e86-9180-4159-a909-e652037b8382]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-02-10T02:27:26.728446Z|runtime|a58382cd-9a20-47c0-ae87-591b42a454b4]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-02-10T02:27:26.728462Z|runtime|69d0fd54-9736-4f9a-8ccb-019d3867f4f4]    return self.main(args, kwargs)
+[MFLOG|0|2026-02-10T02:27:26.744383Z|runtime|df888306-791b-47c6-bda7-241840f1168c]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744455Z|runtime|fd536bbe-987c-4730-8ea1-f5574ec74794]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-02-10T02:27:26.744476Z|runtime|00139e0b-6af5-41f7-bdc8-c5cfbb1c14f8]    rv = self.invoke(ctx)
+[MFLOG|0|2026-02-10T02:27:26.744493Z|runtime|37c509e6-2679-403e-aeb1-1cdd06023bbd]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744509Z|runtime|9df23ee4-60a5-439d-b943-6ab8d187f691]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-02-10T02:27:26.744525Z|runtime|2adffa3d-1993-4d83-a10c-d4e96d9f931a]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-02-10T02:27:26.744548Z|runtime|db4ef36a-fe7a-4d7a-8dd4-0a7d8e5f8bc9]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744562Z|runtime|2b3d26d9-0bae-4d3d-be93-d4d8f4b2331a]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-02-10T02:27:26.744578Z|runtime|6a3d02c6-2dc0-4513-a955-228b7e35e42e]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-02-10T02:27:26.744595Z|runtime|ed3c9eee-bd2e-4a5f-b8a6-dc7f1bd69f2c]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744610Z|runtime|211847d4-5052-4c73-bcf3-cd2134f84566]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-02-10T02:27:26.744626Z|runtime|2397dd0f-a08c-4977-8845-d7363263fa04]    return callback(args, kwargs)
+[MFLOG|0|2026-02-10T02:27:26.744642Z|runtime|e5766ccf-8ad4-4cc5-b5d1-347f34f472e9]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744659Z|runtime|52524621-615e-4614-8623-414dd76269ca]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-02-10T02:27:26.744672Z|runtime|a1d28eae-76e3-422f-b044-cddbcce351e1]    return func(args, kwargs)
+[MFLOG|0|2026-02-10T02:27:26.744687Z|runtime|7338dfdc-e5d1-487d-93ad-ddd4f3bf0897]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744702Z|runtime|20adce78-945b-433e-aed1-0c3b43cd2742]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-02-10T02:27:26.744721Z|runtime|4f2a20d4-5622-40d9-bf5e-97f6ee83a0e1]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-02-10T02:27:26.744736Z|runtime|740efe9d-05b7-4409-bb12-bb00fb45fb31]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-02-10T02:27:26.744752Z|runtime|0322c3cb-5d21-42d3-a9f7-d69a91934cde]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-02-10T02:27:26.744767Z|runtime|db61b443-e7e8-4221-a9d1-6492ea961322]    task.run_step(
+[MFLOG|0|2026-02-10T02:27:26.744780Z|runtime|05dfd04f-cb67-4f17-a78a-3a40a7005d2d]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-02-10T02:27:26.744800Z|runtime|14bb5465-502e-4246-86e6-21433d933a63]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-02-10T02:27:26.744815Z|runtime|7e1aaf75-ef77-4039-b32c-f38c26e8cdab]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-02-10T02:27:26.744830Z|runtime|9fe77955-4d68-4324-908e-b14a08464d20]    raise raised_exception
+[MFLOG|0|2026-02-10T02:27:26.744844Z|runtime|dc8fafb7-e6bb-41b7-9e41-dbb2ed4fa04a]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.venv/lib/python3.11/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-02-10T02:27:26.744857Z|runtime|1607d1ad-797e-4cd6-b1d1-7c5abafa0172]    step_function()
+[MFLOG|0|2026-02-10T02:27:26.744873Z|runtime|a08be5e3-21fd-4486-9ee6-d6d79476c7a8]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streaming_search_flow.py", line 120, in train_ltr
+[MFLOG|0|2026-02-10T02:27:26.744892Z|runtime|a235b2d9-0fd8-4060-818d-55bc9b696326]    run("python -m src.ranking.ltr_train --config configs/train.yaml")
+[MFLOG|0|2026-02-10T02:27:26.744908Z|runtime|46efe87a-3a19-41e1-a04f-ec7d1a5e3317]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streaming_search_flow.py", line 20, in run
+[MFLOG|0|2026-02-10T02:27:26.744923Z|runtime|9131595d-d7ab-4491-8483-407bdb02ec75]    subprocess.check_call(cmd, shell=True)
+[MFLOG|0|2026-02-10T02:27:26.744935Z|runtime|a1ec75a6-5cb9-4ff4-851d-08bb2268193b]  File "/Users/akilalourdes/.local/share/uv/python/cpython-3.11.14-macos-aarch64-none/lib/python3.11/subprocess.py", line 413, in check_call
+[MFLOG|0|2026-02-10T02:27:26.744950Z|runtime|e7042554-964d-436e-8409-6a292c2cb627]    raise CalledProcessError(retcode, cmd)
+[MFLOG|0|2026-02-10T02:27:26.744964Z|runtime|cb6215f9-59d0-498d-9e37-37e7d5fbba4e]subprocess.CalledProcessError: Command 'python -m src.ranking.ltr_train --config configs/train.yaml' returned non-zero exit status 1.
+[MFLOG|0|2026-02-10T02:27:26.744979Z|runtime|3e9c9bd5-5b1e-4bf3-ae2d-38926cea4ae9]
+[MFLOG|0|2026-02-10T02:27:26.745221Z|runtime|0f7d897b-7ce0-4678-b9d5-ce185c9cb59f]Task failed.

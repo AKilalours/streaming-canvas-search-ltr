@@ -34,7 +34,9 @@ def _preflight(base: str) -> None:
         ) from e
 
 
-async def _one(client: httpx.AsyncClient, url: str, payload: dict[str, Any], timeout_s: float) -> float | None:
+async def _one(
+    client: httpx.AsyncClient, url: str, payload: dict[str, Any], timeout_s: float
+) -> float | None:
     t0 = time.perf_counter()
     try:
         r = await client.post(url, json=payload, timeout=timeout_s)
@@ -44,7 +46,9 @@ async def _one(client: httpx.AsyncClient, url: str, payload: dict[str, Any], tim
     return (time.perf_counter() - t0) * 1000.0
 
 
-async def _run(url: str, payload: dict[str, Any], n: int, conc: int, timeout_s: float) -> dict[str, Any]:
+async def _run(
+    url: str, payload: dict[str, Any], n: int, conc: int, timeout_s: float
+) -> dict[str, Any]:
     limits = httpx.Limits(max_connections=conc, max_keepalive_connections=conc)
     async with httpx.AsyncClient(limits=limits) as client:
         sem = asyncio.Semaphore(conc)
@@ -82,7 +86,9 @@ async def _run(url: str, payload: dict[str, Any], n: int, conc: int, timeout_s: 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8000")
-    ap.add_argument("--endpoint", default="/search", choices=["/search", "/answer", "/agent_answer"])
+    ap.add_argument(
+        "--endpoint", default="/search", choices=["/search", "/answer", "/agent_answer"]
+    )
     ap.add_argument("--n", type=int, default=50)
     ap.add_argument("--concurrency", type=int, default=10)
     ap.add_argument("--timeout", type=float, default=None, help="Per-request timeout seconds")
@@ -106,9 +112,20 @@ def main() -> None:
         timeout_s = float(args.timeout)
 
     if args.endpoint == "/search":
-        payload = {"query": "covid transmission evidence", "method": "hybrid_ltr", "k": 10, "debug": False}
+        payload = {
+            "query": "covid transmission evidence",
+            "method": "hybrid_ltr",
+            "k": 10,
+            "debug": False,
+        }
     else:
-        payload = {"query": "What is SciFact used for?", "method": "hybrid_ltr", "k": 8, "context_k": 6, "debug": False}
+        payload = {
+            "query": "What is SciFact used for?",
+            "method": "hybrid_ltr",
+            "k": 8,
+            "context_k": 6,
+            "debug": False,
+        }
 
     res = asyncio.run(_run(url, payload, n=args.n, conc=args.concurrency, timeout_s=timeout_s))
 

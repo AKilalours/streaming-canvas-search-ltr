@@ -1,0 +1,40 @@
+eval:
+  dataset_processed_dir: data/processed/movielens
+  split: test
+  k: 10
+  diagnostics:
+    recall_k: 100
+    oracle_k: 10
+
+reporting:
+  out_dir: reports
+
+methods:
+  - name: bm25
+    type: bm25
+    bm25_artifact: artifacts/bm25/movielens_bm25.pkl
+
+  - name: dense
+    type: dense
+    model_name: sentence-transformers/all-MiniLM-L6-v2
+    emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+    candidate_k: 100
+
+  - name: hybrid
+    type: hybrid
+    alpha: 0.5
+    bm25_candidate_k: 200
+    dense_candidate_k: 200
+    model_name: sentence-transformers/all-MiniLM-L6-v2
+    emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+
+  - name: hybrid_ltr
+    type: hybrid_ltr
+    alpha: 0.5
+    bm25_candidate_k: 200
+    dense_candidate_k: 200
+    rerank_k: 50
+    model_name: sentence-transformers/all-MiniLM-L6-v2
+    emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
+    ltr_model_path: artifacts/ltr/movielens_ltr.pkl
+    corpus_split_for_features: train

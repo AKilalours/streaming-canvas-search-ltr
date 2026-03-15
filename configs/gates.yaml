@@ -11,4 +11,3 @@ thresholds:
   max_p95_ms:
     /search: 300
     "*": 999999
-

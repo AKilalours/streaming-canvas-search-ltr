@@ -1,0 +1,75 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  createbuckets:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    volumes:
+      - ./:/workspace
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      sleep 2;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/artifacts || true;
+      mc mb -p local/reports || true;
+      mc mb -p local/metaflow || true;
+      echo "✅ Buckets ready (artifacts, reports, metaflow)";
+      tail -f /dev/null
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    depends_on:
+      - redis
+      - createbuckets
+    environment:
+      # redis cache
+      REDIS_URL: redis://redis:6379/0
+      REDIS_ENABLED: "1"
+
+      # S3-compatible (MinIO) - safe, no AWS billing
+      S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./artifacts:/app/artifacts
+      - ./reports:/app/reports
+      - ./data:/app/data
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    depends_on:
+      - api
+    environment:
+      MF_FLOW_NAME: PhenomenalLTRFlow
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./reports:/app/reports
+
+volumes:
+  minio_data:

@@ -1,0 +1,4 @@
+[MFLOG|0|2026-02-10T19:06:34.374804Z|runtime|bd6ae12c-4e12-483d-bd09-fdd50f5a78e6][INFO] ranking.ltr_train: Train rows=110100 queries=2202
+[MFLOG|0|2026-02-10T19:06:38.553628Z|runtime|b071f6ce-e449-406c-9f9f-b94245d10a3b][INFO] ranking.ltr_train: Val rows=19400 queries=388
+[MFLOG|0|2026-02-10T19:06:38.553728Z|runtime|0f15683d-dd54-4e29-90df-0976762a3012][INFO] ranking.ltr_train: Saved LTR model -> artifacts/ltr/nfcorpus_ltr.pkl
+[MFLOG|0|2026-02-10T19:06:38.980474Z|runtime|2ebb65ec-73ea-4190-8af6-fcef9d42b6b3][INFO] ranking.ltr_train: Saved LTR meta  -> artifacts/ltr/nfcorpus_ltr_meta.json

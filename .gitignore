@@ -1,36 +1,25 @@
+# Secrets
+docker-compose.yml
+.env
+*.env
+
+# Large artifacts (too big for GitHub)
+artifacts/
+data/
+reports/
+*.pkl
+*.bin
+*.index
+*.db
+
 # Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-*.egg-info/
-
-# Environments
 .venv/
-venv/
-.env
+.python-version
 
-# Data + artifacts
-data/raw/
-data/processed/
-artifacts/
-
-# Reports: ignore all runs by default
-reports/**
-
-# keep placeholder
-!reports/.gitkeep
-
-# keep regression baselines tracked (gates need these)
-!reports/reference/
-!reports/reference/**
+# Docker
+.docker/
 
 # OS
 .DS_Store
-
-# Logs
-*.log
-

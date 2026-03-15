@@ -1,14 +1,17 @@
 {
   "k": 10,
-  "split": "movielens/test",
+  "split": "test",
   "diagnostics": {
     "num_docs": 9742,
     "num_queries": 150,
     "has_ltr": true,
+    "ltr_path": "artifacts/ltr/movielens_ltr.pkl",
     "embed_model": "sentence-transformers/all-MiniLM-L6-v2",
-    "candidate_k": 200,
-    "rerank_k": 50,
-    "alpha": 0.5
+    "bm25_candidate_k_max": 200,
+    "dense_candidate_k_max": 200,
+    "hybrid_alpha": 0.5,
+    "hybrid_ltr_alpha": 0.5,
+    "rerank_k": 50
   },
   "methods": [
     {
@@ -31,21 +34,21 @@
     },
     {
       "method": "hybrid",
-      "ndcg@10": 0.47461451928947973,
-      "map@10": 0.07162421231848239,
+      "ndcg@10": 0.47560363511809023,
+      "map@10": 0.07132817386865044,
       "recall@10": 0.0996864406064435,
       "recall@100": 0.0996864406064435,
       "num_queries": 150.0,
-      "oracle_ndcg@10": 0.9384599275246783
+      "oracle_ndcg@10": 0.973469476981482
     },
     {
       "method": "hybrid_ltr",
-      "ndcg@10": 0.7914850769875104,
-      "map@10": 0.18736825575973626,
-      "recall@10": 0.18768322820567923,
-      "recall@100": 0.18768322820567923,
+      "ndcg@10": 0.7505900132592328,
+      "map@10": 0.17977223974943823,
+      "recall@10": 0.18598815009750536,
+      "recall@100": 0.18598815009750536,
       "num_queries": 150.0,
-      "oracle_ndcg@10": 0.7954984480830585
+      "oracle_ndcg@10": 0.973469476981482
     }
   ]
 }

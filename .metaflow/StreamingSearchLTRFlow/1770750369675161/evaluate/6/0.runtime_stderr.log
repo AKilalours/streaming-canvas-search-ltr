@@ -1,0 +1,1 @@
+[MFLOG|0|2026-02-10T19:06:50.126498Z|runtime|bf67ce3a-7ae0-41ca-af62-862edd78bfb2][INFO] eval.evaluate: Wrote reports/latest/metrics.json (methods=['bm25', 'dense', 'hybrid', 'hybrid_ltr'])

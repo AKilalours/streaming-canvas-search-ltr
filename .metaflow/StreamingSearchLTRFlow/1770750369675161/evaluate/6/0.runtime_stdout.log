@@ -1,0 +1,2 @@
+[MFLOG|0|2026-02-10T19:06:39.175541Z|runtime|933b8e67-f6f2-4997-aab5-f87fd075b9cb][OK] wrote configs/_eval_autogen.yaml with run-specific paths
+[MFLOG|0|2026-02-10T19:06:51.000199Z|runtime|771af598-9d6a-477a-a585-92d23c82a014][RUN] python -m src.eval.evaluate --config configs/_eval_autogen.yaml
