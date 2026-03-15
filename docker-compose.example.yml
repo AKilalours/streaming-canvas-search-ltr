@@ -1,0 +1,259 @@
+services:
+
+  # ─── Data / Storage ──────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  createbuckets:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      sleep 2;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/artifacts || true;
+      mc mb -p local/reports   || true;
+      mc mb -p local/metaflow  || true;
+      echo "Buckets ready";
+      tail -f /dev/null
+
+  # ─── Search API ──────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      APP_CONFIG: ${APP_CONFIG:-config/app.yaml}
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3:latest}
+      SEARCH_CACHE_TTL: "600"
+      ANSWER_CACHE_TTL: "1800"
+      OPENAI_API_KEY: ” YOUR_OPENAI_KEY_HERE
+      TMDB_API_KEY: "d8b9837e5d24ef7bd664fe3d0e569b1b"
+      TORCH_NUM_THREADS: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      RATE_LIMIT_SEARCH: "${RATE_LIMIT_SEARCH:-600}"
+      RATE_LIMIT_ANSWER: "${RATE_LIMIT_ANSWER:-100}"
+      RATE_LIMIT_GLOBAL: "${RATE_LIMIT_GLOBAL:-10000}"
+    depends_on:
+      redis:
+        condition: service_healthy
+      createbuckets:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./artifacts:/app/artifacts
+      - ./reports:/app/reports
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./configs:/app/configs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # ─── Streamlit Dashboard ─────────────────────────────────────────────────────
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_BASE: http://api:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./reports:/app/reports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  # ─── Monitoring Stack ─────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-searchltr2026}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/search_dashboard.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+  # ─── Drift Monitor (polls every 5 min) ───────────────────────────────────────
+
+  drift-monitor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "while true; do
+        python -m scripts.drift_monitor
+          --latest reports/latest/metrics.json
+          --reference reports/reference/metrics.json
+          --out reports/latest/drift_report.json
+          --ndcg_drop 0.03
+          --p99_max_ms 300 2>/dev/null || true;
+        sleep 300;
+      done"
+    volumes:
+      - ./reports:/app/reports
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    environment:
+      PYTHONPATH: /app/src
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ─── Local Airflow (proves orchestration, no cloud needed) ────────────────
+  airflow:
+    image: apache/airflow:2.9.0-python3.11
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: streamlens2026
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./flows:/opt/airflow/dags
+      - ./reports:/opt/airflow/reports
+    command: >
+      bash -c "
+        airflow db migrate &&
+        airflow users create
+          --username admin
+          --password streamlens
+          --firstname Stream
+          --lastname Lens
+          --role Admin
+          --email admin@streamlens.ai
+          2>/dev/null || true &&
+        airflow webserver --port 8080 &
+        sleep 5 &&
+        airflow scheduler
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 60s
+
+  # ─── OpenSearch (enterprise-grade search, runs locally) ──────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - opensearch
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.13.0
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    depends_on:
+      - opensearch
+    profiles:
+      - opensearch
+
+volumes:
+  minio_data:
+  prometheus_data:
+  grafana_data:
