@@ -1,0 +1,88 @@
+groups:
+  - name: search_quality
+    interval: 60s
+    rules:
+      # nDCG drop alert — auto-trigger retraining
+      - alert: SearchQualityDrop
+        expr: |
+          (
+            search_ndcg10{method="hybrid_ltr"} 
+            < 
+            search_ndcg10{method="hybrid_ltr"} offset 1h * 0.95
+          )
+        for: 5m
+        labels:
+          severity: warning
+          action: retrain
+        annotations:
+          summary: "nDCG@10 dropped >5% in last hour"
+          description: "hybrid_ltr nDCG@10 = {{ $value | humanize }}. Auto-retrain triggered."
+          runbook: "Run: make retrain"
+
+      # p95 latency breach
+      - alert: SearchLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            rate(api_request_latency_ms_bucket{path="/search"}[5m])
+          ) > 300
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search p95 latency > 300ms"
+          description: "p95 = {{ $value | humanize }}ms on /search"
+
+      # p95 latency critical
+      - alert: SearchLatencyCritical
+        expr: |
+          histogram_quantile(0.95,
+            rate(api_request_latency_ms_bucket{path="/search"}[5m])
+          ) > 500
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Search p95 latency CRITICAL > 500ms"
+          description: "p95 = {{ $value | humanize }}ms — SLO breach imminent"
+
+  - name: api_health
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          rate(api_requests_total{status=~"5.."}[5m])
+          /
+          rate(api_requests_total[5m]) > 0.02
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API error rate > 2%"
+          description: "{{ $value | humanizePercentage }} of requests are 5xx"
+
+      # API down
+      - alert: APIDown
+        expr: up{job="api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Search API is down"
+          description: "FastAPI service not responding to Prometheus scrape"
+
+      # Cache hit rate low
+      - alert: CacheHitRateLow
+        expr: |
+          rate(api_requests_total{path="/search",status="200"}[10m])
+          > 0
+          and
+          (
+            sum(rate(api_requests_total{path="/search",status="200"}[10m]))
+            - sum(rate(api_requests_total{path="/search",status="200"}[10m]))
+          ) < 0.3
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Redis cache hit rate below 30%"
+          description: "Consider increasing SEARCH_CACHE_TTL or checking Redis connection"

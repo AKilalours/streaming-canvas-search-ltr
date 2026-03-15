@@ -1,0 +1,2 @@
+[MFLOG|0|2026-02-10T19:06:51.144080Z|runtime|dc9c81e5-b510-4ab4-94ff-d2edddb8c5aa][latency] starting uvicorn: /Users/akilalourdes/streaming-canvas-search-ltr/.venv/bin/python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning
+[MFLOG|0|2026-02-10T19:06:55.227691Z|runtime|12d45183-cd5c-4c2f-9b0e-535fe9f88ad7][latency] API is ready at http://127.0.0.1:8000

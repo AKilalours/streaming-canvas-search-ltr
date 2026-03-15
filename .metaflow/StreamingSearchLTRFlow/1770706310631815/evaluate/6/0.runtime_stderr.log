@@ -1,0 +1,3 @@
+[MFLOG|0|2026-02-10T06:53:24.133971Z|runtime|fc5de783-42a8-4bfa-96be-694ca216ab17]/Users/akilalourdes/streaming-canvas-search-ltr/.venv/bin/python: No module named src.eval.run_eval
+[MFLOG|0|2026-02-10T06:53:26.843919Z|runtime|5689b68c-a8a0-49e6-b152-22a05e9b480b]usage: evaluate.py [-h] --config CONFIG
+[MFLOG|0|2026-02-10T06:53:26.844013Z|runtime|48fde6d9-2835-4a84-a310-3d4267216e5f]evaluate.py: error: the following arguments are required: --config

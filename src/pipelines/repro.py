@@ -94,7 +94,14 @@ def main() -> None:
             p.unlink()
 
     # Copy run outputs into latest
-    for fname in ["metrics.json", "ablations.csv", "results.jsonl", "latency.json", "config_snapshot.yaml", "git_sha.txt"]:
+    for fname in [
+        "metrics.json",
+        "ablations.csv",
+        "results.jsonl",
+        "latency.json",
+        "config_snapshot.yaml",
+        "git_sha.txt",
+    ]:
         src = run_dir / fname
         if src.exists():
             shutil.copy2(src, latest_dir / fname)
@@ -110,4 +117,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

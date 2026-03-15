@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Streaming Search LTR — Netflix-style Demo</title>
+  <link rel="stylesheet" href="/demo/ui/styles.css"/>
+</head>
+<body>
+  <nav class="navbar" id="navbar">
+    <div class="nav-left">
+      <div class="logo">STREAMING SEARCH LTR</div>
+
+      <select id="profile">
+        <option value="chrisen">Chrisen</option>
+        <option value="gilbert">Gilbert</option>
+      </select>
+
+      <select id="language"></select>
+
+      <div class="pills">
+        <div class="pill">API: <b id="api">…</b></div>
+        <div class="pill">Offline lift: <b id="lift">…</b></div>
+        <div class="pill">Tip: click a tile → “Why this?” → Voice</div>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <input id="search" placeholder="Search… (type for suggestions)"/>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Search + LTR + Agentic RAG</h1>
+      <p class="hero-sub">
+        Netflix-style discovery demo powered by your backend:
+        <b>hybrid retrieval</b> → <b>LambdaRank rerank</b> → <b>grounded answer</b> → <b>agentic retry</b>.
+        <br/>This is a demo (MovieLens metadata), not affiliated with any provider.
+      </p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="refreshRows">▶ Refresh Rows</button>
+        <button class="btn btn-secondary" id="whatIsThis">ℹ What am I seeing?</button>
+      </div>
+    </div>
+  </section>
+
+  <main class="content" id="content"></main>
+
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="mTitle">Title</div>
+          <div class="small" id="mMeta"></div>
+        </div>
+        <button class="close" id="closeModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="actions">
+          <button id="whyThis" class="primary">Why this?</button>
+          <button id="whyThisAgent">Why this? (Agent)</button>
+          <button id="speak">🔊 Speak</button>
+          <button id="stop">■ Stop</button>
+        </div>
+
+        <div class="modal-grid">
+          <div class="box">
+            <h4>Synopsis</h4>
+            <div class="small" id="mSynopsis">—</div>
+          </div>
+
+          <div class="box">
+            <h4>Grounded explanation</h4>
+            <div id="mExplain" class="small">—</div>
+          </div>
+
+          <div class="box">
+            <h4>Sources</h4>
+            <pre id="mSources">—</pre>
+          </div>
+
+          <div class="box">
+            <h4>Debug</h4>
+            <pre id="mDebug">—</pre>
+          </div>
+        </div>
+
+        <audio id="audio" controls style="width:100%;margin-top:14px;display:none"></audio>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="infoModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="modal-title">What you’re seeing</div>
+        <button class="close" id="closeInfo">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="box">
+          <h4>Pipeline (clear + honest)</h4>
+          <div class="small">
+            <ol>
+              <li><b>Retrieval</b>: BM25 + dense embedding search → merged hybrid candidates.</li>
+              <li><b>LTR rerank</b>: LambdaRank model reranks the top candidates using retrieval features.</li>
+              <li><b>Grounded RAG</b>: LLM is forced to answer only from retrieved snippets and cite sources.</li>
+              <li><b>Agentic retry</b>: If the answer is unsupported / missing citations, the agent retries with adjusted retrieval.</li>
+              <li><b>Offline lift</b>: Shows nDCG@10 improvement of hybrid_ltr over hybrid from your eval report.</li>
+            </ol>
+            <b>Important:</b> MovieLens doesn’t contain real Netflix-level metadata (language, trailers, etc).
+            If you want “Tamil love story” to be real, you must add a catalog dataset with a language field.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/demo/ui/app.js"></script>
+</body>
+</html>

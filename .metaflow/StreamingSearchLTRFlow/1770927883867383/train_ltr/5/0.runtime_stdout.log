@@ -1,0 +1,7 @@
+[MFLOG|0|2026-02-12T20:24:44.582227Z|runtime|4afa475a-f53e-4cd8-9792-a66965e29c3d][OK] wrote configs/_train_autogen.yaml with run-specific paths
+[MFLOG|0|2026-02-12T20:25:06.933703Z|runtime|9a21b971-2946-4faa-9fae-3a7a0ab515ac][RUN] python -m src.ranking.ltr_train --config configs/_train_autogen.yaml
+[MFLOG|0|2026-02-12T20:25:06.933790Z|runtime|3ba4dd6d-328b-402d-aa36-bb9bc546242b][LightGBM] [Info] Auto-choosing row-wise multi-threading, the overhead of testing was 0.001727 seconds.
+[MFLOG|0|2026-02-12T20:25:06.934293Z|runtime|332547e1-4695-424d-85c7-556e56218612]You can set `force_row_wise=true` to remove the overhead.
+[MFLOG|0|2026-02-12T20:25:06.934327Z|runtime|7b095b97-18d3-4408-ad8a-5d192861da09]And if memory is not enough, you can set `force_col_wise=true`.
+[MFLOG|0|2026-02-12T20:25:06.934350Z|runtime|15abfa45-a8b0-47c1-9132-0be54aa1b24e][LightGBM] [Info] Total Bins 2448
+[MFLOG|0|2026-02-12T20:25:06.934370Z|runtime|9adb9434-d135-453e-95c6-e7d287013066][LightGBM] [Info] Number of data points in the train set: 110100, number of used features: 15

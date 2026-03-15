@@ -1,0 +1,253 @@
+const $ = (id) => document.getElementById(id);
+
+let currentRows = [];
+let currentItem = null;
+let currentAudio = null;
+let suggestTimer = null;
+
+function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+function scoreToMatch(scores, s){
+  // Normalize within a row -> 80..99% (looks “Netflix-like” but honest it’s from score)
+  if(!scores || scores.length === 0) return "—";
+  const mn = Math.min(...scores), mx = Math.max(...scores);
+  if(mx - mn < 1e-9) return "90%";
+  const z = (s - mn) / (mx - mn);
+  const pct = Math.round(80 + 19 * z);
+  return `${clamp(pct, 80, 99)}%`;
+}
+
+async function apiHealth(){
+  try{
+    const j = await fetch("/health").then(r=>r.json());
+    $("api").innerHTML = j.ready ? '<span class="ok">ready</span>' : '<span class="bad">not-ready</span>';
+  }catch{
+    $("api").innerHTML = '<span class="bad">down</span>';
+  }
+}
+
+async function apiLift(){
+  try{
+    const j = await fetch("/metrics/lift").then(r=>r.json());
+    if(j.ok){
+      $("lift").innerHTML = `<span class="ok">+${Number(j.lift).toFixed(4)} nDCG@10</span>`;
+    }else{
+      $("lift").textContent = "—";
+    }
+  }catch{
+    $("lift").textContent = "—";
+  }
+}
+
+async function loadLanguages(){
+  const j = await fetch("/languages").then(r=>r.json());
+  const sel = $("language");
+  sel.innerHTML = "";
+  for(const lang of j.languages || []){
+    const opt = document.createElement("option");
+    opt.value = lang;
+    opt.textContent = lang;
+    sel.appendChild(opt);
+  }
+  sel.value = "English";
+}
+
+async function loadFeed(){
+  const profile = $("profile").value;
+  const language = $("language").value;
+  const url = `/feed?profile=${encodeURIComponent(profile)}&language=${encodeURIComponent(language)}&rows=6&k=12`;
+  const res = await fetch(url);
+  if(!res.ok){
+    // If /feed missing, you WILL see it here.
+    $("content").innerHTML = `<div class="row"><div class="row-title">Backend error</div><div class="small">GET ${url} → ${res.status}</div></div>`;
+    return;
+  }
+  const j = await res.json();
+  currentRows = j.rows || [];
+  renderRows();
+}
+
+function renderRows(){
+  const root = $("content");
+  root.innerHTML = "";
+  for(const row of currentRows){
+    const wrap = document.createElement("div");
+    wrap.className = "row";
+    wrap.innerHTML = `<div class="row-title">${row.title}</div>`;
+    const strip = document.createElement("div");
+    strip.className = "row-items";
+
+    const scores = (row.items || []).map(x => Number(x.score ?? 0));
+
+    for(const it of row.items || []){
+      const card = document.createElement("div");
+      card.className = "card";
+      const match = scoreToMatch(scores, Number(it.score ?? 0));
+      card.innerHTML = `
+        <div class="match">${match} Match</div>
+        <div class="meta">${it.language || "—"} • score ${Number(it.score ?? 0).toFixed(3)}</div>
+        <div class="title">${it.title || "Untitled"}</div>
+      `;
+      card.onclick = ()=> openItem(it.doc_id);
+      strip.appendChild(card);
+    }
+
+    wrap.appendChild(strip);
+    root.appendChild(wrap);
+  }
+}
+
+async function openItem(docId){
+  const language = $("language").value;
+  currentItem = null;
+  $("mTitle").textContent = "Loading…";
+  $("mMeta").textContent = "";
+  $("mSynopsis").textContent = "—";
+  $("mExplain").innerHTML = '<span class="loader">Click “Why this?”</span>';
+  $("mSources").textContent = "—";
+  $("mDebug").textContent = "—";
+  $("audio").style.display = "none";
+  $("audio").src = "";
+  stopAudio();
+
+  $("modal").classList.add("active");
+
+  const j = await fetch(`/item?doc_id=${encodeURIComponent(docId)}&language=${encodeURIComponent(language)}`).then(r=>r.json());
+  currentItem = j;
+
+  $("mTitle").textContent = j.title || "Untitled";
+  $("mMeta").textContent = `${j.year || "—"} • ${j.rating || "—"} • ${j.language || "—"} • ${j.genres || "—"}`;
+  $("mSynopsis").textContent = j.synopsis || j.text || "—";
+}
+
+function stopAudio(){
+  try{
+    if(currentAudio){
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+  }catch{}
+}
+
+async function explain(agentic=false){
+  if(!currentItem) return;
+  const profile = $("profile").value;
+  const language = $("language").value;
+
+  $("mExplain").innerHTML = '<span class="loader">Thinking…</span>';
+  $("mSources").textContent = "Loading…";
+  $("mDebug").textContent = "—";
+
+  const url = `/explain?doc_id=${encodeURIComponent(currentItem.doc_id)}&profile=${encodeURIComponent(profile)}&language=${encodeURIComponent(language)}&agentic=${agentic ? "true":"false"}`;
+  const j = await fetch(url).then(r=>r.json());
+
+  $("mExplain").textContent = j.answer || "—";
+  $("mSources").textContent = JSON.stringify(j.sources || [], null, 2);
+  $("mDebug").textContent = JSON.stringify({warning:j.warning, agent_steps:j.agent_steps ?? null, used_voice:j.used_voice ?? null}, null, 2);
+}
+
+async function speak(){
+  if(!currentItem) return;
+  const language = $("language").value;
+  const txt = ($("mExplain").textContent || "").trim();
+  if(!txt || txt === "—") return;
+
+  stopAudio();
+
+  const url = `/tts?text=${encodeURIComponent(txt)}&lang=${encodeURIComponent(language)}`;
+  const res = await fetch(url);
+  const usedVoice = res.headers.get("x-tts-voice") || "";
+  const usedLang = res.headers.get("x-tts-lang") || "";
+
+  const blob = await res.blob();
+  const audioUrl = URL.createObjectURL(blob);
+  $("audio").style.display = "block";
+  $("audio").src = audioUrl;
+  $("audio").play();
+
+  $("mDebug").textContent = JSON.stringify({tts_requested: language, tts_lang_used: usedLang, tts_voice_used: usedVoice}, null, 2);
+}
+
+function closeModal(){
+  $("modal").classList.remove("active");
+  stopAudio();
+}
+function closeInfo(){
+  $("infoModal").classList.remove("active");
+}
+
+async function typeahead(q){
+  const profile = $("profile").value;
+  const url = `/suggest?q=${encodeURIComponent(q)}&n=8&profile=${encodeURIComponent(profile)}`;
+  const j = await fetch(url).then(r=>r.json());
+  // We keep it simple: if user presses Enter, we search; suggestions are just console for now
+  console.log("suggestions:", j.suggestions || []);
+}
+
+$("refreshRows").onclick = loadFeed;
+$("whatIsThis").onclick = ()=> $("infoModal").classList.add("active");
+$("closeModal").onclick = closeModal;
+$("closeInfo").onclick = closeInfo;
+$("whyThis").onclick = ()=> explain(false);
+$("whyThisAgent").onclick = ()=> explain(true);
+$("speak").onclick = speak;
+$("stop").onclick = stopAudio;
+
+$("profile").onchange = loadFeed;
+$("language").onchange = loadFeed;
+
+$("search").addEventListener("input", (e)=>{
+  const q = (e.target.value || "").trim();
+  if(suggestTimer) clearTimeout(suggestTimer);
+  if(q.length < 2) return;
+  suggestTimer = setTimeout(()=>typeahead(q), 180);
+});
+$("search").addEventListener("keydown", async (e)=>{
+  if(e.key !== "Enter") return;
+  const q = ($("search").value || "").trim();
+  if(!q) return;
+  const lang = $("language").value;
+
+  const payload = {
+    query: q,
+    method: "hybrid_ltr",
+    k: 12,
+    candidate_k: 200,
+    rerank_k: 50,
+    alpha: 0.5,
+    debug: false
+  };
+
+  // Send language as a header so backend can filter if implemented
+  const res = await fetch("/search", {
+    method: "POST",
+    headers: {"content-type":"application/json", "X-Language": lang},
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+
+  // Render as a special “Search results” row
+  const items = (j.hits || []).map(h => ({
+    doc_id: h.doc_id,
+    title: h.title,
+    score: h.score,
+    language: (h.text || "").includes("Language:") ? (h.text.split("Language:")[1] || "").trim() : "—"
+  }));
+
+  currentRows = [{title: `Search results for “${q}”`, query:q, items}].concat(currentRows);
+  renderRows();
+});
+
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape"){
+    closeModal();
+    closeInfo();
+  }
+});
+
+(async function boot(){
+  await loadLanguages();
+  await apiHealth();
+  await apiLift();
+  await loadFeed();
+})();

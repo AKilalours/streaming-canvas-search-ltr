@@ -1,0 +1,2 @@
+[MFLOG|0|2026-02-10T06:51:51.362582Z|runtime|963652d0-0a2c-4f4c-9fe3-e6cb7b155a01][SKIP] embeddings exist: artifacts/faiss/nfcorpus_sentence-transformers_paraphrase-multilingual-MiniLM-L12-v2/embeddings.npy
+[MFLOG|0|2026-02-10T06:51:51.362850Z|runtime|644b399b-71bf-44e0-9f08-6a744cbb71c6][OK] embeddings version: 293971f1e8b8

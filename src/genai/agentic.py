@@ -153,7 +153,7 @@ def run_agentic_rag(
         num_sources = len(sources)
 
         invalid = [c for c in citations if c < 1 or c > num_sources]
-        missing = (len(citations) == 0)
+        missing = len(citations) == 0
 
         if warning is not None:
             # Model says it’s not confident -> stop, do not hallucinate

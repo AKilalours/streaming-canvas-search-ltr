@@ -1,0 +1,1 @@
+/* app logic embedded in index.html */

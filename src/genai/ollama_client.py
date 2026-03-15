@@ -42,7 +42,9 @@ class OllamaClient:
         if system:
             payload["system"] = system
         if format is not None:
-            payload["format"] = format  # "json" OR a JSON schema dict :contentReference[oaicite:3]{index=3}
+            payload["format"] = (
+                format  # "json" OR a JSON schema dict :contentReference[oaicite:3]{index=3}
+            )
 
         # options are optional; only send when set
         opts: dict[str, Any] = {}
@@ -86,4 +88,3 @@ class OllamaClient:
         except Exception as e:
             # If this happens with format="json", the model violated contract.
             raise RuntimeError(f"Model did not return valid JSON. Raw={raw[:500]}") from e
-

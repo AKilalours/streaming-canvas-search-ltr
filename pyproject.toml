@@ -9,22 +9,23 @@ dependencies = [
   "uvicorn[standard]>=0.27",
   "pydantic>=2.6",
   "pyyaml>=6.0",
-
   "numpy>=1.26",
   "pandas>=2.2",
-
   "rank-bm25>=0.2.2",
-
   # Dataset
   "beir>=2.0.0",
   "ir-datasets>=0.5.6",
-
   # Optional retrieval (will be used later; safe to include now)
   "sentence-transformers>=2.6.0",
   "faiss-cpu>=1.8.0",
-
   # Optional ranker (used in later commits)
   "lightgbm>=4.3.0",
+  "langid>=1.1.6",
+  "edge-tts>=7.2.7",
+  "metaflow>=2.19.19",
+  "redis>=7.1.1",
+  "streamlit>=1.54.0",
+  "prometheus-client>=0.24.1",
 ]
 
 [project.optional-dependencies]

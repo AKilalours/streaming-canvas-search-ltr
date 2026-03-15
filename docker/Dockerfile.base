@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+# Needed to compile zlib-state (ir-datasets) + general build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc g++ make \
+    zlib1g-dev \
+    git curl \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN pip install -U pip && pip install uv
+
+WORKDIR /app
+COPY pyproject.toml /app/pyproject.toml
+COPY uv.lock /app/uv.lock
+
+# Install runtime deps only
+RUN uv sync --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH"

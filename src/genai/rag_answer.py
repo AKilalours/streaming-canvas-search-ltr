@@ -81,4 +81,3 @@ def build_sources(hits: list[Any]) -> list[dict[str, Any]]:
             }
         )
     return out
-
