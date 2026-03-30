@@ -1,0 +1,6 @@
+[MFLOG|0|2026-03-16T00:32:11.809129Z|runtime|907eaf9c-5ea4-473b-8f39-ec2d413bec27][MultimodalPipeline] Extracting CLIP embeddings
+[MFLOG|0|2026-03-16T00:32:17.163974Z|runtime|a5c0bdf6-2e41-4a99-9459-2641cc407599]  Model: CLIP ViT-B/32 (pretrained)
+[MFLOG|0|2026-03-16T00:32:17.164246Z|runtime|6d83e97a-46b0-44f7-83d8-9e6c4e7dd974]  Embedding dim: 512
+[MFLOG|0|2026-03-16T00:32:17.164291Z|runtime|153864fd-b66f-4bef-999e-1a8d43d8c183][CLIPEmbedder] CLIP ViT-B/32 loaded
+[MFLOG|0|2026-03-16T00:32:17.165431Z|runtime|3ffa9619-fe26-48a0-baf9-33699d2e1d5c]  Extracted: 0
+[MFLOG|0|2026-03-16T00:32:18.149575Z|runtime|c77657b8-8b85-4181-97af-4fa783b83548]  Failed/uncached: 20

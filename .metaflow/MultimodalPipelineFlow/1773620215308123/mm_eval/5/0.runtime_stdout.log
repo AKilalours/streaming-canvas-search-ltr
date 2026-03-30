@@ -1,0 +1,4 @@
+[MFLOG|0|2026-03-16T00:21:11.194528Z|runtime|065952cd-b963-438a-9c77-32380f5d8a61][MultimodalPipeline] Evaluating multimodal lift
+[MFLOG|0|2026-03-16T00:21:11.195634Z|runtime|2a5d80e5-8c01-420f-94e0-559e108db7aa]  Queries tested: 5
+[MFLOG|0|2026-03-16T00:21:11.757118Z|runtime|01f01d6b-d81f-4024-a326-197196006255]  Avg multimodal boost: 0.0000
+[MFLOG|0|2026-03-16T00:21:11.757207Z|runtime|0abbebf5-d466-4601-923e-b91e4edef5ad]  Avg significant rank changes: 0.0

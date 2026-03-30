@@ -1,0 +1,3 @@
+[MFLOG|0|2026-03-16T00:37:07.181363Z|runtime|606c73f9-0371-4a76-b490-60294316ea28][MultimodalPipeline] Generating multimodal features
+[MFLOG|0|2026-03-16T00:37:07.182246Z|runtime|db0f9f11-aebe-4508-8330-92cd82eed11f]  Generated features for 100 titles
+[MFLOG|0|2026-03-16T00:37:07.771458Z|runtime|375c1469-7e65-4c8b-989a-30d328319e62]  Feature dimensions: 12 per title

@@ -99,7 +99,7 @@ def load_beir_dataset(dataset_name: str, data_dir: str = "data/beir") -> dict | 
     return {"corpus": corpus, "queries": queries, "qrels": qrels}
 
 
-def evaluate_bm25_beir(dataset_name: str = "nfcorpus") -> dict[str, Any]:
+def evaluate_bm25_beir(dataset_name: str = "nfcorpus", max_queries: int = 323) -> dict[str, Any]:
     """
     Evaluate BM25 on a BEIR dataset.
     Returns nDCG@10 — the standard BEIR metric.
@@ -153,7 +153,7 @@ def evaluate_bm25_beir(dataset_name: str = "nfcorpus") -> dict[str, Any]:
         return score
 
     ndcg_scores = []
-    eval_queries = list(qrels.keys())[:100]  # limit for speed
+    eval_queries = list(qrels.keys())[:max_queries]  # limit for speed
 
     for qid in eval_queries:
         if qid not in queries:

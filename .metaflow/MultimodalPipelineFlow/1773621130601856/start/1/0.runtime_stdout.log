@@ -1,0 +1,4 @@
+[MFLOG|0|2026-03-16T00:32:10.866317Z|runtime|80444ee0-3f22-4129-931b-73694527ceec][MultimodalPipeline] Starting image ingest
+[MFLOG|0|2026-03-16T00:32:10.866786Z|runtime|fe33ca69-19fd-40de-9cd0-495ba8c5b106]  Corpus: data/processed/movielens/test/corpus.jsonl
+[MFLOG|0|2026-03-16T00:32:10.867286Z|runtime|25afa81e-0ca0-4ac2-9696-ae0033d15e69]  Max titles: 500
+[MFLOG|0|2026-03-16T00:32:10.874857Z|runtime|2ec67e2c-c1de-4471-ac50-d13586ae3986]  Loaded 500 titles for multimodal processing

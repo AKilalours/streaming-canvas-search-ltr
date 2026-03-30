@@ -1,0 +1,51 @@
+[MFLOG|0|2026-03-16T00:21:12.839192Z|runtime|1581e644-9d66-4920-8580-a3d32926974c]<flow MultimodalPipelineFlow step artifact_lineage> failed:
+[MFLOG|0|2026-03-16T00:21:12.843898Z|runtime|486875f2-2fa3-43e4-b039-d22c174b3313]    Internal error
+[MFLOG|0|2026-03-16T00:21:12.845900Z|runtime|eaa4b7ac-5365-433d-85bf-3aabc07200b0]Traceback (most recent call last):
+[MFLOG|0|2026-03-16T00:21:12.845942Z|runtime|0c01a44c-41bf-4d27-ab77-842197696d48]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-03-16T00:21:12.845981Z|runtime|d805fe35-d3fa-4208-9bca-643562ebe6eb]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-03-16T00:21:12.846008Z|runtime|81734498-e809-42b3-ba97-f909db817966]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-03-16T00:21:12.846031Z|runtime|2645ec76-a765-4ff8-8697-737f8cafa9cd]    return self.main(args, kwargs)
+[MFLOG|0|2026-03-16T00:21:12.870394Z|runtime|86ea5429-ae29-41ae-9489-f294776012f2]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870521Z|runtime|9a65098e-4eb4-49eb-9f20-38fe5ebf7c67]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-03-16T00:21:12.870550Z|runtime|8d9d2ff7-b9b2-4149-9a47-60766a0e702a]    rv = self.invoke(ctx)
+[MFLOG|0|2026-03-16T00:21:12.870569Z|runtime|66f05ed9-c3b6-4ba5-8318-48f0912a25e8]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870593Z|runtime|da2b2b38-aa7f-4f5f-9a10-7de396fb92af]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-03-16T00:21:12.870609Z|runtime|b569de58-23ff-4283-a711-00d98004cbe7]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-03-16T00:21:12.870629Z|runtime|6ce895c6-8efc-4551-8521-ed8d8c251ab3]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870648Z|runtime|29f12a16-b37e-4fc3-afa3-fc1002d151ab]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-03-16T00:21:12.870673Z|runtime|c218e882-45bd-469c-a9fa-edac28f8f434]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-03-16T00:21:12.870694Z|runtime|680f8df9-7a94-4776-b813-bd0bf7b5b389]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870713Z|runtime|be8658cc-b55b-4258-83e5-9024986dbfc9]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-03-16T00:21:12.870728Z|runtime|90d33e5f-94e6-47c9-a967-1816e7d93565]    return callback(args, kwargs)
+[MFLOG|0|2026-03-16T00:21:12.870743Z|runtime|26e6d23a-a22b-4061-b773-97ff5a90256d]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870757Z|runtime|a1a7be61-933d-440c-9bd8-be3edb96245c]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-03-16T00:21:12.870782Z|runtime|405e034d-60c9-4c7c-9b4e-d42401486575]    return func(args, kwargs)
+[MFLOG|0|2026-03-16T00:21:12.870799Z|runtime|8ce53488-5107-46c0-bf15-9ab703cb6b71]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870814Z|runtime|cf9714f6-e4b6-4c5f-b224-d1f1a64b641d]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-03-16T00:21:12.870829Z|runtime|0c636b2c-0986-4370-b310-b13eaae2bc84]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-03-16T00:21:12.870843Z|runtime|7dfd5653-ae13-4370-8122-4956022a9974]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.870869Z|runtime|53d957cc-60a7-4cdd-b5a1-c73ebc7f2cd0]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-03-16T00:21:12.870884Z|runtime|5c19db3f-950f-49c3-8497-f4accea5f512]    task.run_step(
+[MFLOG|0|2026-03-16T00:21:12.870898Z|runtime|df2405d3-14f8-4944-aaca-ac15f346870d]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-03-16T00:21:12.870916Z|runtime|61fe9951-3d24-4164-b655-f1ab37fea025]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-03-16T00:21:12.870931Z|runtime|48c90724-8b74-44f9-be16-f457b5c5daf1]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-03-16T00:21:12.870948Z|runtime|632ef5b8-192a-4954-a353-4a2eacaf2d5e]    raise raised_exception
+[MFLOG|0|2026-03-16T00:21:12.870969Z|runtime|54c6278a-aa77-4394-b0a1-68ee876de34c]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-03-16T00:21:12.870989Z|runtime|f900c3e3-60f0-499b-bae3-efc808746afa]    step_function()
+[MFLOG|0|2026-03-16T00:21:12.871007Z|runtime|dd985a03-890a-4921-ab57-1b119b72c3b0]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/multimodal_pipeline_flow.py", line 393, in artifact_lineage
+[MFLOG|0|2026-03-16T00:21:12.871312Z|runtime|24ca4b55-ba01-40ea-b88f-712aed3390ad]    (output_dir / "mm_features.json").write_text(json.dumps(self.multimodal_features, indent=2))
+[MFLOG|0|2026-03-16T00:21:12.871340Z|runtime|f98369da-bc5d-4887-8898-f228350d0fc8]                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.871355Z|runtime|a9f0b636-3770-446f-b8bd-cd957c272576]  File "/opt/anaconda3/lib/python3.12/json/__init__.py", line 238, in dumps
+[MFLOG|0|2026-03-16T00:21:12.871370Z|runtime|082be862-7338-4e8c-a297-b954202a9a42]    kw).encode(obj)
+[MFLOG|0|2026-03-16T00:21:12.871385Z|runtime|ed1c6e06-24d7-4b65-9774-c7a3fd64527b]          ^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.871399Z|runtime|035a04fe-df46-4134-9a92-5fc8cc42b69c]  File "/opt/anaconda3/lib/python3.12/json/encoder.py", line 202, in encode
+[MFLOG|0|2026-03-16T00:21:12.871413Z|runtime|6cb2db17-cb0f-4ef0-bd6b-9ac0b744606d]    chunks = list(chunks)
+[MFLOG|0|2026-03-16T00:21:12.871427Z|runtime|f3143608-0e8c-4b96-b5b8-42f8903ccfcd]             ^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.871445Z|runtime|34a465a0-13ef-4d86-9e3a-bd6b513fb771]  File "/opt/anaconda3/lib/python3.12/json/encoder.py", line 439, in _iterencode
+[MFLOG|0|2026-03-16T00:21:12.871462Z|runtime|a11221e4-3316-44d1-ab86-92e865786c83]    o = _default(o)
+[MFLOG|0|2026-03-16T00:21:12.871479Z|runtime|db49d2cb-fe5b-424c-ab1b-d7ba1de0a43e]        ^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:21:12.871497Z|runtime|50c46a2a-349a-4753-8317-70296e087fcb]  File "/opt/anaconda3/lib/python3.12/json/encoder.py", line 180, in default
+[MFLOG|0|2026-03-16T00:21:12.871511Z|runtime|10cdadb8-26d8-43b9-b39c-722046af0439]    raise TypeError(f'Object of type {o.__class__.__name__} '
+[MFLOG|0|2026-03-16T00:21:12.871526Z|runtime|b9fa630c-1ce4-4d88-a783-331aaea56f19]TypeError: Object of type method is not JSON serializable
+[MFLOG|0|2026-03-16T00:21:12.871540Z|runtime|d321be69-e5ff-4c14-97f9-f96ce4905df5]
+[MFLOG|0|2026-03-16T00:21:12.871882Z|runtime|76708461-7b02-4274-8c13-f627572f61ef]Task failed.
