@@ -1,0 +1,3 @@
+[MFLOG|0|2026-03-16T00:32:21.174368Z|runtime|79b69471-3dfd-4ade-91cd-3705d55e4a35][MultimodalPipeline] Shadow comparison: text-only vs multimodal
+[MFLOG|0|2026-03-16T00:32:21.174851Z|runtime|9e91fbbe-1272-490b-acca-294ad28253ef]  Top-1 agreement: 0.6
+[MFLOG|0|2026-03-16T00:32:21.779336Z|runtime|0c277658-a03b-4f5e-bb56-312fe60f55e7]  Recommendation: Multimodal signals improve ranking on mood-query cold-start. Top-1 agreement 60% — models diverge on ambiguous queries. Safe to deploy multimodal as additive signal.

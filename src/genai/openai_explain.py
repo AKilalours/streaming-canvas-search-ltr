@@ -1,252 +1,195 @@
-# src/genai/openai_explain.py
 """
-OpenAI-powered explanation and translation.
-Uses gpt-4o for maximum accuracy (99.9%+).
-Falls back to rich rule-based explanations if OpenAI unavailable.
+StreamLens — Production explanation engine
+Natural language. Specific to the movie. Matched to user taste.
 """
 from __future__ import annotations
-import json, os, re, urllib.request
-from typing import Any
+import os, json, urllib.request, re, base64
 
-OPENAI_BASE = "https://api.openai.com/v1"
-MODEL_EXPLAIN = "gpt-4o-mini"   # fast + accurate (gpt-4o too slow for live demo)
-MODEL_TRANSLATE = "gpt-4o-mini" # fast + accurate for translation
-MODEL_FAST = "gpt-4o-mini"      # for quick why-this
+_URL = "https://api.openai.com/v1/chat/completions"
 
-def _call_openai(messages: list[dict], temperature: float = 0.3,
-                 max_tokens: int = 600, model: str = MODEL_FAST) -> str:
-    key = os.environ.get("OPENAI_API_KEY", "")
-    if not key:
-        return ""
+
+def _call(model: str, messages: list[dict], max_tokens: int = 120) -> str:
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key.startswith("sk-"): return ""
     payload = json.dumps({
-        "model": model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "messages": messages,
+        "model": model, "max_tokens": max_tokens,
+        "temperature": 0.35, "messages": messages,
     }).encode()
-    req = urllib.request.Request(
-        f"{OPENAI_BASE}/chat/completions", data=payload,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        method="POST",
-    )
+    req = urllib.request.Request(_URL, data=payload,
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {key}"})
     try:
-        with urllib.request.urlopen(req, timeout=25) as r:
-            data = json.loads(r.read())
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            return json.loads(r.read())["choices"][0]["message"]["content"].strip()
+    except Exception:
         return ""
 
 
-# ── Rule-based fallback ───────────────────────────────────────────────────────
-
-def _extract_genres(text: str) -> list[str]:
-    m = re.search(r"Genres?:\s*([^.\n]+)", text, re.I)
-    if m:
-        return [g.strip() for g in re.split(r"[,|]", m.group(1)) if g.strip()][:4]
-    return []
-
-def _extract_tags(text: str) -> list[str]:
-    m = re.search(r"Tags?:\s*([^.\n]+)", text, re.I)
-    if m and "none" not in m.group(1).lower():
-        return [t.strip() for t in re.split(r"[,|]", m.group(1)) if t.strip()][:5]
-    return []
-
-def _extract_year(title: str) -> str:
-    m = re.search(r"\((\d{4})\)", title)
-    return m.group(1) if m else ""
-
-PROFILE_TONE = {
-    "chrisen": {
-        "prefs": "high-energy action, crime thrillers, and mind-bending sci-fi",
-        "keywords": ["action","thriller","crime","sci-fi","dark","intense","gritty","heist","spy","detective","horror","adventure"],
-        "avoid": ["romance","comedy","family","animation"],
-        "persona": "someone who loves edge-of-your-seat storytelling",
-    },
-    "gilbert": {
-        "prefs": "feel-good romance, romantic comedy, and family-friendly titles",
-        "keywords": ["romance","comedy","drama","family","feel-good","heartwarming","musical","animation","children"],
-        "avoid": ["horror","gore","violent"],
-        "persona": "someone who values emotional storytelling and uplifting narratives",
-    },
-}
-
-GENRE_DESCRIPTIONS = {
-    "action": "pulse-pounding action sequences",
-    "thriller": "tense, suspenseful storytelling",
-    "crime": "gritty criminal underworld drama",
-    "sci-fi": "mind-expanding science fiction",
-    "drama": "powerful emotional performances",
-    "romance": "heartfelt romantic storytelling",
-    "comedy": "sharp wit and genuine humor",
-    "animation": "visually stunning animation",
-    "family": "wholesome family-friendly themes",
-    "horror": "spine-chilling atmosphere and tension",
-    "mystery": "compelling mystery and intrigue",
-    "adventure": "thrilling high-stakes adventure",
-    "fantasy": "rich world-building and fantasy",
-    "musical": "memorable musical performances",
-}
-
-SIMILAR_BY_GENRE = {
-    "action": ["Mad Max: Fury Road (2015)","John Wick (2014)","Heat (1995)"],
-    "thriller": ["No Country for Old Men (2007)","Parasite (2019)","Gone Girl (2014)"],
-    "crime": ["The Godfather (1972)","Goodfellas (1990)","Prisoners (2013)"],
-    "sci-fi": ["Blade Runner 2049 (2017)","Arrival (2016)","Interstellar (2014)"],
-    "drama": ["Marriage Story (2019)","Manchester by the Sea (2016)","Boyhood (2014)"],
-    "romance": ["Eternal Sunshine of the Spotless Mind (2004)","Before Sunrise (1995)","Pride & Prejudice (2005)"],
-    "comedy": ["The Grand Budapest Hotel (2014)","Superbad (2007)","Bridesmaids (2011)"],
-    "animation": ["Spirited Away (2001)","Up (2009)","The Incredibles (2004)"],
-    "family": ["Paddington 2 (2017)","Hunt for the Wilderpeople (2016)","Coco (2017)"],
-    "adventure": ["Raiders of the Lost Ark (1981)","The Dark Knight (2008)","Gladiator (2000)"],
-    "horror": ["Get Out (2017)","Hereditary (2018)","A Quiet Place (2018)"],
-    "fantasy": ["The Lord of the Rings (2001)","Pan's Labyrinth (2006)","The Princess Bride (1987)"],
-}
-
-def _rule_based_why(title: str, text: str, profile: str) -> str:
-    prof = PROFILE_TONE.get(profile.lower(), PROFILE_TONE["chrisen"])
-    genres = _extract_genres(text)
-    tags = _extract_tags(text)
-    year = _extract_year(title)
-    clean = re.sub(r"\s*\(\d{4}\)", "", title).strip()
-    matching = [g.lower() for g in genres if any(k in g.lower() for k in prof["keywords"])]
-    genre_desc = GENRE_DESCRIPTIONS.get(
-        matching[0] if matching else (genres[0].lower() if genres else "drama"),
-        "compelling storytelling"
-    )
-    all_genres = ", ".join(genres[:3]) if genres else "drama"
-    tag_note = f" With tags like {', '.join(tags[:3])}, it" if tags else f" This {year} film"
-    s1 = (f"{clean} earns its recommendation through its {genre_desc}."
-          f"{tag_note} directly aligns with the preference for {prof['prefs']}.")
-    s2 = f"The {all_genres.lower()} combination makes it a strong fit for {prof['persona']}."
-    return f"{s1} {s2}"
-
-def _rule_based_rag(title: str, text: str, profile: str) -> str:
-    prof = PROFILE_TONE.get(profile.lower(), PROFILE_TONE["chrisen"])
-    genres = _extract_genres(text)
-    tags = _extract_tags(text)
-    year = _extract_year(title)
-    clean = re.sub(r"\s*\(\d{4}\)", "", title).strip()
-    similar = []
-    for g in genres:
-        sims = SIMILAR_BY_GENRE.get(g.lower(), [])
-        similar.extend([s for s in sims if s not in similar])
-    similar = similar[:2] or ["The Shawshank Redemption (1994)", "Forrest Gump (1994)"]
-    avoid_overlap = [g.lower() for g in genres if any(a in g.lower() for a in prof["avoid"])]
-    caveat = (f"The {avoid_overlap[0]} elements may occasionally step outside {profile}'s comfort zone."
-              if avoid_overlap else
-              f"Occasional pacing shifts may test patience, though the payoff rewards {prof['persona']}.")
-    genre_str = ", ".join(genres[:3]) if genres else "drama"
-    tag_str = f" Key descriptors: {', '.join(tags[:4])}." if tags else ""
+def _parse(text: str) -> tuple[str, str, str, str]:
+    title_m = re.search(r'Title:\s*([^|]+)', text)
+    genre_m = re.search(r'Genres?:\s*([^|]+)', text)
+    tags_m  = re.search(r'Tags?:\s*([^|\n]+)', text)
+    year_m  = re.search(r'\((\d{4})\)', title_m.group(1) if title_m else text)
+    title   = re.sub(r'\s*\(\d{4}\)\s*$', '',
+                     title_m.group(1).strip() if title_m else text[:50]).strip()
     return (
-        f"TASTE MATCH: {clean} ({year}) aligns with {profile}'s preference for {prof['prefs']}. "
-        f"Its {genre_str} blend delivers exactly the tone this profile seeks.{tag_str}\n\n"
-        f"KEY THEMES: Expect {GENRE_DESCRIPTIONS.get(genres[0].lower() if genres else 'drama', 'powerful storytelling')} "
-        f"woven throughout — elements that consistently resonate with {prof['persona']}.\n\n"
-        f"IF YOU LIKED THIS: You might also enjoy {similar[0]} and {similar[1]} for similar reasons.\n\n"
-        f"CAVEAT: {caveat}"
+        title,
+        year_m.group(1) if year_m else "",
+        genre_m.group(1).strip() if genre_m else "",
+        tags_m.group(1).strip() if tags_m else "",
     )
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+def _best_tags(tags: str, n: int = 3) -> str:
+    """Pick most interesting tags — skip generic words."""
+    skip = {"film","movie","good","great","nice","cult film","drugs"}
+    picks = [x.strip() for x in tags.split(",")
+             if x.strip().lower() not in skip and len(x.strip()) > 2]
+    return ", ".join(picks[:n]) if picks else tags.split(",")[0].strip()
+
 
 def explain_why_this(title: str, text: str, profile: str,
                      profile_prefs: str, language: str = "English") -> str:
-    lang_note = (f" Write DIRECTLY in {language}. Every single word must be in {language}. "
-                  f"Do NOT write in English first then translate. Generate in {language} from the start."
-                 ) if language != "English" else ""
-    messages = [
+    """
+    2 sentences max. Sounds like a friend recommending a movie.
+    Specific to this film's actual qualities. Matched to user taste.
+    """
+    t, year, genres, tags = _parse(text)
+    genre1   = genres.split(",")[0].strip() if genres else "Drama"
+    best_tag = _best_tags(tags)
+    pref1    = profile_prefs.split(",")[0].strip() if profile_prefs else genre1
+    yr       = f" ({year})" if year else ""
+
+    return _call("gpt-4o-mini", [
         {"role": "system", "content": (
-            f"You are a Netflix Senior Recommendation Engine. "
-            f"Give specific, accurate, insightful 2-3 sentence explanations. "
-            f"Always reference the actual title, its specific genres, tone and themes. "
-            f"Never be generic. Never start with phrases like 'This title', 'Strong match', 'Text:', 'Translation:'."
-            f"{lang_note}"
+            f"You are a movie-loving friend recommending a film. "
+            f"Write ONLY in {language}. "
+            f"Write 2 sentences maximum. "
+            f"First sentence: what makes THIS specific film great (mention its actual qualities). "
+            f"Second sentence: why this person who loves {pref1} will connect with it. "
+            f"Sound warm and natural. No bullet points. No translation. No 'this film'."
         )},
         {"role": "user", "content": (
-            f"Movie: {title}\n"
-            f"Full details: {text[:500]}\n"
-            f"User '{profile}' specifically likes: {profile_prefs}.\n\n"
-            f"In 2-3 precise sentences: explain exactly why this specific movie matches this user. "
-            f"Reference specific genres, mood, tone, and themes from the movie details above."
-        )}
-    ]
-    result = _call_openai(messages, temperature=0.3, max_tokens=300, model=MODEL_FAST)
-    if result:
-        # Strip any leaked English prefix before language content
-        for prefix in ["Here's the translation", "Translation:", "TRANSLATION:", "Text:"]:
-            if result.startswith(prefix):
-                idx = result.find("\n")
-                if idx > 0: result = result[idx:].strip()
-        return result
-    fallback = _rule_based_why(title, text, profile)
-    if language != "English":
-        fallback = translate_clean(fallback, language)
-    return fallback
+            f"Film: {t}{yr}\n"
+            f"Genre: {genre1}\n"
+            f"What it's known for: {best_tag}\n"
+            f"Person loves: {pref1}\n\n"
+            f"Recommend this in {language} — 2 sentences, warm and specific."
+        )},
+    ], max_tokens=130) or _fallback(genre1, best_tag, pref1, language)
 
 
 def explain_rag(title: str, text: str, profile: str,
-                profile_prefs: str, language: str = "English") -> str:
-    lang_note = (f" Write the ENTIRE response DIRECTLY in {language}. "
-                  f"Every word must be in {language} from the start. "
-                  f"Do NOT write English then translate. Generate in {language} natively. "
-                  f"Keep section headers in English: TASTE MATCH:, KEY THEMES:, IF YOU LIKED THIS:, CAVEAT:"
-                 ) if language != "English" else ""
-    messages = [
+                profile_prefs: str, language: str = "English",
+                similar_titles: list | None = None) -> str:
+    """
+    3 lines. WHY YOU'LL LOVE IT / WHAT IT'S ABOUT / YOU'LL ALSO ENJOY
+    Specific film names. Real qualities. Natural language.
+    """
+    t, year, genres, tags = _parse(text)
+    genre1    = genres.split(",")[0].strip() if genres else "Drama"
+    best_tags = _best_tags(tags, 3)
+    pref_top  = ", ".join(p.strip() for p in profile_prefs.split(",")[:2]) \
+                if profile_prefs else genre1
+    yr        = f" ({year})" if year else ""
+    sim_str   = ", ".join(similar_titles[:2]) if similar_titles else ""
+
+    return _call("gpt-4o-mini", [
         {"role": "system", "content": (
-            f"You are a Senior Netflix Recommendation Analyst. "
-            f"Write highly accurate, specific analysis with these exact headers: "
-            f"TASTE MATCH: / KEY THEMES: / IF YOU LIKED THIS: / CAVEAT: "
-            f"Never output 'Text:', 'Translation:', 'TRANSLATION:' or any meta-commentary."
-            f"{lang_note}"
+            f"You are a movie expert writing short, personal recommendations. "
+            f"Write ONLY in {language}. "
+            f"Write exactly 3 lines with these labels (translate labels too): "
+            f"WHY YOU'LL LOVE IT: / WHAT IT'S ABOUT: / YOU'LL ALSO ENJOY: "
+            f"Rules: "
+            f"- Each line: 1 sentence, max 18 words "
+            f"- Mention specific things about THIS film (not generic) "
+            f"- YOU'LL ALSO ENJOY must name specific film titles "
+            f"- Sound like a friend, not a review site "
+            f"- Pure {language} — no English, no translation note"
         )},
         {"role": "user", "content": (
-            f"Movie: {title}\n"
-            f"Full details: {text[:600]}\n"
-            f"User '{profile}' specifically likes: {profile_prefs}.\n\n"
-            f"Write a precise 4-section analysis:\n"
-            f"TASTE MATCH: (2 sentences) Why this film specifically fits this user's taste\n"
-            f"KEY THEMES: (2-3 sentences) Specific themes, scenes, and character moments that will resonate\n"
-            f"IF YOU LIKED THIS: (2 specific film recommendations with years)\n"
-            f"CAVEAT: (1 sentence) One honest reason they might not love every aspect"
-        )}
-    ]
-    result = _call_openai(messages, temperature=0.2, max_tokens=700, model=MODEL_EXPLAIN)
-    if result:
-        # Strip any leaked prefixes
-        for prefix in ["Here's the translation", "Translation:", "TRANSLATION:", "Text:"]:
-            if result.startswith(prefix):
-                idx = result.find("\n")
-                if idx > 0: result = result[idx:].strip()
-        return result
-    fallback = _rule_based_rag(title, text, profile)
-    if language != "English":
-        fallback = translate_clean(fallback, language)
-    return fallback
-
-
-def translate_clean(text: str, target_language: str) -> str:
-    if not text or target_language == "English":
-        return text
-    messages = [
-        {"role": "system", "content": (
-            f"Translate to {target_language}. "
-            f"Output ONLY the translation. "
-            f"FORBIDDEN: 'Here is the translation', 'Translation:', 'Text:', 'TRANSLATION:', "
-            f"any meta-commentary, any English prefix, any notes. "
-            f"Start immediately with the translated content. "
-            f"Keep section headers TASTE MATCH:, KEY THEMES:, IF YOU LIKED THIS:, CAVEAT: as-is."
+            f"Film: {t}{yr}\n"
+            f"Genre: {genre1} | Highlights: {best_tags}\n"
+            f"Person enjoys: {pref_top}\n"
+            + (f"They previously liked: {sim_str}\n" if sim_str else "") +
+            f"\nWrite 3 lines in {language}."
         )},
+    ], max_tokens=180) or explain_why_this(title, text, profile,
+                                           profile_prefs, language)
+
+
+def describe_poster_gpt4v(poster_url: str, title: str,
+                           language: str = "English") -> str:
+    """GPT-4o vision: 1 sentence. What the poster feels like."""
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key.startswith("sk-") or not poster_url: return ""
+    try:
+        req = urllib.request.Request(poster_url,
+            headers={"User-Agent": "StreamLens/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            img_bytes = r.read()
+            ct = r.headers.get("Content-Type", "image/jpeg").split(";")[0]
+        b64 = base64.b64encode(img_bytes).decode()
+        data_url = f"data:{ct};base64,{b64}"
+    except Exception:
+        return ""
+
+    payload = json.dumps({
+        "model": "gpt-4o",
+        "max_tokens": 60, "temperature": 0.2,
+        "messages": [{"role": "user", "content": [
+            {"type": "image_url",
+             "image_url": {"url": data_url, "detail": "low"}},
+            {"type": "text", "text": (
+                f"In {language} only, 1 sentence (max 15 words): "
+                f"what feeling does this {title} movie poster give you? "
+                f"Describe what you actually see — colors, mood, atmosphere."
+            )},
+        ]}],
+    }).encode()
+    req2 = urllib.request.Request(_URL, data=payload,
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {key}"})
+    try:
+        with urllib.request.urlopen(req2, timeout=15) as r:
+            return json.loads(r.read())["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return ""
+
+
+def translate_clean(text: str, language: str) -> str:
+    if language == "English": return text
+    return _call("gpt-4o-mini", [
+        {"role": "system", "content":
+            f"Translate to {language}. Natural language only. Return translation only."},
         {"role": "user", "content": text},
-        {"role": "assistant", "content": ""}
-    ]
-    result = _call_openai(messages, temperature=0.0, max_tokens=800, model=MODEL_TRANSLATE)
-    # Post-process: strip any leaked prefixes
-    if result:
-        for prefix in ["Here's the translation", "Here is the translation",
-                       "Translation:", "TRANSLATION:", "Text:", "টেক্সট:", "টেক্স্ট:"]:
-            if result.startswith(prefix):
-                idx = result.find(":")
-                if idx > 0:
-                    result = result[idx+1:].strip()
-        result = result.strip()
-    return result if result else text
+    ], max_tokens=150) or text
+
+
+_FB = {
+    "English":    "If you love {pref}, {genre} film known for {tag} will be your kind of night.",
+    "Arabic":     "إذا أحببت {pref}، فإن هذا الفيلم المعروف بـ {tag} سيكون مثاليًا لك.",
+    "French":     "Si tu aimes {pref}, ce film connu pour {tag} est exactement ce qu'il te faut.",
+    "Spanish":    "Si te gusta {pref}, esta película conocida por {tag} es perfecta para ti.",
+    "Hindi":      "अगर तुम्हें {pref} पसंद है, तो {tag} के लिए मशहूर यह फ़िल्म तुम्हें पसंद आएगी।",
+    "Japanese":   "{pref}が好きなら、{tag}で有名なこの映画はきっと気に入るよ。",
+    "German":     "Wenn du {pref} liebst, ist dieser Film bekannt für {tag} genau richtig für dich.",
+    "Portuguese": "Se você curte {pref}, esse filme famoso por {tag} é perfeito pra você.",
+    "Korean":     "{pref}을 좋아한다면, {tag}으로 유명한 이 영화가 딱 맞을 거예요.",
+    "Italian":    "Se ami {pref}, questo film noto per {tag} farà al caso tuo.",
+    "Chinese":    "如果你喜欢{pref}，这部以{tag}著称的电影绝对是你的菜。",
+    "Russian":    "Если вы любите {pref}, этот фильм, известный {tag}, точно вам понравится.",
+    "Turkish":    "{pref} seviyorsanız, {tag} ile bilinen bu film tam size göre.",
+    "Dutch":      "Als je van {pref} houdt, is deze film bekend om {tag} precies wat je zoekt.",
+    "Swedish":    "Om du gillar {pref} är den här filmen känd för {tag} perfekt för dig.",
+    "Polish":     "Jeśli lubisz {pref}, ten film znany z {tag} jest właśnie dla ciebie.",
+    "Thai":       "ถ้าชอบ {pref} หนังที่รู้จักจาก {tag} เรื่องนี้เหมาะกับคุณมาก",
+}
+
+def _fallback(genre, tag, pref, language):
+    tpl = _FB.get(language, _FB["English"])
+    return tpl.format(
+        genre=genre.split(",")[0].strip() or "Drama",
+        tag=tag.split(",")[0].strip() if tag else "its story",
+        pref=pref.split(",")[0].strip() if pref else "good films"
+    )

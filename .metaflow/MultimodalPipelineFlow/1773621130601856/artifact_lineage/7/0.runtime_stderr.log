@@ -1,0 +1,40 @@
+[MFLOG|0|2026-03-16T00:32:22.033522Z|runtime|2f1df860-a214-44c2-abea-47db8b14ca8b]<flow MultimodalPipelineFlow step artifact_lineage> failed:
+[MFLOG|0|2026-03-16T00:32:22.037498Z|runtime|c38eeba6-9246-48d5-8d16-3ae942241098]    Internal error
+[MFLOG|0|2026-03-16T00:32:22.038315Z|runtime|d9037eb4-c545-4c1f-8f74-a553616db3aa]Traceback (most recent call last):
+[MFLOG|0|2026-03-16T00:32:22.038352Z|runtime|83214177-4c2c-464e-b2fd-8577ece63ec9]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-03-16T00:32:22.038377Z|runtime|6fc6e3b7-24a1-445f-ae8d-bf0747712c05]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-03-16T00:32:22.038451Z|runtime|83fce757-7938-4a9f-bc99-bda14681bd7e]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-03-16T00:32:22.038527Z|runtime|2de28a69-f393-473b-883c-5564aa3743c5]    return self.main(args, kwargs)
+[MFLOG|0|2026-03-16T00:32:22.067360Z|runtime|0d0c29cc-991c-4c40-a284-d6f5fa520d23]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067507Z|runtime|fd09a0f7-ddcd-4639-b3ea-d1ed80b43861]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-03-16T00:32:22.067537Z|runtime|32bf82d5-5e4d-4db7-9278-8957b36f0058]    rv = self.invoke(ctx)
+[MFLOG|0|2026-03-16T00:32:22.067558Z|runtime|3d88d503-b792-4ce3-ba8f-9768cdd107c2]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067577Z|runtime|af60cedd-b278-4667-9637-ee1de6c283e6]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-03-16T00:32:22.067594Z|runtime|c13e4eef-7728-4a27-ad37-b7a657feec00]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-03-16T00:32:22.067610Z|runtime|39810318-6937-4200-a077-abd3a62f5287]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067625Z|runtime|8e86df11-c4b5-4a8f-8e44-5f2ad855662f]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-03-16T00:32:22.067639Z|runtime|36e714dd-20a1-4eef-85fd-54a332001595]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-03-16T00:32:22.067708Z|runtime|3aadaea3-3df3-4788-a1d8-e718f4f00531]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067741Z|runtime|76783015-4cb0-4ffc-bfca-cacffd72914d]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-03-16T00:32:22.067766Z|runtime|1208f666-64bb-42dd-96e5-82354a70eef8]    return callback(args, kwargs)
+[MFLOG|0|2026-03-16T00:32:22.067783Z|runtime|81a0db0d-7156-45ce-8dc3-90095727c51a]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067799Z|runtime|bbb66656-45e8-4f43-9cbe-1b0e041f3217]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-03-16T00:32:22.067821Z|runtime|7faafb70-e2b4-478b-9ae1-ae465cda824d]    return func(args, kwargs)
+[MFLOG|0|2026-03-16T00:32:22.067836Z|runtime|e7665cf0-a67e-4d63-b6eb-446b754b36ac]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067851Z|runtime|615232db-290f-41e1-856f-fb87f1c3aba8]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-03-16T00:32:22.067867Z|runtime|162a16b1-d712-45a6-bce1-322a6405f8aa]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-03-16T00:32:22.067882Z|runtime|ae2c1714-538d-40af-944d-0898b22704b0]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.067897Z|runtime|06cf4a15-6b79-44a7-8864-3c30797654cb]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-03-16T00:32:22.067913Z|runtime|aa98f330-51e4-4f57-8307-bbffaf96621e]    task.run_step(
+[MFLOG|0|2026-03-16T00:32:22.067929Z|runtime|29db0a73-9d10-41dc-8210-74d6005c5369]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-03-16T00:32:22.067944Z|runtime|5545514e-3523-4a27-bd6d-e5e8eee03720]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-03-16T00:32:22.067960Z|runtime|c3d9f580-17cd-48aa-93d4-e439ffc7ebc7]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-03-16T00:32:22.067974Z|runtime|4267b4ce-9f98-4952-8485-cadd93adbe6a]    raise raised_exception
+[MFLOG|0|2026-03-16T00:32:22.067988Z|runtime|5d5f35e3-4a04-4eee-a588-2ba88c8db244]  File "/opt/anaconda3/lib/python3.12/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-03-16T00:32:22.068002Z|runtime|717aced5-7cae-4530-8a63-6f23150f4b7e]    step_function()
+[MFLOG|0|2026-03-16T00:32:22.068017Z|runtime|fe45cf9c-d42d-4899-9bd5-87b114a1e2b8]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/multimodal_pipeline_flow.py", line 395, in artifact_lineage
+[MFLOG|0|2026-03-16T00:32:22.068036Z|runtime|d7d65880-0092-43b0-916f-3119e63b594e]    for doc_id, feats in self.multimodal_features.items():
+[MFLOG|0|2026-03-16T00:32:22.068050Z|runtime|e9edff08-1666-417b-9e89-e0eed0eae419]                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-03-16T00:32:22.068065Z|runtime|e6c9b2fe-4726-4f57-8257-66b745ca3e87]AttributeError: 'function' object has no attribute 'items'
+[MFLOG|0|2026-03-16T00:32:22.068079Z|runtime|d559c60c-7c50-4756-be25-7d3b590f47ef]
+[MFLOG|0|2026-03-16T00:32:22.068487Z|runtime|f2ec6807-3e2a-452d-9864-5bad7f145b11]Task failed.

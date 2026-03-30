@@ -25,18 +25,22 @@ log = get_logger("eval.evaluate")
 # Helpers
 # ---------------------------------------------------------------------
 def _infer_embed_model_name_from_emb_dir(emb_dir: Path) -> str:
-    """
-    Your doc embeddings were built with some SentenceTransformer.
-    The ONLY safe way is to infer from the embeddings directory naming convention.
-    Example:
-      artifacts/faiss/nfcorpus_sentence-transformers_paraphrase-multilingual-MiniLM-L12-v2
-    -> sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-    """
+    """Infer model name from meta.json first, then directory name."""
+    import json as _json
+    meta = emb_dir / "meta.json"
+    if meta.exists():
+        try:
+            m = _json.loads(meta.read_text())
+            if m.get("model_name"):
+                return str(m["model_name"])
+        except Exception:
+            pass
     d = emb_dir.name
     if "sentence-transformers_" in d:
         tail = d.split("sentence-transformers_", 1)[1]
         return "sentence-transformers/" + tail.replace("_", "/")
-    # fallback: keep stable default
+    if "intfloat_" in d:
+        return "intfloat/" + d.split("intfloat_", 1)[1]
     return "sentence-transformers/all-MiniLM-L6-v2"
 
 

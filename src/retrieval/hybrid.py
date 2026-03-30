@@ -57,3 +57,31 @@ def hybrid_merge(
 
     merged.sort(key=lambda x: x[1], reverse=True)
     return merged
+
+
+def rrf_merge(
+    bm25_hits: Iterable[tuple[str, float]],
+    dense_hits: Iterable[tuple[str, float]],
+    *,
+    k: int = 60,
+    bm25_weight: float = 1.0,
+    dense_weight: float = 1.0,
+) -> list[tuple[str, float]]:
+    """
+    Reciprocal Rank Fusion — rank-based merge, no score normalization needed.
+    RRF score = sum(weight / (k + rank)) for each retriever.
+    k=60 is the standard default from the original RRF paper (Cormack 2009).
+    Consistently outperforms linear score fusion on diverse query sets.
+    """
+    bm25_list = list(bm25_hits)
+    dense_list = list(dense_hits)
+
+    scores: dict[str, float] = {}
+
+    for rank, (doc_id, _) in enumerate(bm25_list):
+        scores[doc_id] = scores.get(doc_id, 0.0) + bm25_weight / (k + rank + 1)
+
+    for rank, (doc_id, _) in enumerate(dense_list):
+        scores[doc_id] = scores.get(doc_id, 0.0) + dense_weight / (k + rank + 1)
+
+    return sorted(scores.items(), key=lambda x: -x[1])

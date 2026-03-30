@@ -1,0 +1,1 @@
+{"flow_id": "MultimodalPipelineFlow", "run_number": "1773620215308123", "step_name": "multimodal_features", "task_id": "4", "field_name": "ds-root", "type": "ds-root", "value": "/Users/akilalourdes/streaming-canvas-search-ltr/.metaflow", "tags": ["attempt_id:0"], "user_name": "akilalourdes", "ts_epoch": 1773620470376}

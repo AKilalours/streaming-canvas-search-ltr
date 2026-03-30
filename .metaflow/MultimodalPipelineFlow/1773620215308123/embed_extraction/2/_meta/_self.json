@@ -1,0 +1,1 @@
+{"run_number": "1773620215308123", "step_name": "embed_extraction", "task_id": "2", "flow_id": "MultimodalPipelineFlow", "user_name": "akilalourdes", "tags": [], "system_tags": ["python_version:3.12.12", "runtime:dev", "metaflow_version:2.19.21", "user:akilalourdes"], "ts_epoch": 1773620216212}
