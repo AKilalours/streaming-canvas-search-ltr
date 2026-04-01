@@ -5,7 +5,7 @@ dataset:
     corpus: data/processed/movielens/test/corpus.jsonl
   artifacts:
     bm25: artifacts/bm25/movielens_bm25.pkl
-    dense_dir_glob: artifacts/faiss/movielens_intfloat_e5*
+    dense_dir_glob: artifacts/faiss/movielens_ft_e5*
     ltr: artifacts/ltr/movielens_ltr_e5base.pkl
 
 retrieval:
