@@ -238,3 +238,14 @@ curl "http://localhost:8000/eval/beir?dataset=nfcorpus" | python3 -m json.tool
 
 **Q: Why are your latency numbers different in different places?**
 "Three different measurements: warm-cache serving (99.6% hit rate = 2.67ms p50), cold uncached search (45ms p50, 98ms p95), and 1000-concurrent load test (178ms p99 with queue time). All correct, all within their respective targets."
+
+## After Fine-Tuning e5-base-v2 (Final Results)
+| Method       | nDCG@10 | vs Base  |
+|---|---|---|
+| BM25         | 0.6065  | —        |
+| Dense (ft)   | 0.5496  | +18.4%   |
+| Hybrid (ft)  | 0.5891  | +0.7%    |
+| LTR (ft)     | 0.9300  | +8.3%    |
+
+Fine-tuning: Spearman 0.6809 → 0.7899 (+16%)
+LTR lift: 0.8589 → 0.9300 (+8.3% absolute)

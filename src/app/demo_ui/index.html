@@ -1026,7 +1026,11 @@ qsa('.pm-prof').forEach(el=>el.addEventListener('click',()=>{
   qsa('[id^="rows-"]').forEach(r=>r.dataset.loaded='');
   loadFeed();
 }));
-$('lang-sel').addEventListener('change',e=>{S.lang=e.target.value||'English';loadFeed();});
+$('lang-sel').addEventListener('change',e=>{
+  stopAud(); // immediately stop any speaking when language changes
+  S.lang=e.target.value||'English';
+  loadFeed();
+});
 
 // ── STATUS ─────────────────────────────────────────────────────────────────────
 async function initStatus(){
@@ -1219,7 +1223,9 @@ $('mcl').addEventListener('click',closeModal);
 $('mbg').addEventListener('click',e=>{if(e.target===$('mbg'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 function closeModal(){
-  $('mbg').classList.remove('open');document.body.style.overflow='';stopAud();
+  $('mbg').classList.remove('open');
+  document.body.style.overflow='';
+  stopAud(); // kill all audio on modal close
   const ov=$('mp-video-overlay');ov.classList.remove('show');ov.innerHTML='';ov.style='';
 }
 
@@ -1360,22 +1366,53 @@ async function vlmDescribe(){
 $('bvox').addEventListener('click',speak);
 $('bstp').addEventListener('click',stopAud);
 async function speak(){
-  // Speak the explanation box content only (clean, no VLM mixed in)
+  // Hard stop everything first — language may have changed
+  stopAud();
+  // Wait a tick to ensure previous audio is fully stopped
+  await new Promise(r=>setTimeout(r,80));
+  S._stopSpeech=false;
+
+  // Get fresh text from current ebox state
   let txt=($('ebox').textContent||'').trim();
   if(!txt||txt.includes('Click')||txt.includes('Thinking')||txt.includes('Asking')||txt.includes('analyzing')||txt.includes('grounding'))return;
-  stopAud();S._stopSpeech=false;
   const LANG_BCP={'English':'en-US','Korean':'ko-KR','Japanese':'ja-JP','Chinese':'zh-CN','Spanish':'es-ES','French':'fr-FR','German':'de-DE','Hindi':'hi-IN','Tamil':'ta-IN','Telugu':'te-IN','Arabic':'ar-SA','Portuguese':'pt-BR','Italian':'it-IT','Dutch':'nl-NL','Russian':'ru-RU','Turkish':'tr-TR','Polish':'pl-PL','Swedish':'sv-SE','Norwegian':'nb-NO','Danish':'da-DK','Finnish':'fi-FI','Hebrew':'he-IL','Indonesian':'id-ID','Vietnamese':'vi-VN','Thai':'th-TH','Bengali':'bn-IN','Malay':'ms-MY','Ukrainian':'uk-UA','Filipino':'fil-PH','Croatian':'hr-HR','Chinese (Cantonese)':'zh-HK','Swahili':'sw-KE'};
   const bcp=LANG_BCP[S.lang]||'en-US';
   function splitChunks(text,max=800){const parts=[];const sents=text.split(/(?<=[.!?।॥\n])\s+/);let cur='';for(const s of sents){if((cur+s).length>max&&cur){parts.push(cur.trim());cur=s;}else cur+=' '+s;}if(cur.trim())parts.push(cur.trim());return parts.length?parts:[text.slice(0,800)];}
   const chunks=splitChunks(txt);$('aud').style.display='block';
   async function speakOpenAI(chunk){
+    if(S._stopSpeech) return null;
     try{
-      const res=await fetch('/tts?text='+encodeURIComponent(chunk)+'&lang='+encodeURIComponent(S.lang),{signal:AbortSignal.timeout(8000)});
+      // Create fresh AbortController for this request
+      S._ttsAbort=new AbortController();
+      const signal=AbortSignal.any
+        ?AbortSignal.any([S._ttsAbort.signal,AbortSignal.timeout(8000)])
+        :S._ttsAbort.signal;
+      const res=await fetch('/tts?text='+encodeURIComponent(chunk)+'&lang='+encodeURIComponent(S.lang),{signal});
+      if(S._stopSpeech) return null; // check again after fetch
       if(res.ok&&res.status!==204){
         const blob=await res.blob();
-        if(blob.size>200){return new Promise(resolve=>{const a=$('aud');a.src=URL.createObjectURL(blob);a.onended=resolve;a.onerror=resolve;a.play().catch(resolve);});}
+        if(S._stopSpeech) return null; // check again after blob
+        if(blob.size>200){
+          // Revoke previous blob URL first
+          if(S._lastBlobUrl){URL.revokeObjectURL(S._lastBlobUrl);S._lastBlobUrl=null;}
+          const blobUrl=URL.createObjectURL(blob);
+          S._lastBlobUrl=blobUrl;
+          return new Promise(resolve=>{
+            if(S._stopSpeech){URL.revokeObjectURL(blobUrl);S._lastBlobUrl=null;resolve(null);return;}
+            const a=$('aud');
+            a.src=blobUrl;
+            a.style.display='block';
+            a.onended=()=>resolve(true);
+            a.onerror=()=>resolve(null);
+            a.play().catch(()=>resolve(null));
+          });
+        }
       }
-    }catch{}return null;
+    }catch(e){
+      // AbortError is expected when stopAud() is called — not an error
+      if(e.name!=='AbortError') console.warn('TTS fetch error:',e.message);
+    }
+    return null;
   }
   function speakWebSpeech(chunk){
     return new Promise(resolve=>{
@@ -1398,8 +1435,27 @@ async function speak(){
   if(S._keepalive)clearInterval(S._keepalive);
 }
 function stopAud(){
-  try{S._stopSpeech=true;if(S._keepalive)clearInterval(S._keepalive);window.speechSynthesis.cancel();}catch{}
-  try{const a=$('aud');a.pause();a.currentTime=0;a.style.display='none';}catch{}
+  // Kill everything immediately — no overlap
+  S._stopSpeech=true;
+  // 1. Stop Web Speech API
+  try{window.speechSynthesis.cancel();}catch{}
+  // 2. Stop keepalive interval
+  try{if(S._keepalive){clearInterval(S._keepalive);S._keepalive=null;}}catch{}
+  // 3. Stop ping interval
+  try{if(S._wsPing){clearInterval(S._wsPing);}}catch{}
+  // 4. Stop HTML audio element fully
+  try{
+    const a=$('aud');
+    a.pause();
+    a.src='';        // revoke src so blob doesn't replay
+    a.load();        // reset audio element state
+    a.currentTime=0;
+    a.style.display='none';
+    // Revoke any blob URL to free memory
+    if(S._lastBlobUrl){URL.revokeObjectURL(S._lastBlobUrl);S._lastBlobUrl=null;}
+  }catch{}
+  // 5. Cancel any in-flight TTS fetch
+  try{if(S._ttsAbort){S._ttsAbort.abort();S._ttsAbort=null;}}catch{}
 }
 
 // ── MULTIMODAL ────────────────────────────────────────────────────────────────
