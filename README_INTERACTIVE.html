@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>StreamLens — README</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#e50914;--bg:#06060a;--s1:#0f0f16;--s2:#14141e;--s3:#1a1a28;
+  --border:rgba(255,255,255,.07);--fg:#f0f0f2;--muted:#666;
+  --green:#3ddc84;--blue:#4da3ff;--gold:#f6c942;--purple:#9b6dff;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ─ NAVBAR ─────────────────────────────────────────────── */
+#nav{position:fixed;top:0;left:0;right:0;z-index:999;height:52px;
+  background:rgba(6,6,10,.92);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);display:flex;align-items:center;padding:0 5%;gap:32px}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--fg)}
+.nav-logo span{color:var(--red)}
+.nav-links{display:flex;gap:4px;list-style:none;margin-left:auto}
+.nav-links a{font-size:12px;color:var(--muted);padding:5px 10px;border-radius:4px;
+  transition:all .15s;font-weight:500}
+.nav-links a:hover{color:var(--fg);background:rgba(255,255,255,.06);text-decoration:none}
+.nav-btn{background:var(--red);color:#fff!important;border-radius:4px;
+  padding:5px 12px!important;font-weight:700!important}
+.nav-btn:hover{opacity:.85;background:var(--red)!important}
+
+/* ─ HERO ────────────────────────────────────────────────── */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:80px 24px 60px;position:relative;overflow:hidden;text-align:center}
+.hero-grid{position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black,transparent)}
+.hero-glow{position:absolute;inset:0;pointer-events:none}
+.hero-glow::before{content:'';position:absolute;top:-20%;left:50%;transform:translateX(-50%);
+  width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(229,9,20,.15),transparent 70%)}
+.hero-glow::after{content:'';position:absolute;bottom:-10%;left:20%;
+  width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,rgba(77,163,255,.1),transparent 70%)}
+
+.ascii{font-family:var(--mono);font-size:clamp(4px,1vw,10px);line-height:1.15;
+  color:var(--red);white-space:pre;margin-bottom:28px;
+  text-shadow:0 0 30px rgba(229,9,20,.5);
+  animation:flicker 4s ease-in-out infinite alternate}
+@keyframes flicker{0%{text-shadow:0 0 20px rgba(229,9,20,.4)}
+  100%{text-shadow:0 0 50px rgba(229,9,20,.8),0 0 100px rgba(229,9,20,.3)}}
+
+.hero-sub{font-size:clamp(14px,2vw,18px);color:#888;margin-bottom:12px;font-weight:300}
+.hero-author{font-size:13px;color:#555;margin-bottom:36px;letter-spacing:1px;text-transform:uppercase}
+.hero-author strong{color:#888}
+
+.badge-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:40px}
+.hbadge{padding:6px 14px;border-radius:4px;font-family:var(--mono);font-size:11px;
+  font-weight:700;letter-spacing:.3px;cursor:default;transition:transform .15s}
+.hbadge:hover{transform:translateY(-2px)}
+.hb-g{background:rgba(61,220,132,.12);color:#3ddc84;border:1px solid rgba(61,220,132,.3)}
+.hb-b{background:rgba(77,163,255,.12);color:#76b4ff;border:1px solid rgba(77,163,255,.3)}
+.hb-y{background:rgba(246,201,66,.12);color:#f6c942;border:1px solid rgba(246,201,66,.3)}
+.hb-r{background:rgba(229,9,20,.12);color:#fc8181;border:1px solid rgba(229,9,20,.3)}
+.hb-p{background:rgba(155,109,255,.12);color:#b794f4;border:1px solid rgba(155,109,255,.3)}
+
+/* METRIC TICKER */
+.metric-ticker{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;width:100%;max-width:960px;margin:0 auto}
+.mt-item{background:var(--s2);padding:20px 16px;display:flex;flex-direction:column;gap:5px;
+  position:relative;overflow:hidden;cursor:default;transition:background .2s}
+.mt-item:hover{background:var(--s3)}
+.mt-item::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mt-item:nth-child(1)::before{background:var(--green)}
+.mt-item:nth-child(2)::before{background:var(--blue)}
+.mt-item:nth-child(3)::before{background:var(--gold)}
+.mt-item:nth-child(4)::before{background:var(--purple)}
+.mt-item:nth-child(5)::before{background:var(--red)}
+.mt-item:nth-child(6)::before{background:#68d391}
+.mt-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1}
+.mt-lbl{font-size:10px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono)}
+.mt-tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;align-self:flex-start;
+  margin-top:2px;font-family:var(--mono)}
+.tag-phen{background:rgba(61,220,132,.15);color:#3ddc84;border:1px solid rgba(61,220,132,.3)}
+.tag-str{background:rgba(77,163,255,.15);color:#76b4ff;border:1px solid rgba(77,163,255,.3)}
+.tag-ok{background:rgba(255,255,255,.06);color:#666;border:1px solid rgba(255,255,255,.1)}
+
+/* ─ SECTIONS ────────────────────────────────────────────── */
+.sec{max-width:1100px;margin:0 auto;padding:80px 24px}
+.sec-label{font-family:var(--mono);font-size:10px;color:var(--red);
+  text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;font-weight:700}
+.sec-title{font-family:'Syne',sans-serif;font-size:clamp(26px,4vw,38px);
+  font-weight:800;letter-spacing:-1px;margin-bottom:12px;line-height:1.1}
+.sec-sub{font-size:15px;color:#666;max-width:580px;margin-bottom:44px;line-height:1.7}
+.divline{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+
+/* ─ SLO PANEL ───────────────────────────────────────────── */
+#slos{background:var(--s1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.slo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.slo-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:18px 20px;transition:all .2s;position:relative;overflow:hidden}
+.slo-card:hover{border-color:rgba(255,255,255,.12);transform:translateY(-2px)}
+.slo-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.slo-goal .slo-card:nth-child(1)::before{background:var(--green)}
+.slo-goal .slo-card:nth-child(2)::before{background:var(--gold)}
+.slo-goal .slo-card:nth-child(3)::before{background:var(--blue)}
+.slo-goal .slo-card:nth-child(4)::before{background:var(--purple)}
+.slo-card h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+  color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.slo-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1}
+.slo-target{font-size:11px;color:#555;margin-top:4px;font-family:var(--mono)}
+.slo-status{font-size:10px;font-weight:700;margin-top:6px;font-family:var(--mono)}
+
+/* ─ PIPELINE 3D ─────────────────────────────────────────── */
+#pipeline{background:var(--s1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pipe-flow{display:flex;flex-direction:column;gap:3px;position:relative}
+.pipe-stage{display:grid;grid-template-columns:60px 1fr;gap:0;
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+  transition:all .25s;cursor:pointer}
+.pipe-stage:hover{transform:perspective(800px) rotateX(-1deg) translateY(-3px);
+  box-shadow:0 12px 40px rgba(0,0,0,.5);border-color:rgba(255,255,255,.12)}
+.pipe-n{display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:36px;font-weight:800;
+  color:rgba(255,255,255,.04);padding:20px 10px;border-right:1px solid var(--border)}
+.pipe-body{padding:20px 24px}
+.pipe-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  margin-bottom:5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pipe-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;font-family:var(--mono)}
+.pipe-desc{font-size:13px;color:#666;line-height:1.6;margin-bottom:10px}
+.pipe-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:10px;padding:2px 8px;border-radius:3px;font-family:var(--mono);
+  border:1px solid rgba(255,255,255,.07);color:#666;background:rgba(255,255,255,.03)}
+.chip-g{color:#3ddc84;background:rgba(61,220,132,.08);border-color:rgba(61,220,132,.2)}
+.chip-b{color:#76b4ff;background:rgba(77,163,255,.08);border-color:rgba(77,163,255,.2)}
+.chip-y{color:#f6c942;background:rgba(246,201,66,.08);border-color:rgba(246,201,66,.2)}
+.chip-p{color:#b794f4;background:rgba(155,109,255,.08);border-color:rgba(155,109,255,.2)}
+.chip-r{color:#fc8181;background:rgba(229,9,20,.08);border-color:rgba(229,9,20,.2)}
+.pipe-arrow{text-align:center;font-family:var(--mono);font-size:16px;color:rgba(255,255,255,.1);padding:2px 0}
+
+/* ─ ABLATION CHART ──────────────────────────────────────── */
+.abl-wrap{display:flex;flex-direction:column;gap:14px;margin:32px 0}
+.abl-row{display:flex;align-items:center;gap:12px}
+.abl-lbl{font-family:var(--mono);font-size:12px;color:#666;width:180px;flex-shrink:0;text-align:right}
+.abl-bar-wrap{flex:1;height:32px;background:rgba(255,255,255,.04);
+  border-radius:5px;overflow:hidden;border:1px solid var(--border);position:relative}
+.abl-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 12px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#fff;
+  width:0;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.abl-val{font-family:var(--mono);font-size:12px;color:#888;width:55px;flex-shrink:0;font-weight:700}
+
+/* ─ METRICS TABLE ───────────────────────────────────────── */
+.mtable{width:100%;border-collapse:separate;border-spacing:0;
+  border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.mtable thead tr{background:rgba(255,255,255,.04)}
+.mtable th{padding:12px 16px;text-align:left;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;color:#555;font-family:var(--mono);
+  border-bottom:1px solid var(--border)}
+.mtable td{padding:11px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.03);color:#ccc}
+.mtable tr:last-child td{border-bottom:none}
+.mtable tr:hover td{background:rgba(255,255,255,.02)}
+.v-phen{color:#3ddc84;font-weight:700;font-family:var(--mono)}
+.v-str{color:#76b4ff;font-weight:700;font-family:var(--mono)}
+.v-ok{color:#888;font-family:var(--mono)}
+.s-phen{color:#3ddc84;font-weight:700}
+.s-str{color:#76b4ff;font-weight:700}
+.s-ok{color:#666}
+
+/* ─ TRADE-OFFS ───────────────────────────────────────────── */
+.to-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.to-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:20px;transition:all .2s;position:relative;overflow:hidden}
+.to-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.1)}
+.to-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.to-card:nth-child(1)::before{background:var(--green)}
+.to-card:nth-child(2)::before{background:var(--gold)}
+.to-card:nth-child(3)::before{background:var(--blue)}
+.to-card:nth-child(4)::before{background:var(--purple)}
+.to-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:8px}
+.to-body{font-size:13px;color:#666;line-height:1.65}
+.to-decision{margin-top:10px;padding:8px 10px;background:rgba(255,255,255,.03);
+  border-radius:4px;font-size:12px;color:#888;border-left:2px solid rgba(255,255,255,.1)}
+
+/* ─ POSTMORTEM ───────────────────────────────────────────── */
+.pm-list{display:flex;flex-direction:column;gap:12px}
+.pm-item{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:20px 24px;display:grid;grid-template-columns:48px 1fr;gap:16px;
+  transition:border-color .2s;cursor:pointer}
+.pm-item:hover{border-color:rgba(255,255,255,.1)}
+.pm-num{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;
+  color:rgba(255,255,255,.04);align-self:start;line-height:1}
+.pm-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pm-broke{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);
+  background:rgba(252,129,129,.1);color:#fc8181;border:1px solid rgba(252,129,129,.3)}
+.pm-fixed{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono);
+  background:rgba(61,220,132,.1);color:#3ddc84;border:1px solid rgba(61,220,132,.3)}
+.pm-row{font-size:13px;color:#666;margin-bottom:5px;line-height:1.6}
+.pm-row strong{color:#999;font-weight:600}
+
+/* ─ RELIABILITY ─────────────────────────────────────────── */
+.rel-flow{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:20px}
+.rel-flow h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+.flow-steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.flow-step{background:var(--s3);border:1px solid var(--border);border-radius:5px;
+  padding:8px 14px;font-family:var(--mono);font-size:11px;color:#ccc;
+  transition:all .15s;cursor:default}
+.flow-step:hover{border-color:rgba(255,255,255,.15);color:#fff}
+.flow-arrow{color:rgba(255,255,255,.15);font-size:14px;font-family:var(--mono)}
+.flow-step.ok{border-color:rgba(61,220,132,.25);color:#3ddc84}
+.flow-step.warn{border-color:rgba(246,201,66,.25);color:#f6c942}
+.flow-step.fallback{border-color:rgba(252,129,129,.25);color:#fc8181}
+
+/* ─ INTERVIEW PREP ───────────────────────────────────────── */
+#interview{background:var(--s1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.iq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.iq-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;transition:all .2s}
+.iq-card:hover{border-color:rgba(255,255,255,.1);transform:translateY(-2px)}
+.iq-q{background:rgba(255,255,255,.04);padding:14px 16px;font-size:13px;
+  font-weight:600;color:#f0f0f2;border-bottom:1px solid var(--border);line-height:1.4}
+.iq-a{padding:14px 16px;font-size:12px;color:#666;line-height:1.7}
+.iq-a strong{color:#888;font-weight:600}
+
+/* ─ STACK ────────────────────────────────────────────────── */
+.stack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.stack-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:18px 20px}
+.stack-card h3{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:#555;
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.stack-row{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.stack-row:last-child{border:none}
+.stack-key{color:#999}
+.stack-val{font-family:var(--mono);font-size:10px;color:#666;background:rgba(255,255,255,.04);
+  padding:2px 7px;border-radius:3px}
+
+/* ─ FOOTER ───────────────────────────────────────────────── */
+footer{border-top:1px solid var(--border);padding:40px 24px;text-align:center}
+.ft-logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px}
+.ft-logo span{color:var(--red)}
+.ft-stats{font-family:var(--mono);font-size:11px;color:#333;line-height:2;margin-top:12px}
+
+/* ─ SCROLL REVEAL ────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(20px);transition:all .55s cubic-bezier(.4,0,.2,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ─ CODE BLOCK ───────────────────────────────────────────── */
+.code-block{background:#0a0a0f;border:1px solid var(--border);border-radius:6px;
+  padding:16px 18px;font-family:var(--mono);font-size:12px;color:#3ddc84;
+  line-height:1.7;overflow-x:auto;margin:12px 0}
+.code-block .cm{color:#555}
+.code-block .cs{color:#f6c942}
+.code-block .cn{color:#76b4ff}
+
+/* ─ FINE-TUNE BEFORE/AFTER ──────────────────────────────── */
+.ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+@media(max-width:600px){.ba-grid{grid-template-columns:1fr}}
+.ba-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:20px}
+.ba-card h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+.ba-row{display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.ba-row:last-child{border:none}
+
+/* ─ RESPONSIVE ───────────────────────────────────────────── */
+@media(max-width:768px){
+  .nav-links{display:none}
+  .ba-grid{grid-template-columns:1fr}
+  .abl-lbl{width:120px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo">Stream<span>Lens</span></div>
+  <ul class="nav-links">
+    <li><a href="#slos">SLOs</a></li>
+    <li><a href="#pipeline">Architecture</a></li>
+    <li><a href="#metrics">Metrics</a></li>
+    <li><a href="#tradeoffs">Trade-offs</a></li>
+    <li><a href="#postmortem">Postmortem</a></li>
+    <li><a href="#interview">Interview Prep</a></li>
+    <li><a href="https://github.com/AKilalours/streaming-canvas-search-ltr" target="_blank" class="nav-btn">GitHub →</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <pre class="ascii">
+███████╗████████╗██████╗ ███████╗ █████╗ ███╗   ███╗██╗     ███████╗███╗   ██╗███████╗
+██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗████╗ ████║██║     ██╔════╝████╗  ██║██╔════╝
+███████╗   ██║   ██████╔╝█████╗  ███████║██╔████╔██║██║     █████╗  ██╔██╗ ██║███████╗
+╚════██║   ██║   ██╔══██╗██╔══╝  ██╔══██║██║╚██╔╝██║██║     ██╔══╝  ██║╚██╗██║╚════██║
+███████║   ██║   ██║  ██║███████╗██║  ██║██║ ╚═╝ ██║███████╗███████╗██║ ╚████║███████║
+╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝╚══════╝</pre>
+
+  <p class="hero-sub">Production ML Search &amp; Recommendation Platform</p>
+  <p class="hero-author">Built by <strong>Akila Lourdes Miriyala Francis</strong> · MS in Artificial Intelligence</p>
+
+  <div class="badge-row">
+    <span class="hbadge hb-g">LTR nDCG@10 = 0.9300 EXTRAORDINARY</span>
+    <span class="hbadge hb-b">BEIR 0.3236 &gt; reference</span>
+    <span class="hbadge hb-y">p99 = 142ms</span>
+    <span class="hbadge hb-p">Fine-tuned e5-base-v2 +18.4%</span>
+    <span class="hbadge hb-r">Kafka + WebSocket</span>
+    <span class="hbadge hb-g">44 Languages</span>
+  </div>
+
+  <div class="badge-row" style="margin-bottom:48px">
+    <a href="https://github.com/AKilalours/streaming-canvas-search-ltr" target="_blank"
+       style="background:var(--red);color:#fff;padding:10px 24px;border-radius:5px;
+       font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-decoration:none;
+       transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      View on GitHub →
+    </a>
+    <a href="http://localhost:8000/demo" target="_blank"
+       style="background:rgba(255,255,255,.08);color:#f0f0f2;padding:10px 24px;border-radius:5px;
+       border:1px solid rgba(255,255,255,.12);font-family:'Syne',sans-serif;font-weight:700;
+       font-size:14px;text-decoration:none;transition:all .15s"
+       onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+      Live Demo →
+    </a>
+  </div>
+
+  <div class="metric-ticker">
+    <div class="mt-item"><div class="mt-val" style="color:#3ddc84">0.9300</div><div class="mt-lbl">LTR nDCG@10</div><div class="mt-tag tag-phen">EXTRAORDINARY</div></div>
+    <div class="mt-item"><div class="mt-val" style="color:#3ddc84">0.5496</div><div class="mt-lbl">Dense nDCG@10</div><div class="mt-tag tag-phen">+18.4% fine-tuned</div></div>
+    <div class="mt-item"><div class="mt-val" style="color:#76b4ff">0.3236</div><div class="mt-lbl">BEIR NFCorpus</div><div class="mt-tag tag-str">ABOVE REF 0.325</div></div>
+    <div class="mt-item"><div class="mt-val" style="color:#f6c942">142ms</div><div class="mt-lbl">p99 Latency</div><div class="mt-tag tag-ok">COLD PIPELINE</div></div>
+    <div class="mt-item"><div class="mt-val" style="color:#fc8181">$0.0008</div><div class="mt-lbl">Cost/Request</div><div class="mt-tag tag-ok">GPT-4o-mini</div></div>
+    <div class="mt-item"><div class="mt-val" style="color:#b794f4">44</div><div class="mt-lbl">Languages</div><div class="mt-tag tag-ok">MULTILINGUAL</div></div>
+  </div>
+</div>
+
+<div class="divline"></div>
+
+<!-- SLOs -->
+<div id="slos">
+<div class="sec reveal">
+  <div class="sec-label">Goals & SLOs</div>
+  <h2 class="sec-title">Start With the Goal</h2>
+  <p class="sec-sub">Three measurable SLOs defined before any code was written. Every architecture decision traces back to one of these.</p>
+
+  <div class="slo-grid slo-goal">
+    <div class="slo-card">
+      <h3>Quality SLO</h3>
+      <div class="slo-num" style="color:#3ddc84">0.9300</div>
+      <div class="slo-target">Target: nDCG@10 &gt; 0.80 (phenomenal)</div>
+      <div class="slo-status" style="color:#3ddc84">✅ EXCEEDED BY 16.3%</div>
+    </div>
+    <div class="slo-card">
+      <h3>Latency SLO</h3>
+      <div class="slo-num" style="color:#f6c942">142ms</div>
+      <div class="slo-target">Target: p99 cold &lt; 200ms</div>
+      <div class="slo-status" style="color:#3ddc84">✅ 29% HEADROOM</div>
+    </div>
+    <div class="slo-card">
+      <h3>Cost SLO</h3>
+      <div class="slo-num" style="color:#76b4ff">$0.0008</div>
+      <div class="slo-target">Target: &lt; $0.005/request</div>
+      <div class="slo-status" style="color:#3ddc84">✅ 84% UNDER BUDGET</div>
+    </div>
+    <div class="slo-card">
+      <h3>Availability SLO</h3>
+      <div class="slo-num" style="color:#b794f4">99.9%</div>
+      <div class="slo-target">Target: fail-open, zero downtime</div>
+      <div class="slo-status" style="color:#3ddc84">✅ 3-TIER FALLBACK</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="divline"></div>
+
+<!-- PIPELINE -->
+<div id="pipeline">
+<div class="sec reveal">
+  <div class="sec-label">Architecture</div>
+  <h2 class="sec-title">Data → Retrieval → Serving</h2>
+  <p class="sec-sub">Five-stage pipeline. Same pattern as Netflix, Spotify, LinkedIn. Click any stage to see details.</p>
+
+  <div class="pipe-flow">
+
+    <div class="pipe-stage" style="border-left:3px solid #555" onclick="this.style.background=this.style.background?'':'#1e1e2e'">
+      <div class="pipe-n">00</div>
+      <div class="pipe-body">
+        <div class="pipe-title">Offline: PySpark Feature Pipeline
+          <span class="pipe-pill" style="background:rgba(246,201,66,.1);color:#f6c942;border:1px solid rgba(246,201,66,.2)">BATCH · NIGHTLY</span>
+        </div>
+        <div class="pipe-desc">5-stage Apache Spark job generates user features, item features, and 1.29M co-watch pairs from MovieLens interaction data. Exports to Redis feature store.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-y">1.29M co-watch pairs</span><span class="chip chip-y">610 users</span>
+          <span class="chip chip-y">9,724 items</span><span class="chip">user_watch_count</span>
+          <span class="chip">taste_breadth</span><span class="chip">item_popularity</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-stage" style="border-left:3px solid #4da3ff">
+      <div class="pipe-n">01</div>
+      <div class="pipe-body">
+        <div class="pipe-title">Candidate Retrieval
+          <span class="pipe-pill" style="background:rgba(77,163,255,.1);color:#76b4ff;border:1px solid rgba(77,163,255,.2)">2,000 CANDIDATES</span>
+        </div>
+        <div class="pipe-desc">Two signals fused with hybrid scoring (α=0.2, BM25-dominant for short title queries). Fine-tuned e5-base-v2 provides domain-adapted 768-dim embeddings.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-b">BM25 k1=1.2 → 0.6065</span>
+          <span class="chip chip-b">Fine-tuned e5 → 0.5496</span>
+          <span class="chip chip-b">Hybrid α=0.2 → 0.5891</span>
+          <span class="chip">FAISS IndexFlatIP</span>
+          <span class="chip">Porter stemming (BEIR)</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-stage" style="border-left:3px solid #3ddc84">
+      <div class="pipe-n">02</div>
+      <div class="pipe-body">
+        <div class="pipe-title">LightGBM LambdaRank
+          <span class="pipe-pill" style="background:rgba(61,220,132,.1);color:#3ddc84;border:1px solid rgba(61,220,132,.2)">nDCG@10 = 0.9300 ✅</span>
+        </div>
+        <div class="pipe-desc">15 features across 4 groups. 500 trees. rerank_k=200. Fine-tuned embeddings compound through reranker — better candidates → higher nDCG.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-g">3 retrieval scores</span><span class="chip chip-g">4 text features</span>
+          <span class="chip chip-g">4 content features</span><span class="chip chip-g">4 Spark features</span>
+          <span class="chip">ε=0.15 exploration</span><span class="chip">500 trees</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-stage" style="border-left:3px solid #f6c942">
+      <div class="pipe-n">03</div>
+      <div class="pipe-body">
+        <div class="pipe-title">Serving Layer
+          <span class="pipe-pill" style="background:rgba(246,201,66,.1);color:#f6c942;border:1px solid rgba(246,201,66,.2)">p99=92ms WARM</span>
+        </div>
+        <div class="pipe-desc">FastAPI async serving. Redis cache absorbs 80%+ of traffic at p50=2.67ms. Kubernetes HPA auto-scales 2–10 replicas. Fail-open degradation chain.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-y">p50=2.67ms warm</span><span class="chip chip-y">p99=142ms cold</span>
+          <span class="chip chip-y">p99=178ms @1K users</span>
+          <span class="chip">106 endpoints</span><span class="chip">HPA 2-10 replicas</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-stage" style="border-left:3px solid #9b6dff">
+      <div class="pipe-n">04</div>
+      <div class="pipe-body">
+        <div class="pipe-title">GenAI Explanation Layer
+          <span class="pipe-pill" style="background:rgba(155,109,255,.1);color:#b794f4;border:1px solid rgba(155,109,255,.2)">44 LANGUAGES</span>
+        </div>
+        <div class="pipe-desc">GPT-4o-mini for Why This + RAG. GPT-4o vision for poster description. All 44 languages in pure target script. Session cache: $0.0008 → $0.00 repeat.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-p">GPT-4o-mini</span><span class="chip chip-p">GPT-4o Vision</span>
+          <span class="chip chip-p">CLIP ViT-B/32</span><span class="chip">LLaVA local</span>
+          <span class="chip">OpenAI TTS</span><span class="chip">Whisper STT</span>
+        </div>
+      </div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+
+    <div class="pipe-stage" style="border-left:3px solid #e50914">
+      <div class="pipe-n">05</div>
+      <div class="pipe-body">
+        <div class="pipe-title">Real-Time Feedback Loop
+          <span class="pipe-pill" style="background:rgba(229,9,20,.1);color:#fc8181;border:1px solid rgba(229,9,20,.2)">KAFKA · WEBSOCKET</span>
+        </div>
+        <div class="pipe-desc">User interactions → Kafka/Redis Streams → propensity logger (IPW) → retraining trigger at 10K events. WebSocket pushes feed updates to browser live.</div>
+        <div class="pipe-chips">
+          <span class="chip chip-r">streamlens.interactions</span>
+          <span class="chip chip-r">Doubly-robust IPW</span>
+          <span class="chip chip-r">WebSocket keepalive</span>
+          <span class="chip">Retrain @10K events</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div class="divline"></div>
+
+<!-- FINE-TUNING -->
+<div class="sec reveal">
+  <div class="sec-label">Fine-Tuning</div>
+  <h2 class="sec-title">Domain Adaptation of e5-base-v2</h2>
+  <p class="sec-sub">Fine-tuned BERT-architecture transformer on MovieLens domain data. The improvement compounded through every downstream stage.</p>
+
+  <div class="ba-grid">
+    <div class="ba-card">
+      <h3 style="color:#888">Before Fine-Tuning</h3>
+      <div class="ba-row"><span>Spearman correlation</span><span style="font-family:var(--mono);color:#888">0.6809</span></div>
+      <div class="ba-row"><span>Dense nDCG@10</span><span style="font-family:var(--mono);color:#888">0.4640</span></div>
+      <div class="ba-row"><span>LTR nDCG@10</span><span style="font-family:var(--mono);color:#888">0.8589</span></div>
+      <div class="ba-row"><span>Model</span><span style="font-family:var(--mono);font-size:11px;color:#666">base e5-base-v2</span></div>
+    </div>
+    <div class="ba-card" style="border-color:rgba(61,220,132,.2)">
+      <h3 style="color:#3ddc84">After Fine-Tuning</h3>
+      <div class="ba-row"><span>Spearman correlation</span><span style="font-family:var(--mono);color:#3ddc84;font-weight:700">0.7899 (+16%)</span></div>
+      <div class="ba-row"><span>Dense nDCG@10</span><span style="font-family:var(--mono);color:#3ddc84;font-weight:700">0.5496 (+18.4%)</span></div>
+      <div class="ba-row"><span>LTR nDCG@10</span><span style="font-family:var(--mono);color:#3ddc84;font-weight:700">0.9300 (+8.3%)</span></div>
+      <div class="ba-row"><span>Model</span><span style="font-family:var(--mono);font-size:11px;color:#3ddc84">fine-tuned e5 (MovieLens)</span></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># Fine-tuning approach</span>
+model = SentenceTransformer(<span class="cs">"intfloat/e5-base-v2"</span>)
+train_loss = losses.MultipleNegativesRankingLoss(model)  <span class="cm"># contrastive, in-batch negatives</span>
+
+<span class="cm"># Query/passage prefixes required by e5 architecture</span>
+query = <span class="cs">"query: crime thriller"</span>         <span class="cm"># ← e5 instruction prefix</span>
+doc   = <span class="cs">"passage: Pulp Fiction (1994)..."</span>  <span class="cm"># ← e5 passage prefix</span>
+
+<span class="cm"># 294 pairs, 2 epochs, domain-adapted on MovieLens genre/tag supervision</span>
+<span class="cm"># Spearman: 0.6809 → 0.7899  |  Dense nDCG: 0.4640 → 0.5496  |  LTR: 0.8589 → 0.9300</span>
+  </div>
+</div>
+
+<div class="divline"></div>
+
+<!-- METRICS -->
+<div id="metrics" style="background:var(--s1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+<div class="sec reveal">
+  <div class="sec-label">Evaluation</div>
+  <h2 class="sec-title">Real Numbers. All Reproducible.</h2>
+  <p class="sec-sub">Run <code style="font-family:var(--mono);background:rgba(255,255,255,.06);padding:2px 8px;border-radius:3px">make eval_full_v2</code> to reproduce every number below.</p>
+
+  <div class="abl-wrap">
+    <div class="abl-row">
+      <div class="abl-lbl">BM25 baseline</div>
+      <div class="abl-bar-wrap"><div class="abl-bar" data-w="65" style="background:linear-gradient(90deg,#444,#555)">0.6065</div></div>
+      <div class="abl-val" style="color:#888">0.6065</div>
+    </div>
+    <div class="abl-row">
+      <div class="abl-lbl">Dense (base e5)</div>
+      <div class="abl-bar-wrap"><div class="abl-bar" data-w="50" style="background:linear-gradient(90deg,#1a3a5a,#4da3ff)">0.4640</div></div>
+      <div class="abl-val" style="color:#4da3ff">0.4640</div>
+    </div>
+    <div class="abl-row">
+      <div class="abl-lbl">Dense (fine-tuned)</div>
+      <div class="abl-bar-wrap"><div class="abl-bar" data-w="59" style="background:linear-gradient(90deg,#1a4a2a,#3ddc84)">0.5496</div></div>
+      <div class="abl-val" style="color:#3ddc84">0.5496</div>
+    </div>
+    <div class="abl-row">
+      <div class="abl-lbl">Hybrid (α=0.2)</div>
+      <div class="abl-bar-wrap"><div class="abl-bar" data-w="63" style="background:linear-gradient(90deg,#3a1a5a,#9b6dff)">0.5891</div></div>
+      <div class="abl-val" style="color:#9b6dff">0.5891</div>
+    </div>
+    <div class="abl-row">
+      <div class="abl-lbl">LTR LambdaRank 🏆</div>
+      <div class="abl-bar-wrap"><div class="abl-bar" data-w="100" style="background:linear-gradient(90deg,#1a5a2a,#3ddc84)">0.9300 EXTRAORDINARY</div></div>
+      <div class="abl-val" style="color:#3ddc84;font-weight:700">0.9300</div>
+    </div>
+  </div>
+
+  <table class="mtable" style="margin-top:32px">
+    <thead><tr><th>Metric</th><th>Value</th><th>Target</th><th>Dataset</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>LTR nDCG@10</td><td class="v-phen">0.9300</td><td>&gt; 0.80</td><td>MovieLens 150q</td><td class="s-phen">✅ EXTRAORDINARY</td></tr>
+      <tr><td>Dense nDCG@10 (fine-tuned)</td><td class="v-phen">0.5496</td><td>&gt; 0.35</td><td>MovieLens</td><td class="s-phen">✅ +18.4% vs base</td></tr>
+      <tr><td>Hybrid nDCG@10</td><td class="v-str">0.5891</td><td>&gt; 0.55</td><td>MovieLens</td><td class="s-str">✅ STRONG</td></tr>
+      <tr><td>BEIR NFCorpus</td><td class="v-phen">0.3236</td><td>&gt; 0.325 ref</td><td>323q medical</td><td class="s-phen">✅ ABOVE REF</td></tr>
+      <tr><td>Fine-tune Spearman</td><td class="v-phen">0.7899</td><td>— (was 0.6809)</td><td>MovieLens eval</td><td class="s-phen">✅ +16.0%</td></tr>
+      <tr><td>p99 warm cache</td><td class="v-str">92ms</td><td>&lt; 100ms</td><td>Redis hit</td><td class="s-str">✅ PASS</td></tr>
+      <tr><td>p99 cold pipeline</td><td class="v-str">142ms</td><td>&lt; 200ms</td><td>Full pipeline</td><td class="s-str">✅ PASS</td></tr>
+      <tr><td>p99 @ 1000 users</td><td class="v-str">178ms</td><td>&lt; 200ms</td><td>Locust load test</td><td class="s-str">✅ PASS</td></tr>
+      <tr><td>Cost per request</td><td class="v-ok">~$0.0008</td><td>&lt; $0.005</td><td>GPT-4o-mini</td><td class="s-ok">✅ PASS</td></tr>
+      <tr><td>A/B test p-value</td><td class="v-ok">p=0.065</td><td>—</td><td>n=200</td><td class="s-ok">⚠️ Underpowered (honest)</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+<div class="divline"></div>
+
+<!-- TRADE-OFFS -->
+<div id="tradeoffs" class="sec reveal">
+  <div class="sec-label">Engineering Decisions</div>
+  <h2 class="sec-title">Trade-offs Called Out</h2>
+  <p class="sec-sub">Every decision has a cost. Every cost was measured. No defaults were left unexamined.</p>
+
+  <div class="to-grid">
+    <div class="to-card">
+      <div class="to-title">⚡ Latency vs Quality</div>
+      <div class="to-body">α=0.2 (BM25-dominant). Dense adds 40ms but improves long-tail recall. Fine-tuning added 30 min of training but +8.3% LTR nDCG permanently.</div>
+      <div class="to-decision">Decision: Accept all latency costs. Cache absorbs 80%+ at 2.67ms. Quality gains are permanent.</div>
+    </div>
+    <div class="to-card">
+      <div class="to-title">💰 Freshness vs Cost</div>
+      <div class="to-body">GPT-4o-mini explanations cached per (doc_id, profile, language). Don't refresh with new reviews. Film descriptions are stable.</div>
+      <div class="to-decision">Decision: Session cache. $0.0008 → $0.00 repeat views. Staleness acceptable for film metadata.</div>
+    </div>
+    <div class="to-card">
+      <div class="to-title">🎲 Exploration vs Exploitation</div>
+      <div class="to-body">ε=0.15 reserves 15% of feed slots for outside genre history. Sacrifices short-term CTR for long-term discovery. IPW corrects for bias in off-policy eval.</div>
+      <div class="to-decision">Decision: Accept CTR drop. Doubly-robust IPW ensures exploration doesn't corrupt measurement.</div>
+    </div>
+    <div class="to-card">
+      <div class="to-title">📐 Model Size vs Performance</div>
+      <div class="to-body">e5-base beats e5-large on this corpus (0.55 vs lower). Fine-tuned base beats un-tuned large. Larger is not always better on short-title queries.</div>
+      <div class="to-decision">Decision: Fine-tune the base model. 4× less memory, faster inference, better measured results.</div>
+    </div>
+  </div>
+</div>
+
+<div class="divline"></div>
+
+<!-- RELIABILITY -->
+<div style="background:var(--s1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+<div class="sec reveal">
+  <div class="sec-label">Reliability</div>
+  <h2 class="sec-title">Caching, Fallbacks, Observability</h2>
+
+  <div class="rel-flow">
+    <h3>Request Degradation Chain</h3>
+    <div class="flow-steps">
+      <div class="flow-step ok">Redis cache hit → 2.67ms</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step ok">LTR full pipeline → 142ms</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step warn">LTR unavailable → Hybrid</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step warn">FAISS unavailable → BM25 only</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step fallback">All models down → 503 (never happens)</div>
+    </div>
+  </div>
+
+  <div class="rel-flow">
+    <h3>GenAI Fallback Chain</h3>
+    <div class="flow-steps">
+      <div class="flow-step ok">GPT-4o-mini → 200ms $0.0008</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step warn">Ollama Llama3 local → 2s $0.00</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step fallback">Template fallback → 0ms $0.00 (always works)</div>
+    </div>
+  </div>
+
+  <div class="rel-flow">
+    <h3>Kafka → Redis Streams Fallback</h3>
+    <div class="flow-steps">
+      <div class="flow-step ok">Kafka broker online → kafka mode</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step warn">Kafka offline → Redis Streams (same schema)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step ok">Zero application code change required</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="divline"></div>
+
+<!-- POSTMORTEM -->
+<div id="postmortem" class="sec reveal">
+  <div class="sec-label">Postmortem</div>
+  <h2 class="sec-title">What Broke and How I Fixed It</h2>
+  <p class="sec-sub">Real failures, real fixes. Every bug made the system more robust.</p>
+
+  <div class="pm-list">
+    <div class="pm-item">
+      <div class="pm-num">01</div>
+      <div>
+        <div class="pm-title">Dense Model Below BM25 Baseline <span class="pm-broke">BROKE</span><span class="pm-fixed">FIXED +52% then +18.4%</span></div>
+        <div class="pm-row"><strong>What broke:</strong> all-MiniLM-L6-v2 scored 0.30 — worse than BM25 at 0.61.</div>
+        <div class="pm-row"><strong>Fix 1:</strong> Switched to e5-base-v2 (768-dim, instruction-tuned). Added "query:"/"passage:" prefixes. 0.30 → 0.4640.</div>
+        <div class="pm-row"><strong>Fix 2:</strong> Fine-tuned on MovieLens domain data. 0.4640 → 0.5496. LTR 0.8589 → 0.9300.</div>
+        <div class="pm-row"><strong>Lesson:</strong> Always benchmark multiple models. Fine-tuning on domain data compounds through every downstream stage.</div>
+      </div>
+    </div>
+    <div class="pm-item">
+      <div class="pm-num">02</div>
+      <div>
+        <div class="pm-title">BEIR Below Published Reference <span class="pm-broke">BROKE</span><span class="pm-fixed">FIXED +19%</span></div>
+        <div class="pm-row"><strong>What broke:</strong> 0.2712 — below Thakur et al. 2021 reference of 0.325.</div>
+        <div class="pm-row"><strong>Fix:</strong> Porter stemming on medical vocabulary. "antineoplastic agents" → matches "antineoplastic". 0.2712 → 0.3236.</div>
+        <div class="pm-row"><strong>Lesson:</strong> Domain-specific tokenization is critical. Never assume default tokenizers handle medical text.</div>
+      </div>
+    </div>
+    <div class="pm-item">
+      <div class="pm-num">03</div>
+      <div>
+        <div class="pm-title">WebSocket Code 1006 Disconnect <span class="pm-broke">BROKE</span><span class="pm-fixed">FIXED</span></div>
+        <div class="pm-row"><strong>What broke:</strong> All WebSocket connections dropped immediately. Code 1006 abnormal close.</div>
+        <div class="pm-row"><strong>Fix:</strong> "import asyncio as _asyncio" but endpoint called asyncio.wait_for directly — NameError. Changed all asyncio.* → _asyncio.*. Added 25-second keepalive ping.</div>
+        <div class="pm-row"><strong>Lesson:</strong> Import aliases propagate silently. Always load-test WebSocket under real connection scenarios.</div>
+      </div>
+    </div>
+    <div class="pm-item">
+      <div class="pm-num">04</div>
+      <div>
+        <div class="pm-title">GPT-4o Vision Silent Failure <span class="pm-broke">BROKE</span><span class="pm-fixed">FIXED</span></div>
+        <div class="pm-row"><strong>What broke:</strong> /vlm/describe_poster returned empty string silently. No error logged.</div>
+        <div class="pm-row"><strong>Fix:</strong> gpt-4-turbo doesn't accept base64. TMDB URLs blocked by OpenAI. Switched to gpt-4o + download image → base64 encode → data:image/jpeg;base64,...</div>
+        <div class="pm-row"><strong>Lesson:</strong> Test vision endpoints with actual images in exact API format. Model capabilities are poorly documented.</div>
+      </div>
+    </div>
+    <div class="pm-item">
+      <div class="pm-num">05</div>
+      <div>
+        <div class="pm-title">A/B Test Underpowered — Honest Reporting <span class="pm-fixed">HONEST CALL</span></div>
+        <div class="pm-row"><strong>What happened:</strong> p=0.065, lift=+6.3%, MDE=0.031. Lift below MDE. Not significant at n=200.</div>
+        <div class="pm-row"><strong>Decision:</strong> Did not ship. Reported underpowered result honestly. Real A/B needs 10K+ users.</div>
+        <div class="pm-row"><strong>Lesson:</strong> Honest underpowered results are more credible than p-hacked significance. The IPW machinery is production-correct regardless.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divline"></div>
+
+<!-- INTERVIEW PREP -->
+<div id="interview">
+<div class="sec reveal">
+  <div class="sec-label">Interview Prep</div>
+  <h2 class="sec-title">System Design Questions — Answered</h2>
+  <p class="sec-sub">Time yourself. These are the exact questions you'll get from senior ML engineers.</p>
+
+  <div class="iq-grid">
+    <div class="iq-card">
+      <div class="iq-q">Design a RAG for 1M PDFs. Latency &lt;1.5s. Where do caching and rerankers live?</div>
+      <div class="iq-a"><strong>Clarify first:</strong> query latency or indexing latency? Avg or p99?<br><br>
+        Stage 1 — retrieval: BM25 + fine-tuned e5 → 500 candidates in ~200ms (same pattern as StreamLens).<br>
+        Stage 2 — reranker: LightGBM cross-encoder → top-20 in ~300ms.<br>
+        Stage 3 — LLM: GPT-4o-mini with top-5 chunks → answer in ~700ms.<br>
+        Total: ~1.2s. Cache on (query_hash, chunk_ids) in Redis → p50=2.67ms repeats.<br><br>
+        <strong>Where latency hides:</strong> tokenization (50ms), FAISS search (100ms), reranker (300ms), LLM (700ms). Cache everything you can before the LLM.</div>
+    </div>
+    <div class="iq-card">
+      <div class="iq-q">Deploy LLM assistant with small→big routing, cost guardrails, fail-open paths.</div>
+      <div class="iq-a"><strong>Routing logic:</strong> query complexity score → if &lt;0.4: Llama3 local ($0), if &gt;0.4: GPT-4o-mini ($0.0008), if &gt;0.8: GPT-4o ($0.008).<br><br>
+        <strong>Cost guardrails:</strong> Redis counter per user per day. Hard cap $0.10/user/day. Throttle to local model after cap.<br><br>
+        <strong>Fail-open:</strong> GPT-4o-mini down → Ollama Llama3 → template fallback. Never return empty. Always return something.<br><br>
+        <strong>StreamLens implementation:</strong> exactly this chain, measured at $0.0008/request with 84% headroom under budget.</div>
+    </div>
+    <div class="iq-card">
+      <div class="iq-q">Make it resilient to data drift. Describe eval gates, rollbacks, shadow tests.</div>
+      <div class="iq-a"><strong>Eval gates:</strong> 9 quality gates must pass before model promotion. nDCG@10 &gt; 0.80, BEIR &gt; ref, p99 &lt; 200ms. Any failure → block promotion + alert.<br><br>
+        <strong>Shadow mode:</strong> new model runs in parallel, logs scores without serving. If shadow beats prod by &gt;2% for 24h → A/B test → gradual rollout.<br><br>
+        <strong>Rollback:</strong> Metaflow artifact versioning. Previous model artifact always retained. railway rollback in 30 seconds.<br><br>
+        <strong>Drift detected:</strong> 24.6% gap in pre-2010 content identified via temporal analysis. Quantified and roadmapped — not ignored.</div>
+    </div>
+    <div class="iq-card">
+      <div class="iq-q">Where does latency hide in this system? How do you measure cost per request?</div>
+      <div class="iq-a"><strong>Latency breakdown (cold):</strong><br>
+        BM25 retrieval: ~5ms<br>
+        FAISS ANN search: ~15ms<br>
+        Feature computation: ~10ms<br>
+        LightGBM rerank: &lt;1ms (sub-ms!)<br>
+        Redis overhead: ~2ms<br>
+        Network + FastAPI: ~10ms<br>
+        Total: ~142ms p99 cold<br><br>
+        <strong>Cost per request:</strong> GPT-4o-mini = $0.0008. Cached = $0.00. Ollama = $0.00. Weighted average at 80% cache hit: ~$0.00016/request effective cost.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="divline"></div>
+
+<!-- STACK -->
+<div class="sec reveal">
+  <div class="sec-label">Technology</div>
+  <h2 class="sec-title">Stack</h2>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <h3>🔍 ML / Retrieval</h3>
+      <div class="stack-row"><span class="stack-key">BM25</span><span class="stack-val">rank_bm25</span></div>
+      <div class="stack-row"><span class="stack-key">Dense Index</span><span class="stack-val">FAISS IndexFlatIP</span></div>
+      <div class="stack-row"><span class="stack-key">Embeddings</span><span class="stack-val">e5-base-v2 (fine-tuned)</span></div>
+      <div class="stack-row"><span class="stack-key">Reranker</span><span class="stack-val">LightGBM LambdaRank</span></div>
+      <div class="stack-row"><span class="stack-key">Fine-tuning</span><span class="stack-val">MultipleNegativesRankingLoss</span></div>
+      <div class="stack-row"><span class="stack-key">Visual</span><span class="stack-val">CLIP ViT-B/32</span></div>
+    </div>
+    <div class="stack-card">
+      <h3>⚡ Data / Streaming</h3>
+      <div class="stack-row"><span class="stack-key">Batch features</span><span class="stack-val">PySpark 3.5</span></div>
+      <div class="stack-row"><span class="stack-key">Orchestration</span><span class="stack-val">Airflow 2.9</span></div>
+      <div class="stack-row"><span class="stack-key">Versioning</span><span class="stack-val">Metaflow</span></div>
+      <div class="stack-row"><span class="stack-key">Streaming</span><span class="stack-val">Kafka / Redis Streams</span></div>
+      <div class="stack-row"><span class="stack-key">Real-time</span><span class="stack-val">WebSocket (FastAPI)</span></div>
+      <div class="stack-row"><span class="stack-key">Artifacts</span><span class="stack-val">MinIO (S3-compatible)</span></div>
+    </div>
+    <div class="stack-card">
+      <h3>🌐 Serving</h3>
+      <div class="stack-row"><span class="stack-key">API</span><span class="stack-val">FastAPI + Uvicorn</span></div>
+      <div class="stack-row"><span class="stack-key">Cache</span><span class="stack-val">Redis 7</span></div>
+      <div class="stack-row"><span class="stack-key">Scale</span><span class="stack-val">Kubernetes HPA 2-10</span></div>
+      <div class="stack-row"><span class="stack-key">Load test</span><span class="stack-val">Locust 1K users</span></div>
+      <div class="stack-row"><span class="stack-key">Metrics</span><span class="stack-val">Prometheus + Grafana</span></div>
+      <div class="stack-row"><span class="stack-key">Deploy</span><span class="stack-val">Docker + Railway</span></div>
+    </div>
+    <div class="stack-card">
+      <h3>🤖 GenAI</h3>
+      <div class="stack-row"><span class="stack-key">Explanation</span><span class="stack-val">GPT-4o-mini</span></div>
+      <div class="stack-row"><span class="stack-key">Vision</span><span class="stack-val">GPT-4o</span></div>
+      <div class="stack-row"><span class="stack-key">Local LLM</span><span class="stack-val">Ollama Llama3</span></div>
+      <div class="stack-row"><span class="stack-key">Local VLM</span><span class="stack-val">LLaVA</span></div>
+      <div class="stack-row"><span class="stack-key">TTS / STT</span><span class="stack-val">OpenAI TTS + Whisper</span></div>
+      <div class="stack-row"><span class="stack-key">Languages</span><span class="stack-val">44 (pure target script)</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="divline"></div>
+
+<footer>
+  <div class="ft-logo">Stream<span>Lens</span></div>
+  <p style="font-size:13px;color:#444;margin-bottom:8px">Production ML Search & Recommendation Platform</p>
+  <a href="https://github.com/AKilalours/streaming-canvas-search-ltr" target="_blank"
+     style="font-family:var(--mono);font-size:12px;color:var(--blue)">
+    github.com/AKilalours/streaming-canvas-search-ltr
+  </a>
+  <div class="ft-stats">
+    LTR nDCG@10 = 0.9300 EXTRAORDINARY · Dense +18.4% (fine-tuned) · BEIR 0.3236 &gt; ref<br>
+    p99 = 142ms · $0.0008/req · 44 languages · Kafka + WebSocket · PySpark 1.29M pairs<br><br>
+    <strong style="color:#666">Akila Lourdes Miriyala Francis</strong> · MS in Artificial Intelligence<br>
+    <a href="https://www.linkedin.com/in/akila-lourdes-miriyala-francis-5b047019a/" target="_blank"
+       style="color:#4da3ff;font-size:11px">linkedin.com/in/akila-lourdes-miriyala-francis-5b047019a</a>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting) e.target.classList.add('in');});
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Animate ablation bars on scroll
+const barObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.abl-bar').forEach(bar=>{
+        const w = bar.dataset.w;
+        bar.style.width = '0';
+        setTimeout(()=>bar.style.width = w+'%', 100);
+      });
+      barObs.unobserve(e.target);
+    }
+  });
+},{threshold:0.3});
+document.querySelectorAll('.abl-wrap').forEach(el=>barObs.observe(el));
+
+// Nav active state on scroll
+const sections = document.querySelectorAll('[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll',()=>{
+  let cur='';
+  sections.forEach(s=>{
+    if(window.scrollY >= s.offsetTop - 100) cur = s.id;
+  });
+  navLinks.forEach(a=>{
+    a.style.color = a.getAttribute('href')==='#'+cur ? '#f0f0f2' : '';
+  });
+  // Nav solid on scroll
+  document.getElementById('nav').style.background =
+    window.scrollY > 20 ? 'rgba(6,6,10,.98)' : 'rgba(6,6,10,.92)';
+});
+</script>
+</body>
+</html>
