@@ -58,6 +58,74 @@ try:
     RATE_LIMITING_AVAILABLE = True
 except Exception:
     RATE_LIMITING_AVAILABLE = False
+
+# ── New ML Integrations ─────────────────────────────────────────────────────
+try:
+    from retrieval.cross_encoder import rerank_cross_encoder as _ce_rerank
+    _CE_AVAILABLE = True
+except Exception:
+    _ce_rerank = None
+    _CE_AVAILABLE = False
+
+try:
+    from retrieval.ner_query_understanding import (
+        extract_entities as _ner_extract,
+        entity_boost_scores as _ner_boost,
+    )
+    _NER_AVAILABLE = True
+except Exception:
+    _ner_extract = None
+    _ner_boost = None
+    _NER_AVAILABLE = False
+
+try:
+    from ranking.calibration import calibrate as _calibrate
+    _CALIB_AVAILABLE = True
+except Exception:
+    _calibrate = None
+    _CALIB_AVAILABLE = False
+
+try:
+    from retrieval.query_expansion import expand_query as _expand_query
+    _QE_AVAILABLE = True
+except Exception:
+    _expand_query = None
+    _QE_AVAILABLE = False
+
+try:
+    from app.bandit import thompson_sample as _thompson_sample
+    _THOMPSON_AVAILABLE = True
+except Exception:
+    _thompson_sample = None
+    _THOMPSON_AVAILABLE = False
+
+def _build_entity_indexes() -> tuple:
+    genres_idx: dict = {}
+    actors_idx: dict = {}
+    try:
+        import re as _re, json as _j, os as _os
+        cp = "data/processed/movielens/test/corpus.jsonl"
+        if _os.path.exists(cp):
+            with open(cp) as _f:
+                for _line in _f:
+                    _doc = _j.loads(_line)
+                    _did = _doc["doc_id"]
+                    _text = _doc.get("text", "")
+                    _gm = _re.search(r'Genres?:\s*([^|]+)', _text)
+                    if _gm:
+                        for _g in _gm.group(1).split(","):
+                            genres_idx.setdefault(_g.strip().lower(), []).append(_did)
+                    _tm = _re.search(r'Tags?:\s*([^|]+)', _text)
+                    if _tm:
+                        for _t in _tm.group(1).split(","):
+                            if _t.strip():
+                                actors_idx.setdefault(_t.strip().lower(), []).append(_did)
+    except Exception:
+        pass
+    return genres_idx, actors_idx
+
+_GENRES_IDX, _ACTORS_IDX = _build_entity_indexes()
+# ────────────────────────────────────────────────────────────────────────────
 from app.schemas import (
     AnswerRequest,
     AnswerResponse,
@@ -472,6 +540,17 @@ def _search_core(
 
     language = language or _infer_lang_from_query(query)
 
+    # ── Query Expansion ──────────────────────────────────────────────────────
+    _original_query = query
+    if _QE_AVAILABLE and _expand_query is not None and len(query.split()) <= 4:
+        try:
+            _expanded = _expand_query(query)
+            if _expanded and _expanded != query:
+                query = _expanded
+        except Exception:
+            pass
+    # ─────────────────────────────────────────────────────────────────────────
+
     t0 = _now_ms()
     timings: dict[str, float] = {}
 
@@ -500,6 +579,19 @@ def _search_core(
         merged = hybrid_merge(bm25_hits, dense_hits, alpha=alpha)
         timings["merge_ms"] = _now_ms() - a
 
+    # ── NER Entity Boost ─────────────────────────────────────────────────────
+    if _NER_AVAILABLE and _ner_extract is not None and merged:
+        try:
+            _entities = _ner_extract(
+                _original_query if "_original_query" in dir() else query
+            )
+            if _entities.has_entities():
+                _md = [{"doc_id": d, "score": s} for d, s in merged]
+                _md = _ner_boost(_entities, _md, _GENRES_IDX, _ACTORS_IDX)
+                merged = [(m["doc_id"], m["score"]) for m in _md]
+        except Exception:
+            pass
+    # ─────────────────────────────────────────────────────────────────────────
     merged = _filter_lang(merged, language)
 
     score_break_bm25 = {d: float(s) for d, s in bm25_hits}
@@ -536,12 +628,48 @@ def _search_core(
             tail = [(d, s) for d, s in merged if d not in reranked_ids]
             final = (reranked + tail)[:k]
 
+    # ── Cross-Encoder Stage 3 Reranker ──────────────────────────────────────
+    if method == "hybrid_ltr" and _CE_AVAILABLE and _ce_rerank is not None and len(final) > 1:
+        try:
+            _a = _now_ms()
+            _ce_items = [
+                {
+                    "doc_id": d, "score": s,
+                    "title": st.corpus.get(str(d), {}).get("title", ""),
+                    "text":  st.corpus.get(str(d), {}).get("text", "")[:300],
+                }
+                for d, s in final
+            ]
+            _ce_out = _ce_rerank(
+                query=_original_query if "_original_query" in dir() else query,
+                items=_ce_items, top_k=min(20, len(_ce_items)), enabled=True,
+            )
+            if _ce_out:
+                final = [(r["doc_id"], r.get("combined_score", r.get("score", 0.0)))
+                         for r in _ce_out]
+                timings["ce_ms"] = round(_now_ms() - _a, 1)
+        except Exception:
+            pass  # fail open
+    # ─────────────────────────────────────────────────────────────────────────
+
     # context-aware bias (device/network)
     final = _apply_context_bias(final, st.corpus, device_type, network_speed)[:k]
 
     # personalization boost (user_id)
     final, overlaps = _apply_personalization(final, st.corpus, user_id)
     final = final[:k]
+
+    # ── Thompson Sampling Bandit ──────────────────────────────────────────────
+    if _THOMPSON_AVAILABLE and _thompson_sample is not None and user_id:
+        try:
+            _ts_items = [{"doc_id": d, "score": s} for d, s in final]
+            _ts_out = _thompson_sample(user_id, _ts_items)
+            if _ts_out:
+                final = [(r["doc_id"], r.get("combined_score", r.get("score", 0.0)))
+                         for r in _ts_out]
+        except Exception:
+            pass
+    # ─────────────────────────────────────────────────────────────────────────
 
     # ── Phase 3: Diversity reranking (serendipity / anti-silo) ───────────────
     _exploration_cfg = CFG.get("exploration", {})
@@ -565,7 +693,18 @@ def _search_core(
                 "bm25": float(score_break_bm25.get(did, 0.0)),
                 "dense": float(score_break_dense.get(did, 0.0)),
                 "personalization_overlap": float(overlaps.get(str(did), 0.0)),
+                "calibrated_relevance": _cal_prob,
+                "ce_active": _CE_AVAILABLE,
+                "thompson_active": _THOMPSON_AVAILABLE,
             }
+        # ── Platt Calibration ───────────────────────────────────────────────
+        _cal_prob = None
+        if _CALIB_AVAILABLE and _calibrate is not None:
+            try:
+                _cal_prob = round(float(_calibrate([float(score)])[0]), 3)
+            except Exception:
+                pass
+        # ─────────────────────────────────────────────────────────────────────
         lang_tag = _lang_for_doc_id(str(did))
         hits.append(
             SearchHit(
@@ -798,6 +937,11 @@ def health() -> dict[str, Any]:
         "ltr_path": (str(st.ltr_path) if (st and getattr(st, "ltr_path", None)) else ""),
         "redis_enabled": bool(c.ok()),
         "prometheus_enabled": PROM_AVAILABLE,
+        "cross_encoder_active": _CE_AVAILABLE,
+        "ner_active": _NER_AVAILABLE,
+        "calibration_active": _CALIB_AVAILABLE,
+        "query_expansion_active": _QE_AVAILABLE,
+        "thompson_sampling_active": _THOMPSON_AVAILABLE,
         "config": CFG,
         "users_loaded": list(USERS.keys())[:20],
     }
