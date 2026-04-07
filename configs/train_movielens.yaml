@@ -5,31 +5,33 @@ train:
   qrels_split: train
 
   bm25_artifact: artifacts/bm25/movielens_bm25.pkl
-  emb_dir: artifacts/faiss/movielens_sentence-transformers_all-MiniLM-L6-v2
-  embed_model: sentence-transformers/all-MiniLM-L6-v2
+  emb_dir: artifacts/faiss/movielens_ft_e5
+  embed_model: artifacts/faiss/movielens_ft_e5
 
-  bm25_candidate_k: 200
+  bm25_candidate_k: 2000
   dense_candidate_k: 200
-  alpha: 0.5
+  alpha: 0.2
   train_feature_k: 200
   min_relevance: 1
 
-  random_seed: 7
+  random_seed: 42
   val_frac: 0.15
 
 lightgbm:
   objective: lambdarank
-  n_estimators: 250
+  n_estimators: 1000
   learning_rate: 0.05
-  num_leaves: 63
-  min_child_samples: 20
+  num_leaves: 127
+  min_child_samples: 10
   subsample: 0.8
   colsample_bytree: 0.8
-  random_state: 7
+  reg_alpha: 0.1
+  reg_lambda: 0.1
+  random_state: 42
   n_jobs: -1
   eval_at: [10]
 
 artifacts:
   ltr_dir: artifacts/ltr
-  model_name: movielens_ltr.pkl
-  meta_name: movielens_ltr_meta.json
+  model_name: movielens_ltr_tuned.pkl
+  meta_name: movielens_ltr_tuned_meta.json

@@ -37,5 +37,5 @@ methods:
     rerank_k: 200
     model_name: artifacts/faiss/movielens_ft_e5
     emb_dir: artifacts/faiss/movielens_ft_e5
-    ltr_model_path: artifacts/ltr/movielens_ltr_e5base.pkl
+    ltr_model_path: artifacts/ltr/movielens_ltr_tuned.pkl
     corpus_split_for_features: train

@@ -6,7 +6,7 @@ dataset:
   artifacts:
     bm25: artifacts/bm25/movielens_bm25.pkl
     dense_dir_glob: artifacts/faiss/movielens_ft_e5*
-    ltr: artifacts/ltr/movielens_ltr_e5base.pkl
+    ltr: artifacts/ltr/movielens_ltr_tuned.pkl
 
 retrieval:
   alpha: 0.2
