@@ -329,3 +329,14 @@ eval_full_v2:
 
 eval_quick:
 	curl -s "http://localhost:8000/eval/comprehensive" | python3 -m json.tool
+tune_ltr:
+	python tune_lambdarank.py
+
+als:
+	python als_collaborative_filtering.py
+
+fix_drift:
+	python temporal_drift_fix.py
+
+improve_all:
+	bash run_all_improvements.sh
