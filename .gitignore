@@ -50,3 +50,23 @@ src/app/deps.py.bak*
 *.so
 .venv/
 venv/
+# Virtual environments
+.streamlens_env/
+.venv/
+venv/
+env/
+
+# Large ML binaries - use git-lfs or exclude
+artifacts/svd/user_embeddings.npy
+data/raw/movielens/ml-latest/
+data/raw/movielens/ml-latest.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.dylib
+*.so
+
+# OS
+.DS_Store
