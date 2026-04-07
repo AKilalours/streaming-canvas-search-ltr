@@ -1,0 +1,2 @@
+[MFLOG|0|2026-04-07T02:29:35.543281Z|runtime|9e6cbf3d-d3dd-42f1-99ae-14280124dfdb]Training LambdaRank: leaves=127, trees=1000
+[MFLOG|0|2026-04-07T02:30:52.067977Z|runtime|8acbd606-c7fc-4765-80cd-da67d241d62f]✅ LTR trained: nDCG@10 = 0.0000

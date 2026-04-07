@@ -1,0 +1,4 @@
+[MFLOG|0|2026-04-07T02:29:05.240237Z|runtime|e038d577-95f9-4eca-beaf-751bdae4ce6f]Building BM25 index...
+[MFLOG|0|2026-04-07T02:29:05.384840Z|runtime|d1549d0c-2cbf-4707-be9f-0bc51cd50a48]BM25 built: 9742 docs
+[MFLOG|0|2026-04-07T02:29:06.091299Z|runtime|e9cff96f-0f6e-44c1-9048-abbbd3b9acb1]
+[MFLOG|0|2026-04-07T02:29:06.091480Z|runtime|0da9b258-c4cd-459c-ba57-6658132c3992]✅ BM25 index built

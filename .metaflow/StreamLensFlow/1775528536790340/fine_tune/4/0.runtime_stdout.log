@@ -1,0 +1,3 @@
+[MFLOG|0|2026-04-07T02:22:45.770542Z|runtime|5063d2cd-3ca3-4d39-8e9c-30157c31cbc7]✅ Fine-tuning complete:
+[MFLOG|0|2026-04-07T02:22:46.483334Z|runtime|86c0887f-8b2c-44f0-a1ae-ad39864efe15]   Spearman: 0.5853 → 0.7159
+[MFLOG|0|2026-04-07T02:22:46.483440Z|runtime|a0274c39-0dab-4483-9015-991106ccf4a7]   Improvement: +0.1306

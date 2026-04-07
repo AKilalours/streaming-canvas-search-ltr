@@ -1,0 +1,1 @@
+{"flow_id": "StreamLensFlow", "run_number": "1775528726328204", "step_name": "data_validation", "task_id": "2", "field_name": "ds-root", "type": "ds-root", "value": "/Users/akilalourdes/streaming-canvas-search-ltr/.metaflow", "tags": ["attempt_id:0"], "user_name": "akilalourdes", "ts_epoch": 1775528727749}

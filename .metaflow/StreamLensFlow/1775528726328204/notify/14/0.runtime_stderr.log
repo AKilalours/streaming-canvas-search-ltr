@@ -1,0 +1,40 @@
+[MFLOG|0|2026-04-07T02:27:42.345300Z|runtime|b156b62f-0569-45e1-bfee-f4ec1e7589b0]<flow StreamLensFlow step notify> failed:
+[MFLOG|0|2026-04-07T02:27:42.349958Z|runtime|5fef5ed0-1b4e-47c0-9e6c-8d203b0dde94]    Internal error
+[MFLOG|0|2026-04-07T02:27:42.352244Z|runtime|a2900ad7-6352-4481-a548-040eda225b21]Traceback (most recent call last):
+[MFLOG|0|2026-04-07T02:27:42.352309Z|runtime|efca1a90-c11f-4ca5-bcff-e239b2a220e0]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-04-07T02:27:42.352346Z|runtime|99448a7e-f146-4361-8dc0-46074568b802]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-04-07T02:27:42.352373Z|runtime|2243067a-2116-4923-97b3-3ab9d1869eb2]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-04-07T02:27:42.352394Z|runtime|e6c8d4be-e29e-44ed-a067-c05d15cd6515]    return self.main(args, kwargs)
+[MFLOG|0|2026-04-07T02:27:42.370957Z|runtime|4986b46c-083b-4b6f-9e08-22400ad4c3b1]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371092Z|runtime|f8ccd6a7-f05d-411e-aa39-07e76912c692]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-04-07T02:27:42.371131Z|runtime|5dc104ff-eb1e-4292-ba7a-84d42677e31e]    rv = self.invoke(ctx)
+[MFLOG|0|2026-04-07T02:27:42.371157Z|runtime|4f04e527-7270-45b3-8179-0faafc906869]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371173Z|runtime|3bbb5ca9-fa5b-4852-9515-7180f5186eba]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-04-07T02:27:42.371189Z|runtime|990ffeee-78dd-4e07-adbe-aaed17314441]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-04-07T02:27:42.371205Z|runtime|87e5f013-5212-4363-a8bc-cf2153b51ee9]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371220Z|runtime|2504065b-ea14-4f02-9a4c-8896a613c873]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-04-07T02:27:42.371239Z|runtime|f26b188b-9968-4ce0-85e1-e727b5587647]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-04-07T02:27:42.371254Z|runtime|2d5ec43f-229e-4133-9f84-b2044e07f8e8]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371273Z|runtime|6d1889f7-fa0a-4f74-b5c8-3ee20b4290bc]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-04-07T02:27:42.371288Z|runtime|31c8548f-ae5f-483f-aff3-9d22e7a4ce27]    return callback(args, kwargs)
+[MFLOG|0|2026-04-07T02:27:42.371307Z|runtime|b3710894-25be-4082-ab27-4733706f8e5c]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371324Z|runtime|fed5f0f4-d9c1-4482-9f97-346e7ee0af70]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-04-07T02:27:42.371341Z|runtime|544dbc77-974f-40f1-868a-09f39f3bda07]    return func(args, kwargs)
+[MFLOG|0|2026-04-07T02:27:42.371358Z|runtime|482d587e-06c9-4021-a349-0d1a6e84db9e]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371373Z|runtime|6d1a0d31-2be9-40b7-a62a-fe7fccc65b92]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-04-07T02:27:42.371390Z|runtime|cb013be0-ed9e-4d95-9eff-0611373dceeb]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-04-07T02:27:42.371972Z|runtime|9111c02d-2c74-43d6-8aed-e456cb00c06a]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.371996Z|runtime|fb016574-a9a4-403a-876b-fb695edbf3b4]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-04-07T02:27:42.372011Z|runtime|dfbd0a6f-efd0-4b3f-ae6d-18eaf2271762]    task.run_step(
+[MFLOG|0|2026-04-07T02:27:42.372027Z|runtime|e05e7733-44f5-48d3-9e5c-dccbd9f7fc78]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-04-07T02:27:42.372045Z|runtime|5936282b-8053-44d8-9a8a-5b6c0f7c0686]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-04-07T02:27:42.372061Z|runtime|db23608f-c1ce-40d9-9ca2-02165bd3af0e]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-04-07T02:27:42.372076Z|runtime|f057ad62-db85-4a08-814d-95c00dfc9de6]    raise raised_exception
+[MFLOG|0|2026-04-07T02:27:42.372093Z|runtime|355fec48-6ecc-4e1f-a390-9fecc26080ac]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-04-07T02:27:42.372110Z|runtime|2b2cf480-10ef-4c79-9f14-08d456f07cf8]    step_function()
+[MFLOG|0|2026-04-07T02:27:42.372127Z|runtime|b18a519f-44cb-4515-98e7-f73175d59da4]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streamlens_flow.py", line 600, in notify
+[MFLOG|0|2026-04-07T02:27:42.372144Z|runtime|2b4cf822-6de6-446a-b1ba-2c15b5e17e47]    Duration:   {elapsed/60:.1f} minutes
+[MFLOG|0|2026-04-07T02:27:42.372160Z|runtime|7726d994-f034-4c68-8cfa-f9b68803c8fc]                 ^^^^^^^
+[MFLOG|0|2026-04-07T02:27:42.372175Z|runtime|b61df6c8-752f-4fc6-9bb0-5e04c8814ff6]NameError: name 'elapsed' is not defined
+[MFLOG|0|2026-04-07T02:27:42.372192Z|runtime|32698f61-d7eb-4de9-a008-b6ce12748e3f]
+[MFLOG|0|2026-04-07T02:27:42.372533Z|runtime|9cf97558-4260-4d2a-8810-5ca5cc540130]Task failed.

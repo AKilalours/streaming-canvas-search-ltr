@@ -1,0 +1,13 @@
+[MFLOG|0|2026-04-07T02:30:53.185309Z|runtime|863f5a71-185e-4146-8c5d-9d21a13b58b8]
+[MFLOG|0|2026-04-07T02:31:12.587422Z|runtime|1dac8e6a-6c6d-4c5c-85a9-093a20080cda]==================================================
+[MFLOG|0|2026-04-07T02:31:12.587576Z|runtime|bfac5183-f411-483c-aaa0-b15f42a9d12e]QUALITY GATE EVALUATION
+[MFLOG|0|2026-04-07T02:31:12.587712Z|runtime|55b4047d-92c0-4916-854c-5cb8b2107985]==================================================
+[MFLOG|0|2026-04-07T02:31:12.587752Z|runtime|7a97b0c1-7400-41b9-a37e-ce01e64d47f7]
+[MFLOG|0|2026-04-07T02:31:13.164481Z|runtime|61bb33ed-17b2-4637-bbb5-78556590a7de]Gate                         Value  Threshold   Status
+[MFLOG|0|2026-04-07T02:31:13.164590Z|runtime|f4f601c9-39b5-495b-9005-bc31a6e09c75]-------------------------------------------------------
+[MFLOG|0|2026-04-07T02:31:13.164623Z|runtime|34d907c3-df65-45a7-a195-f33a1b9cf37a]  LTR nDCG@10               0.9499     0.8000   ✅ PASS
+[MFLOG|0|2026-04-07T02:31:13.164646Z|runtime|e7ef6f25-fc3d-4f99-9cf4-127d48dd6222]  Dense nDCG@10             0.5428     0.3500   ✅ PASS
+[MFLOG|0|2026-04-07T02:31:13.164670Z|runtime|60d0bb96-a4e0-481e-9f84-6a01fc028a29]  Fine-tune Spearman        0.8066     0.6500   ✅ PASS
+[MFLOG|0|2026-04-07T02:31:13.164696Z|runtime|1b244b92-ba89-4ce5-a14e-92682b5c2d27]
+[MFLOG|0|2026-04-07T02:31:13.164713Z|runtime|a51850b9-8a08-4aa6-b0f8-fcd1bb0fa617]=======================================================
+[MFLOG|0|2026-04-07T02:31:13.164729Z|runtime|2dee87d9-e68a-4721-b110-2d38b9ee4622]✅ ALL GATES PASSED — promoting model

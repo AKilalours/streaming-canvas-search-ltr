@@ -1,0 +1,22 @@
+[MFLOG|0|2026-04-07T02:31:16.012424Z|runtime|921ca9cf-c266-44a3-9450-96c15dfb5cf4]
+[MFLOG|0|2026-04-07T02:31:16.587040Z|runtime|8e00a102-f4d3-4131-8e51-990970a647c2]============================================================
+[MFLOG|0|2026-04-07T02:31:16.587155Z|runtime|6ed5c959-766c-4081-b765-a390475eb856]STREAMLENS PIPELINE COMPLETE
+[MFLOG|0|2026-04-07T02:31:16.587183Z|runtime|2c8fad63-57e5-45c0-8076-834f0f9d2370]============================================================
+[MFLOG|0|2026-04-07T02:31:16.587204Z|runtime|e9a072bf-89ea-47d4-956a-b62760a6c103]Run ID:     1775528943237195
+[MFLOG|0|2026-04-07T02:31:16.587231Z|runtime|cda0d454-3455-4411-bad8-8380787a79d3]Status:     ✅ SUCCESS
+[MFLOG|0|2026-04-07T02:31:16.587248Z|runtime|9e52a5b8-2ccc-4631-b6ed-44b4873b8d17]Duration:   see Metaflow run logs
+[MFLOG|0|2026-04-07T02:31:16.587267Z|runtime|5a26bed0-d05a-4ec9-877e-c239e653bfc7]Dataset:    movielens
+[MFLOG|0|2026-04-07T02:31:16.587283Z|runtime|24690b8c-d5ff-4c15-aeb8-7264e0129bdb]
+[MFLOG|0|2026-04-07T02:31:16.587348Z|runtime|90c319c8-df3b-4126-9007-edd5c6ad67af]RESULTS:
+[MFLOG|0|2026-04-07T02:31:16.587391Z|runtime|3c1a8a64-1490-4caf-8e26-8501d88467f9]  LTR nDCG@10:        0.9499
+[MFLOG|0|2026-04-07T02:31:16.587416Z|runtime|c082c222-3a59-4a38-b154-7a850d363c6b]  Dense nDCG@10:      0.5428
+[MFLOG|0|2026-04-07T02:31:16.587435Z|runtime|3a7e78e9-2871-47e9-b059-9636fd7bb582]  Fine-tune Spearman: 0.8066
+[MFLOG|0|2026-04-07T02:31:16.587452Z|runtime|b22e1e1e-7bdf-4033-9266-41b5a08ef5cd]  Co-watch pairs:     0
+[MFLOG|0|2026-04-07T02:31:16.587468Z|runtime|5c0eacbc-fab2-4581-b424-c2ebaa2ab68f]
+[MFLOG|0|2026-04-07T02:31:16.587485Z|runtime|527f8291-2ed6-4d88-91a8-78af77640a6f]GATES: ALL PASSED ✅
+[MFLOG|0|2026-04-07T02:31:16.587504Z|runtime|288043f5-7d8b-4cc0-afef-547934950d71]  ✅ ltr_ndcg10: 0.9499 (threshold: 0.8000)
+[MFLOG|0|2026-04-07T02:31:16.587525Z|runtime|0f2fd3cc-fb93-45fd-b8ae-5effffb31cff]  ✅ dense_ndcg10: 0.5428 (threshold: 0.3500)
+[MFLOG|0|2026-04-07T02:31:16.587543Z|runtime|d29f27c8-f04e-42a8-9927-b52d921265fe]  ✅ spearman_finetune: 0.8066 (threshold: 0.6500)
+[MFLOG|0|2026-04-07T02:31:16.587562Z|runtime|2edac24c-bd87-4213-87c3-224a45e9ffa0]
+[MFLOG|0|2026-04-07T02:31:16.587577Z|runtime|25d2914b-39e7-44b4-90ff-73e62307e09c]PROMOTED: artifacts/manifests/manifest_20260406_223115_1775528943237195.json
+[MFLOG|0|2026-04-07T02:31:16.587594Z|runtime|0d2ed9f3-1ef5-4cb8-8a6f-398f947f1e74]============================================================

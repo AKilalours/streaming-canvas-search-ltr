@@ -1,0 +1,8 @@
+[MFLOG|0|2026-04-07T02:27:39.772938Z|runtime|0bf94e68-3b9d-42a5-9ae2-8d86d6acb5bb]
+[MFLOG|0|2026-04-07T02:27:40.613829Z|runtime|11c31b5d-d906-497f-928b-c3c6a3880228]Shadow test: new model vs production model
+[MFLOG|0|2026-04-07T02:27:40.613927Z|runtime|aede48fe-1eca-4294-b234-08730ea4e339]  New model:  movielens_ltr_tuned.pkl (trees=1000)
+[MFLOG|0|2026-04-07T02:27:40.614151Z|runtime|c9a7c5d8-1fb8-4f5d-bf72-50c594473172]  Prod model: movielens_ltr_e5base.pkl (trees=500)
+[MFLOG|0|2026-04-07T02:27:40.614214Z|runtime|d17e48a3-4c4f-49e3-bced-834592e7076e]  New nDCG:   0.9483
+[MFLOG|0|2026-04-07T02:27:40.614249Z|runtime|e4304db1-3dbf-4073-b0f7-eaa18881b4d5]  Improvement: +0.0000
+[MFLOG|0|2026-04-07T02:27:40.614273Z|runtime|0cca4bb3-01b8-4d7d-a901-b6fd23307e47]
+[MFLOG|0|2026-04-07T02:27:41.237538Z|runtime|c1ca5202-48c3-4267-b77c-dbc4d4b28aef]  Promote to production: ✅ YES
