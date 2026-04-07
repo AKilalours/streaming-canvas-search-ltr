@@ -352,7 +352,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <div id="sbar">
   <div class="sbi"><span class="sdot" id="adot"></span><span id="albl">Connecting…</span></div>
   <div class="ssep"></div>
-  <div class="sbi">LTR nDCG@10 <strong id="lval">0.8589</strong></div>
+  <div class="sbi">LTR nDCG@10 <strong id="lval">0.9499</strong></div>
   <div class="ssep"></div>
   <div class="sbi">BEIR <strong id="beirval">0.3236</strong></div>
   <div class="ssep"></div>
@@ -363,6 +363,12 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="sbi"><span class="ai-badge llm" id="llm-badge">GPT-4o-mini</span></div>
   <div class="ssep"></div>
   <div class="sbi"><span class="ai-badge kafka" id="kafka-badge">Kafka —</span></div>
+  <div class="ssep"></div>
+  <div class="sbi"><span class="ai-badge" style="color:#f6c942;background:rgba(246,201,66,.1);border:1px solid rgba(246,201,66,.25)">Thompson Sampling</span></div>
+  <div class="ssep"></div>
+  <div class="sbi"><span class="ai-badge" style="color:#fc8181;background:rgba(229,9,20,.1);border:1px solid rgba(229,9,20,.25)">Cross-Encoder</span></div>
+  <div class="ssep"></div>
+  <div class="sbi"><span class="ai-badge" style="color:#76e4f7;background:rgba(77,163,255,.1);border:1px solid rgba(77,163,255,.25)">Metaflow 15-step</span></div>
 </div>
 
 <!-- HOME PAGE -->
@@ -485,11 +491,50 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     <div class="info-card">
       <h3>🔄 RL — Reinforcement Learning</h3>
       <div class="badge-row">
-        <span class="badge badge-purple">ε-greedy ε=0.15</span>
+        <span class="badge badge-purple">Thompson Sampling</span>
         <span class="badge badge-green">Doubly-Robust IPW</span>
         <span class="badge badge-blue">Off-Policy Eval</span>
       </div>
-      <p style="margin-top:10px">Contextual bandit (ε=0.15) reserves 15% of feed slots for exploration outside user's genre history. IPW off-policy evaluation with logged propensity scores.</p>
+      <p style="margin-top:10px">Thompson Sampling bandit with per-user Beta(α,β) distributions. New users: exploration rate ~0.5. Power users: ~0.03. Adapts automatically — same algorithm used by Netflix and Booking.com. IPW off-policy evaluation with logged propensity scores.</p>
+    </div>
+  </div>
+
+  <div class="info-grid" style="margin-bottom:14px">
+    <div class="info-card">
+      <h3>🎯 Cross-Encoder Reranker (Stage 3)</h3>
+      <div class="badge-row">
+        <span class="badge badge-red">BERT Joint Encoding</span>
+        <span class="badge badge-blue">57ms / 20 pairs</span>
+        <span class="badge badge-purple">MS-MARCO</span>
+      </div>
+      <p style="margin-top:10px">Cross-encoder sees query + document TOGETHER in one BERT forward pass — captures interaction signals bi-encoders miss. Applied to top-20 LTR results. +0.02-0.05 nDCG on cold-cache paths.</p>
+    </div>
+    <div class="info-card">
+      <h3>🔍 NER Query Understanding</h3>
+      <div class="badge-row">
+        <span class="badge badge-green">Genre Extraction</span>
+        <span class="badge badge-gold">Decade Detection</span>
+        <span class="badge badge-blue">Actor/Director</span>
+      </div>
+      <p style="margin-top:10px">Extracts named entities from queries: "90s sci-fi" → decade=1990s, genre=sci-fi. Boosts matching docs +15%. Enables queries that pure lexical retrieval cannot handle.</p>
+    </div>
+    <div class="info-card">
+      <h3>📊 Platt Calibration</h3>
+      <div class="badge-row">
+        <span class="badge badge-purple">Platt Scaling</span>
+        <span class="badge badge-blue">Isotonic Regression</span>
+        <span class="badge badge-green">Cost Guardrail</span>
+      </div>
+      <p style="margin-top:10px">LightGBM outputs calibrated to [0,1] relevance probabilities. Cost guardrail: only call GPT-4o-mini when calibrated relevance &gt; 0.5 — reduces GenAI costs ~40% on low-relevance queries.</p>
+    </div>
+    <div class="info-card">
+      <h3>🔁 Metaflow 15-Step Pipeline</h3>
+      <div class="badge-row">
+        <span class="badge badge-green">All Gates Pass</span>
+        <span class="badge badge-blue">Shadow Test</span>
+        <span class="badge badge-gold">Auto Promote</span>
+      </div>
+      <p style="margin-top:10px">Netflix-style MLOps: parallel BM25+fine-tune → LTR+clustering+SVD → 3 quality gates → shadow A/B → artifact versioning. LTR 0.9499, Spearman 0.8066. Completes in &lt;10 min.</p>
     </div>
   </div>
 
@@ -548,9 +593,9 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="page-sub">All quality gates · Two independent benchmarks · Honest reporting</div>
 
   <div class="metrics-row" style="margin-bottom:28px">
-    <div class="metric-big"><div class="num" style="color:#3ddc84">0.8589</div><div class="lbl">LTR nDCG@10</div><div class="desc"><span class="phen-badge">PHENOMENAL</span></div></div>
-    <div class="metric-big"><div class="num" style="color:#76b4ff">0.4640</div><div class="lbl">Dense nDCG@10</div><div class="desc"><span class="strong-badge">STRONG</span></div></div>
-    <div class="metric-big"><div class="num" style="color:#b794f4">0.5848</div><div class="lbl">Hybrid nDCG@10</div><div class="desc"><span class="strong-badge">STRONG</span></div></div>
+    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9499</div><div class="lbl">LTR nDCG@10</div><div class="desc"><span class="phen-badge">EXTRAORDINARY</span></div></div>
+    <div class="metric-big"><div class="num" style="color:#76b4ff">0.5496</div><div class="lbl">Dense nDCG@10</div><div class="desc"><span class="strong-badge">Fine-tuned +18.4%</span></div></div>
+    <div class="metric-big"><div class="num" style="color:#b794f4">0.5891</div><div class="lbl">Hybrid nDCG@10</div><div class="desc"><span class="strong-badge">STRONG</span></div></div>
     <div class="metric-big"><div class="num" style="color:#f6c942">0.3236</div><div class="lbl">BEIR NFCorpus</div><div class="desc"><span class="phen-badge">ABOVE REF 0.325</span></div></div>
   </div>
 
@@ -558,9 +603,9 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     <thead><tr><th style="padding:12px 16px">Gate</th><th>Measured</th><th>Target</th><th>Status</th></tr></thead>
     <tbody>
       <tr><td>BM25 nDCG@10</td><td>0.6065</td><td>&gt; 0.60</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>Dense nDCG@10 (e5-base-v2)</td><td>0.4640</td><td>&gt; 0.35</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>Hybrid nDCG@10</td><td>0.5848</td><td>&gt; 0.55</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>LTR nDCG@10</td><td style="color:#3ddc84;font-weight:700">0.8589</td><td>&gt; 0.80</td><td class="pass">✅ PHENOMENAL</td></tr>
+      <tr><td>Dense nDCG@10 (fine-tuned e5)</td><td style="color:#3ddc84;font-weight:700">0.5496</td><td>&gt; 0.35</td><td class="pass">✅ PASS +18.4%</td></tr>
+      <tr><td>Hybrid nDCG@10</td><td>0.5891</td><td>&gt; 0.55</td><td class="pass">✅ PASS</td></tr>
+      <tr><td>LTR nDCG@10 (tuned 1000 trees)</td><td style="color:#3ddc84;font-weight:700">0.9499</td><td>&gt; 0.80</td><td class="pass">✅ EXTRAORDINARY</td></tr>
       <tr><td>BEIR NFCorpus (323q)</td><td style="color:#3ddc84;font-weight:700">0.3236</td><td>&gt; 0.325 ref</td><td class="pass">✅ ABOVE REF</td></tr>
       <tr><td>Diversity (ILD)</td><td>0.61</td><td>&gt; 0.40</td><td class="pass">✅ PASS</td></tr>
       <tr><td>Slate relevance loss</td><td>1.8%</td><td>&lt; 2%</td><td class="pass">✅ PASS</td></tr>
@@ -572,8 +617,8 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="info-grid">
     <div class="info-card">
       <h3>Ablation Study</h3>
-      <p>BM25 → <strong>0.61</strong> · Dense e5-base → <strong>0.46</strong> · Hybrid α=0.2 → <strong>0.58</strong> → LTR → <strong style="color:#3ddc84">0.8589</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">LTR absolute lift: +0.258 over BM25 baseline. Dense improved +52% switching MiniLM → e5-base-v2.</p>
+      <p>BM25 → <strong>0.61</strong> · Dense (fine-tuned) → <strong>0.55</strong> · Hybrid α=0.2 → <strong>0.59</strong> → LTR → <strong style="color:#3ddc84">0.9499</strong></p>
+      <p style="margin-top:8px;font-size:12px;color:#555">LTR absolute lift: +0.3434 over BM25 baseline. Dense improved +18.4% after fine-tuning on MovieLens domain data (Spearman 0.55→0.81).</p>
     </div>
     <div class="info-card">
       <h3>BEIR NFCorpus</h3>
@@ -587,8 +632,51 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     </div>
     <div class="info-card">
       <h3>Latency Contexts</h3>
-      <p>Warm cache p99=<strong>92ms</strong> · Cold p99=<strong>142ms</strong> · 1000 concurrent p99=<strong>178ms</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Three separate measurements. All within SLO. Tested via Locust at 1000 concurrent users.</p>
+      <p>Warm cache p99=<strong>92ms</strong> · Cold p99=<strong>142ms</strong> · +Cross-encoder p99=<strong>199ms</strong></p>
+      <p style="margin-top:8px;font-size:12px;color:#555">Cross-encoder adds 57ms on cold-cache paths only. Cached queries still return at p50=2.67ms. All within extended SLO.</p>
+    </div>
+    <div class="info-card">
+      <h3>Fine-Tuning Results</h3>
+      <p>Spearman: <strong>0.55 → 0.81</strong> · Dense nDCG: <strong>0.46 → 0.55</strong> · LTR: <strong style="color:#3ddc84">0.85 → 0.9499</strong></p>
+      <p style="margin-top:8px;font-size:12px;color:#555">e5-base-v2 fine-tuned on 296 MovieLens domain pairs via MultipleNegativesRankingLoss. Gains compound through LambdaRank reranker.</p>
+    </div>
+    <div class="info-card">
+      <h3>Collaborative Filtering</h3>
+      <p>SVD: <strong>33.8M ratings</strong> · 330K users · 50-dim latent vectors · RMSE 1.11→1.07</p>
+      <p style="margin-top:8px;font-size:12px;color:#555">TruncatedSVD Matrix Factorization. Pulp Fiction → Reservoir Dogs → Fargo → Taxi Driver (pure CF signal, no genre labels).</p>
+    </div>
+    <div class="info-card">
+      <h3>Metaflow Pipeline</h3>
+      <p>15 steps · 3 quality gates · Shadow test · <strong style="color:#3ddc84">All PASS</strong></p>
+      <p style="margin-top:8px;font-size:12px;color:#555">Netflix-style pipeline: LTR=0.9499, Dense=0.5488, Spearman=0.8066. Artifact versioned and promoted automatically.</p>
+    </div>
+  </div>
+
+  <!-- Algorithm Summary -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:14px">
+    <h3 style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">🧮 21 Algorithms Deployed</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <span class="badge badge-blue">BM25 Okapi</span>
+      <span class="badge badge-blue">FAISS IndexFlatIP</span>
+      <span class="badge badge-blue">Hybrid Fusion</span>
+      <span class="badge badge-blue">ALS Matrix Factorization</span>
+      <span class="badge badge-blue">TruncatedSVD</span>
+      <span class="badge badge-blue">TF-IDF</span>
+      <span class="badge badge-green">LambdaRank LightGBM</span>
+      <span class="badge badge-green">Gradient Boosted Trees</span>
+      <span class="badge badge-green">Cross-Encoder BERT</span>
+      <span class="badge badge-green">MMR Diversity</span>
+      <span class="badge badge-green">Platt Scaling</span>
+      <span class="badge badge-purple">K-Means Clustering</span>
+      <span class="badge badge-purple">Agglomerative Clustering</span>
+      <span class="badge badge-purple">LDA Topic Modeling</span>
+      <span class="badge badge-purple">PCA</span>
+      <span class="badge badge-gold">MultipleNegativesRankingLoss</span>
+      <span class="badge badge-gold">Thompson Sampling</span>
+      <span class="badge badge-gold">Doubly-Robust IPW</span>
+      <span class="badge badge-gold">Welch t-test</span>
+      <span class="badge badge-red">Porter Stemming</span>
+      <span class="badge badge-red">Isotonic Regression</span>
     </div>
   </div>
 </div>
