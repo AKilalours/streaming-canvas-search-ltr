@@ -1,0 +1,7 @@
+[MFLOG|0|2026-04-07T02:22:18.809238Z|runtime|8bd011f1-de50-4d8e-af9b-17c385b42f4f]Building BM25 index...
+[MFLOG|0|2026-04-07T02:22:18.827532Z|runtime|7e624479-7dea-49b7-a807-fb12a1d6b564]
+[MFLOG|0|2026-04-07T02:22:19.435914Z|runtime|f9709a80-fd48-474a-af13-010de5200e87]BM25 warning: Traceback (most recent call last):
+[MFLOG|0|2026-04-07T02:22:19.436056Z|runtime|912ae02c-0ad4-49e1-9afc-853b33431839]  File "<string>", line 5, in <module>
+[MFLOG|0|2026-04-07T02:22:19.436168Z|runtime|1ef41cf4-b89f-4d47-9fad-1beafe8ce330]ModuleNotFoundError: No module named 'rank_bm25'
+[MFLOG|0|2026-04-07T02:22:19.436276Z|runtime|435a6af9-2fe8-42ad-8be8-69cc2e51cf6a]
+[MFLOG|0|2026-04-07T02:22:19.436315Z|runtime|25dc6ba4-2873-4ba4-990c-399e391d1cf7]✅ BM25 index built

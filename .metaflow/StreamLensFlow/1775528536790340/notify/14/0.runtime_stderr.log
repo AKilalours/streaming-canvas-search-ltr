@@ -1,0 +1,42 @@
+[MFLOG|0|2026-04-07T02:24:26.371001Z|runtime|dba0d887-5b01-484b-a577-442b256f989e]<flow StreamLensFlow step notify> failed:
+[MFLOG|0|2026-04-07T02:24:26.375936Z|runtime|e446c875-9363-4ca9-846d-07dde9e78b38]    Internal error
+[MFLOG|0|2026-04-07T02:24:26.378149Z|runtime|f0326c58-0146-49ea-8100-0ede71a5bbf4]Traceback (most recent call last):
+[MFLOG|0|2026-04-07T02:24:26.378200Z|runtime|b19fcfcc-62db-4de2-8741-bede30b4a6b6]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli.py", line 727, in main
+[MFLOG|0|2026-04-07T02:24:26.378230Z|runtime|cfa145f9-afce-48b7-9d3d-ce3a07868bdf]    start(auto_envvar_prefix="METAFLOW", obj=state)
+[MFLOG|0|2026-04-07T02:24:26.378256Z|runtime|7b2170c6-4987-469d-826c-c6fec9396a60]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 829, in __call__
+[MFLOG|0|2026-04-07T02:24:26.378278Z|runtime|999276a9-1cd8-469b-a793-f36634d7fd94]    return self.main(args, kwargs)
+[MFLOG|0|2026-04-07T02:24:26.395316Z|runtime|0e228b79-243e-4df8-a5a2-452aeeb33324]           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395418Z|runtime|ffb74d1c-e9a0-43be-a41d-430cd7402af5]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 782, in main
+[MFLOG|0|2026-04-07T02:24:26.395443Z|runtime|c171489e-862f-4ff2-98e3-ec945c205533]    rv = self.invoke(ctx)
+[MFLOG|0|2026-04-07T02:24:26.395468Z|runtime|7e521e62-d6ee-4154-90f8-2933f1bcc8fc]         ^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395489Z|runtime|b9b890fd-fdfa-4483-b689-ced4e495eac0]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli_components/utils.py", line 69, in invoke
+[MFLOG|0|2026-04-07T02:24:26.395506Z|runtime|f189a2f3-3020-4149-b6ca-cfdd0713334f]    return _process_result(sub_ctx.command.invoke(sub_ctx))
+[MFLOG|0|2026-04-07T02:24:26.395521Z|runtime|ca0e6352-0731-4925-9c57-d85c395d9521]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395540Z|runtime|da30c772-bbd7-4410-9948-4b0c8144da1f]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 1066, in invoke
+[MFLOG|0|2026-04-07T02:24:26.395556Z|runtime|0c9217bb-11ec-42b9-a48e-0e0774735d82]    return ctx.invoke(self.callback, ctx.params)
+[MFLOG|0|2026-04-07T02:24:26.395573Z|runtime|d5342152-4b3f-4d15-b4d8-86a3712abe03]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395588Z|runtime|d851d8b6-71f0-4734-bffd-11e01fd37518]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/core.py", line 610, in invoke
+[MFLOG|0|2026-04-07T02:24:26.395602Z|runtime|54f08542-7a31-46c8-9bc3-3383269df90a]    return callback(args, kwargs)
+[MFLOG|0|2026-04-07T02:24:26.395616Z|runtime|5fc885e3-2591-4d47-9f82-0721896fb2dd]           ^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395630Z|runtime|8bb622fd-5b0f-4967-b4e9-8a5fd825e744]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/tracing/__init__.py", line 27, in wrapper_func
+[MFLOG|0|2026-04-07T02:24:26.395645Z|runtime|64a4e257-7107-4c6e-bcf5-a6a7a9604a17]    return func(args, kwargs)
+[MFLOG|0|2026-04-07T02:24:26.395659Z|runtime|beb67661-e297-4b69-8c36-a1fa3e834ff4]           ^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395673Z|runtime|d005794b-5e69-49db-b959-c3be01d2fc2b]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/_vendor/click/decorators.py", line 21, in new_func
+[MFLOG|0|2026-04-07T02:24:26.395687Z|runtime|64f647a8-1085-41a7-9679-e2251a0b16b5]    return f(get_current_context(), args, kwargs)
+[MFLOG|0|2026-04-07T02:24:26.395701Z|runtime|4bf6ae3b-01d5-4b8e-8d83-df76e094c4c7]           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395715Z|runtime|15e1dbd7-3191-403d-9281-1c4170d2f36c]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/cli_components/step_cmd.py", line 171, in step
+[MFLOG|0|2026-04-07T02:24:26.395729Z|runtime|12797d87-72a7-4f51-b30a-09333b1151e1]    task.run_step(
+[MFLOG|0|2026-04-07T02:24:26.395743Z|runtime|c38b4d47-e39a-443b-b733-5ee1e59aee3c]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 899, in run_step
+[MFLOG|0|2026-04-07T02:24:26.395757Z|runtime|ba6ed1f8-a864-4aba-b6ed-5ba668394998]    self._exec_step_function(step_func, orig_step_func)
+[MFLOG|0|2026-04-07T02:24:26.395771Z|runtime|6803babf-cd43-4adb-8241-5a555d7110b0]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 147, in _exec_step_function
+[MFLOG|0|2026-04-07T02:24:26.395785Z|runtime|264a92dd-d11a-4ba0-9372-ea345ebf97bb]    raise raised_exception
+[MFLOG|0|2026-04-07T02:24:26.395799Z|runtime|81f63584-9712-45df-b178-918a238a6040]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/task.py", line 113, in _exec_step_function
+[MFLOG|0|2026-04-07T02:24:26.395813Z|runtime|5040a55a-8c42-48f7-a743-e5f6375dcfed]    step_function()
+[MFLOG|0|2026-04-07T02:24:26.395828Z|runtime|23c374af-bd5c-4059-a934-dad07df6b978]  File "/Users/akilalourdes/streaming-canvas-search-ltr/flows/streamlens_flow.py", line 593, in notify
+[MFLOG|0|2026-04-07T02:24:26.395843Z|runtime|58155a09-71d5-4e2d-ae82-2ff6338ec14a]    elapsed = time.time() - self.start_time
+[MFLOG|0|2026-04-07T02:24:26.395859Z|runtime|a3c96a66-1422-4137-b3c8-b63b276edbd0]                            ^^^^^^^^^^^^^^^
+[MFLOG|0|2026-04-07T02:24:26.395873Z|runtime|ab62628e-72c5-4a06-8c7d-81f2b3700ebe]  File "/Users/akilalourdes/streaming-canvas-search-ltr/.streamlens_env/lib/python3.12/site-packages/metaflow/flowspec.py", line 599, in __getattr__
+[MFLOG|0|2026-04-07T02:24:26.395887Z|runtime|9bc7d0ab-f0af-472e-96db-dabce3e0477b]    raise AttributeError("Flow %s has no attribute '%s'" % (self.name, name))
+[MFLOG|0|2026-04-07T02:24:26.395901Z|runtime|41dec3d9-31d1-4601-97b3-17c386006d0c]AttributeError: Flow StreamLensFlow has no attribute 'start_time'
+[MFLOG|0|2026-04-07T02:24:26.395916Z|runtime|c5b9bfbe-9037-463a-bd1e-f081c2211996]
+[MFLOG|0|2026-04-07T02:24:26.396240Z|runtime|21b4927f-4689-41c2-89b5-8e4e52f0da6b]Task failed.

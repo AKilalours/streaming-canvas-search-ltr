@@ -1,0 +1,1 @@
+{"flow_id": "StreamLensFlow", "run_number": "1775528943237195", "step_name": "data_validation", "task_id": "2", "field_name": "attempt_ok", "type": "internal_attempt_status", "value": "True", "tags": ["attempt_id:0"], "user_name": "akilalourdes", "ts_epoch": 1775528944382}
