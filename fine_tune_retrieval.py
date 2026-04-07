@@ -150,6 +150,7 @@ evaluator = evaluation.EmbeddingSimilarityEvaluator.from_input_examples(
     eval_examples[:200], name="movielens-baseline"
 )
 baseline = evaluator(model, output_path=None)
+baseline = baseline if isinstance(baseline, float) else list(baseline.values())[0]
 print(f"✅ Baseline Spearman: {baseline:.4f}")
 
 # ── STEP 7: Fine-tune ─────────────────────────────────────────────────────────
@@ -180,7 +181,9 @@ ft_evaluator = evaluation.EmbeddingSimilarityEvaluator.from_input_examples(
     eval_examples[:200], name="movielens-finetuned"
 )
 ft_score = ft_evaluator(ft_model, output_path=None)
-delta = ft_score - baseline
+ft_score = ft_score if isinstance(ft_score, float) else list(ft_score.values())[0]
+ft_score = ft_score if isinstance(ft_score, float) else list(ft_score.values())[0]
+delta = float(ft_score) - float(baseline)
 
 print(f"\n{'='*60}")
 print(f"RESULTS")
@@ -200,7 +203,7 @@ meta = {
     "loss": "MultipleNegativesRankingLoss",
     "embedding_dim": 768,
     "baseline_spearman": round(baseline, 4),
-    "finetuned_spearman": round(ft_score, 4),
+    "finetuned_spearman": round(float(ft_score), 4),
     "improvement": round(delta, 4),
     "dataset": "movielens",
     "created": time.strftime("%Y-%m-%dT%H:%M:%S"),
