@@ -45,3 +45,8 @@ Thumbs.db
 docker-compose.yml.bak*
 src/app/main.py.bak*
 src/app/deps.py.bak*
+.streamlens_env/
+*.dylib
+*.so
+.venv/
+venv/
