@@ -56,71 +56,71 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    OFFLINE: PYSPARK PIPELINE                         │
-│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch    │
-│  610 users · 9,724 items · user/item features → Redis feature store  │
+│                    OFFLINE: PYSPARK PIPELINE                        │
+│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch     │
+│  610 users · 9,724 items · user/item features → Redis feature store │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │ nightly batch
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│               STAGE 1: CANDIDATE RETRIEVAL (k=2,000)                 │
-│                                                                       │
-│  BM25 (k1=1.2) ──────────────┐                                       │
-│  nDCG@10 = 0.6065             ├──► Hybrid Fusion (α=0.2) ──► 2,000  │
-│                               │    BM25-dominant for short titles     │
-│  FAISS e5-base-v2 ───────────┘                                       │
+│               STAGE 1: CANDIDATE RETRIEVAL (k=2,000)                │
+│                                                                     │
+│  BM25 (k1=1.2) ──────────────┐                                      │
+│  nDCG@10 = 0.6065            ├──► Hybrid Fusion (α=0.2) ──► 2,000   │
+│                              │    BM25-dominant for short titles    │
+│  FAISS e5-base-v2 ───────────┘                                      │
 │  768-dim · FINE-TUNED · nDCG@10 = 0.5496 (+18.4% vs base)           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │            STAGE 2: LightGBM LambdaRank (rerank_k=200)              │
-│                                                                       │
-│  15 features:                                                         │
-│  ├─ Retrieval (3): BM25, dense, hybrid scores                        │
-│  ├─ Text (4): title overlap, Jaccard, length ratio, coverage         │
-│  ├─ Content (4): genre match, tag overlap, recency, popularity       │
-│  └─ Spark (4): user watch_count, taste_breadth, co-watch, item pop   │
-│                                                                       │
+│                                                                     │
+│  15 features:                                                       │
+│  ├─ Retrieval (3): BM25, dense, hybrid scores                       │
+│  ├─ Text (4): title overlap, Jaccard, length ratio, coverage        │
+│  ├─ Content (4): genre match, tag overlap, recency, popularity      │
+│  └─ Spark (4): user watch_count, taste_breadth, co-watch, item pop  │
+│                                                                     │
 │  500 trees · ε=0.15 exploration · nDCG@10 = 0.9300 ✅ EXTRAORDINARY │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      STAGE 3: SERVING LAYER                          │
-│  FastAPI (106 endpoints) · Redis cache (p50=2.67ms warm)             │
-│  Kubernetes HPA (2-10 replicas) · Fail-open degradation chain        │
-│  p99=92ms warm · p99=142ms cold · p99=178ms @1K concurrent           │
+│                      STAGE 3: SERVING LAYER                         │
+│  FastAPI (106 endpoints) · Redis cache (p50=2.67ms warm)            │
+│  Kubernetes HPA (2-10 replicas) · Fail-open degradation chain       │
+│  p99=92ms warm · p99=142ms cold · p99=178ms @1K concurrent          │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    STAGE 4: GENAI EXPLANATION LAYER                  │
-│  GPT-4o-mini → Why This (2 sentences, profile-matched, punchy)       │
+│                    STAGE 4: GENAI EXPLANATION LAYER                 │
+│  GPT-4o-mini → Why This (2 sentences, profile-matched, punchy)      │
 │  GPT-4o-mini → RAG 3-liner (⚡WHY YOU / 🎬ABOUT / 🎥ALSO TRY)      │
-│  GPT-4o vision → Poster description (base64, 44 languages)           │
-│  CLIP ViT-B/32 → Zero-shot mood (17 categories)                      │
-│  OpenAI TTS → Spoken explanations in 44 languages                    │
-│  Whisper → Voice search transcription                                 │
-│  Redis cache → Each film calls OpenAI once, cached 7 days            │
+│  GPT-4o vision → Poster description (base64, 44 languages)          │
+│  CLIP ViT-B/32 → Zero-shot mood (17 categories)                     │
+│  OpenAI TTS → Spoken explanations in 44 languages                   │
+│  Whisper → Voice search transcription                               │
+│  Redis cache → Each film calls OpenAI once, cached 7 days           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  STAGE 5: ADVANCED ML LAYER                          │
+│                  STAGE 5: ADVANCED ML LAYER                         │
 │  Cross-Encoder BERT → Stage 3 reranking of top-20 (57ms)            │
-│  Thompson Sampling → Adaptive per-user exploration                   │
-│  Platt Calibration → Score → [0,1] relevance probability             │
-│  NER Entity Boost → Genre/tag extraction +15% score boost            │
-│  Query Expansion → Short queries get richer BM25 terms               │
+│  Thompson Sampling → Adaptive per-user exploration                  │
+│  Platt Calibration → Score → [0,1] relevance probability            │
+│  NER Entity Boost → Genre/tag extraction +15% score boost           │
+│  Query Expansion → Short queries get richer BM25 terms              │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│               STAGE 6: REAL-TIME FEEDBACK LOOP                       │
-│  User interaction → Kafka / Redis Streams (streamlens.interactions)  │
-│  → Propensity logger (IPW) → Retrain trigger @10K events             │
-│  → WebSocket pushes feed updates to browser (no page refresh)        │
+│               STAGE 6: REAL-TIME FEEDBACK LOOP                      │
+│  User interaction → Kafka / Redis Streams (streamlens.interactions) │
+│  → Propensity logger (IPW) → Retrain trigger @10K events            │
+│  → WebSocket pushes feed updates to browser (no page refresh)       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
