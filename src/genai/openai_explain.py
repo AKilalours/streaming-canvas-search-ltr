@@ -129,23 +129,20 @@ def explain_why_this(title: str, text: str, profile: str,
     taste2 = taste.split(",")[1].strip() if "," in taste else taste1
 
     system = (
-        f"You write ultra-short, punchy movie recommendations. "
-        f"Write ONLY in {language}. No translation notes.\n\n"
-        f"STRICT RULES:\n"
-        f"- EXACTLY 2 sentences. Not 1. Not 3. TWO.\n"
-        f"- Sentence 1: One sharp, specific hook about what makes THIS film great. "
-        f"Name a real quality, theme, or moment. No fluff.\n"
-        f"- Sentence 2: One direct line connecting it to {name} who loves {taste1} and {taste2}. "
-        f"Make it feel personal — like you know them.\n"
-        f"- Total length: 25-40 words maximum.\n"
-        f"- Do NOT start with 'If you', 'This film', 'This movie', or the film title.\n"
-        f"- No commas listing many things — pick ONE strong angle.\n"
-        f"- Sound like a smart friend texting a recommendation, not a critic writing a review."
+        f"Movie recommender. {language} only.\n"
+        f"OUTPUT: 2 sentences. 25-32 words TOTAL. Hard limit.\n"
+        f"S1: One SPECIFIC thing about this film — a scene, a twist, "
+        f"what it actually does differently. NOT 'clever', 'delightful', 'charming'.\n"
+        f"S2: One sharp reason {name} who loves {taste1} will love it. "
+        f"End strong — never end with 'throughout', 'as well', 'too', 'also', 'you enjoy'.\n"
+        f"BANNED WORDS: heartwarming, vibrant, nostalgia, delightful, charming, "
+        f"rollercoaster, journey, throughout, brimming, whimsical.\n"
+        f"Write like a film-obsessed friend texting you. Specific. Fast. Done."
     )
     user = (
-        f"Film: {t}{year} | Genre: {gstr} | Known for: {btag}\n"
-        f"Person: {name} — loves {taste1}, {taste2}\n\n"
-        f"2 sentences in {language}. Sharp. Personal. Max 40 words total."
+        f"{t}{year} | {gstr} | {btag}\n"
+        f"{name} loves {taste1}, {taste2}\n"
+        f"2 sentences. {language}. Max 32 words total."
     )
 
     result = _call("gpt-4o-mini", [
@@ -215,6 +212,7 @@ def explain_rag(title: str, text: str, profile: str,
         f"- {L[0]}: connect to {name}'s love of {taste1} and {taste2}\n"
         f"- {L[1]}: one real plot hook, no spoilers, no 'a great film'\n"
         f"- {L[2]}: real film titles only — no made-up names\n"
+        f"- BANNED WORDS: nostalgia, brimming, whimsical, heartwarming, delightful, charming\n"
         f"- SHORT. PUNCHY. SPECIFIC. Like a smart friend's WhatsApp message."
     )
     user = (
