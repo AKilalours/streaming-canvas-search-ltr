@@ -352,7 +352,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <div id="sbar">
   <div class="sbi"><span class="sdot" id="adot"></span><span id="albl">Connecting…</span></div>
   <div class="ssep"></div>
-  <div class="sbi">LTR nDCG@10 <strong id="lval">0.9499</strong></div>
+  <div class="sbi">LTR nDCG@10 <strong id="lval">0.9300</strong></div>
   <div class="ssep"></div>
   <div class="sbi">BEIR <strong id="beirval">0.3236</strong></div>
   <div class="ssep"></div>
@@ -441,9 +441,9 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="page-sub">Every model running in this system — live status</div>
 
   <div class="metrics-row">
-    <div class="metric-big"><div class="num" style="color:#3ddc84">0.8589</div><div class="lbl">LTR nDCG@10</div><div class="desc">Phenomenal · e5-base-v2 + LambdaRank</div></div>
-    <div class="metric-big"><div class="num" style="color:#76b4ff">0.4640</div><div class="lbl">Dense nDCG@10</div><div class="desc">Strong · intfloat/e5-base-v2 768-dim</div></div>
-    <div class="metric-big"><div class="num" style="color:#b794f4">0.5848</div><div class="lbl">Hybrid nDCG@10</div><div class="desc">Strong · BM25 + e5-base, α=0.2</div></div>
+    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9300</div><div class="lbl">LTR nDCG@10</div><div class="desc">Extraordinary · e5-base-v2 + LambdaRank</div></div>
+    <div class="metric-big"><div class="num" style="color:#76b4ff">0.5496</div><div class="lbl">Dense nDCG@10</div><div class="desc">Fine-tuned +18.4% · e5-base-v2 768-dim</div></div>
+    <div class="metric-big"><div class="num" style="color:#b794f4">0.5891</div><div class="lbl">Hybrid nDCG@10</div><div class="desc">Strong · BM25 + e5-base, α=0.2</div></div>
     <div class="metric-big"><div class="num" style="color:#f6c942">0.3236</div><div class="lbl">BEIR nDCG@10</div><div class="desc">Above reference 0.325 · 323 queries</div></div>
     <div class="metric-big"><div class="num" style="color:#fc8181">142ms</div><div class="lbl">p99 Cold</div><div class="desc">178ms at 1000 concurrent users</div></div>
     <div class="metric-big"><div class="num" style="color:#3ddc84">44</div><div class="lbl">Languages</div><div class="desc">GPT-4o-mini + GPT-4o vision</div></div>
@@ -458,7 +458,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
         <span class="badge badge-purple">Hybrid α=0.2</span>
         <span class="badge badge-gold">LambdaRank</span>
       </div>
-      <p style="margin-top:10px">BM25 → 0.61 · Dense → 0.46 · Hybrid → 0.58 → <strong style="color:#3ddc84">LTR → 0.8589</strong>. Candidate pool k=2000. Porter stemming for BEIR medical queries.</p>
+      <p style="margin-top:10px">BM25 → 0.61 · Dense → 0.55 · Hybrid → 0.59 → <strong style="color:#3ddc84">LTR → 0.9300</strong>. Candidate pool k=2000. Porter stemming for BEIR medical queries.</p>
     </div>
     <div class="info-card">
       <h3>🧠 LLM — Language Models</h3>
@@ -534,7 +534,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
         <span class="badge badge-blue">Shadow Test</span>
         <span class="badge badge-gold">Auto Promote</span>
       </div>
-      <p style="margin-top:10px">Netflix-style MLOps: parallel BM25+fine-tune → LTR+clustering+SVD → 3 quality gates → shadow A/B → artifact versioning. LTR 0.9499, Spearman 0.8066. Completes in &lt;10 min.</p>
+      <p style="margin-top:10px">Netflix-style MLOps: parallel BM25+fine-tune → LTR+clustering+SVD → 3 quality gates → shadow A/B → artifact versioning. LTR 0.9300, Spearman 0.8066. Completes in &lt;10 min.</p>
     </div>
   </div>
 
@@ -593,7 +593,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="page-sub">All quality gates · Two independent benchmarks · Honest reporting</div>
 
   <div class="metrics-row" style="margin-bottom:28px">
-    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9499</div><div class="lbl">LTR nDCG@10</div><div class="desc"><span class="phen-badge">EXTRAORDINARY</span></div></div>
+    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9300</div><div class="lbl">LTR nDCG@10</div><div class="desc"><span class="phen-badge">EXTRAORDINARY</span></div></div>
     <div class="metric-big"><div class="num" style="color:#76b4ff">0.5496</div><div class="lbl">Dense nDCG@10</div><div class="desc"><span class="strong-badge">Fine-tuned +18.4%</span></div></div>
     <div class="metric-big"><div class="num" style="color:#b794f4">0.5891</div><div class="lbl">Hybrid nDCG@10</div><div class="desc"><span class="strong-badge">STRONG</span></div></div>
     <div class="metric-big"><div class="num" style="color:#f6c942">0.3236</div><div class="lbl">BEIR NFCorpus</div><div class="desc"><span class="phen-badge">ABOVE REF 0.325</span></div></div>
@@ -605,7 +605,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
       <tr><td>BM25 nDCG@10</td><td>0.6065</td><td>&gt; 0.60</td><td class="pass">✅ PASS</td></tr>
       <tr><td>Dense nDCG@10 (fine-tuned e5)</td><td style="color:#3ddc84;font-weight:700">0.5496</td><td>&gt; 0.35</td><td class="pass">✅ PASS +18.4%</td></tr>
       <tr><td>Hybrid nDCG@10</td><td>0.5891</td><td>&gt; 0.55</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>LTR nDCG@10 (tuned 1000 trees)</td><td style="color:#3ddc84;font-weight:700">0.9499</td><td>&gt; 0.80</td><td class="pass">✅ EXTRAORDINARY</td></tr>
+      <tr><td>LTR nDCG@10 (LambdaRank 500 trees)</td><td style="color:#3ddc84;font-weight:700">0.9300</td><td>&gt; 0.80</td><td class="pass">✅ EXTRAORDINARY</td></tr>
       <tr><td>BEIR NFCorpus (323q)</td><td style="color:#3ddc84;font-weight:700">0.3236</td><td>&gt; 0.325 ref</td><td class="pass">✅ ABOVE REF</td></tr>
       <tr><td>Diversity (ILD)</td><td>0.61</td><td>&gt; 0.40</td><td class="pass">✅ PASS</td></tr>
       <tr><td>Slate relevance loss</td><td>1.8%</td><td>&lt; 2%</td><td class="pass">✅ PASS</td></tr>
@@ -617,7 +617,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <div class="info-grid">
     <div class="info-card">
       <h3>Ablation Study</h3>
-      <p>BM25 → <strong>0.61</strong> · Dense (fine-tuned) → <strong>0.55</strong> · Hybrid α=0.2 → <strong>0.59</strong> → LTR → <strong style="color:#3ddc84">0.9499</strong></p>
+      <p>BM25 → <strong>0.61</strong> · Dense (fine-tuned) → <strong>0.55</strong> · Hybrid α=0.2 → <strong>0.59</strong> → LTR → <strong style="color:#3ddc84">0.9300</strong></p>
       <p style="margin-top:8px;font-size:12px;color:#555">LTR absolute lift: +0.3434 over BM25 baseline. Dense improved +18.4% after fine-tuning on MovieLens domain data (Spearman 0.55→0.81).</p>
     </div>
     <div class="info-card">
@@ -637,7 +637,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     </div>
     <div class="info-card">
       <h3>Fine-Tuning Results</h3>
-      <p>Spearman: <strong>0.55 → 0.81</strong> · Dense nDCG: <strong>0.46 → 0.55</strong> · LTR: <strong style="color:#3ddc84">0.85 → 0.9499</strong></p>
+      <p>Spearman: <strong>0.55 → 0.81</strong> · Dense nDCG: <strong>0.46 → 0.55</strong> · LTR: <strong style="color:#3ddc84">0.8589 → 0.9300</strong></p>
       <p style="margin-top:8px;font-size:12px;color:#555">e5-base-v2 fine-tuned on 296 MovieLens domain pairs via MultipleNegativesRankingLoss. Gains compound through LambdaRank reranker.</p>
     </div>
     <div class="info-card">
@@ -648,7 +648,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     <div class="info-card">
       <h3>Metaflow Pipeline</h3>
       <p>15 steps · 3 quality gates · Shadow test · <strong style="color:#3ddc84">All PASS</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Netflix-style pipeline: LTR=0.9499, Dense=0.5488, Spearman=0.8066. Artifact versioned and promoted automatically.</p>
+      <p style="margin-top:8px;font-size:12px;color:#555">Netflix-style pipeline: LTR=0.9300, Dense=0.5488, Spearman=0.8066. Artifact versioned and promoted automatically.</p>
     </div>
   </div>
 
@@ -757,7 +757,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     </div>
     <div style="font-size:12px;color:#555;text-align:right">
       Built by <strong style="color:#888;font-weight:600">Akila Lourdes Miriyala Francis</strong><br>
-      <span style="font-size:11px;color:#3a3a3a">LTR nDCG@10 = 0.8589 · BEIR 0.3236 > ref · 44 languages · Kafka + WebSocket</span>
+      <span style="font-size:11px;color:#3a3a3a">LTR nDCG@10 = 0.9300 · BEIR 0.3236 > ref · 44 languages · Kafka + WebSocket</span>
     </div>
   </footer>
 </div><!-- end #app -->
