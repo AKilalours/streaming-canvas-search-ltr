@@ -70,7 +70,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    OFFLINE: PYSPARK PIPELINE                        │
-│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch    │
+│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch     │
 │  610 users · 9,724 items · user/item features → Redis feature store │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │ nightly batch
@@ -83,10 +83,10 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  document → better embedding│                                       │
 │                             │                                       │
 │  BM25 (k1=1.2) ─────────────┤                                       │
-│  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000   │
+│  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000    │
 │                             │    BM25-dominant for short titles     │
 │  FAISS e5-base-v2 ──────────┘                                       │
-│  768-dim · FINE-TUNED · nDCG@10 = 0.5496 (+18.4% vs base)          │
+│  768-dim · FINE-TUNED · nDCG@10 = 0.5496 (+18.4% vs base)           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -127,10 +127,10 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  GPT-4o-mini → RAG 3-liner (⚡WHY YOU / 🎬ABOUT / 🎥ALSO TRY)      │
 │  GPT-4o vision → Poster description (base64, 44 languages)          │
 │  CLIP ViT-B/32 → Zero-shot mood classification (17 categories)      │
-│  OpenAI TTS → Spoken explanations in 44 languages                  │
+│  OpenAI TTS → Spoken explanations in 44 languages                   │
 │  Whisper / Faster-Whisper → Voice search (cloud + local edge)       │
 │  Redis cache → Each film calls OpenAI once, cached 7 days           │
-│  Retry logic → Exponential backoff on 429 (1.5s→3s→6s→12s)         │
+│  Retry logic → Exponential backoff on 429 (1.5s→3s→6s→12s)          │
 │                                                                     │
 │  RAGAS Evaluation (semantic cosine via all-MiniLM-L6-v2):           │
 │  Faithfulness=0.705 · Answer Relevance=0.752 · Recall=1.000 ✅      │
