@@ -501,7 +501,7 @@ Standard RAGAS uses OpenAI embeddings for semantic scoring. StreamLens uses the 
 | **GenAI Local** | Ollama (Llama3, LLaVA) | Zero-cost fallback |
 | **Voice** | OpenAI TTS + Whisper + Faster-Whisper | 44 languages + edge ASR |
 | **Infrastructure** | Docker + K8s HPA | 2–10 replicas |
-| **Observability** | Prometheus + Grafana | Latency, cache, scores |
+| **SRE / Observability** | Prometheus + Grafana + health checks + rollback | p50/p95/p99 per route, SLO alerting, zero-downtime deploy |
 | **Load Testing** | Locust | 1,000 concurrent users |
 
 ---
