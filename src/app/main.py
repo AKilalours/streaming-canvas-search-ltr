@@ -5033,6 +5033,16 @@ def debug_openai_test(language: str = Query("Arabic")) -> dict:
     
     return result
 
+
+@app.get("/sql", include_in_schema=False)
+def sql_explorer():
+    from fastapi.responses import FileResponse
+    import os
+    path = "src/app/demo_ui/sql_explorer.html"
+    if os.path.exists(path):
+        return FileResponse(path)
+    return FileResponse("src/app/demo_ui/index.html")
+
 @app.websocket("/ws/feed/{user_id}")
 async def ws_feed(websocket: WebSocket, user_id: str):
     if not _STREAMING_ENABLED:
