@@ -506,6 +506,53 @@ Standard RAGAS uses OpenAI embeddings for semantic scoring. StreamLens uses the 
 
 ---
 
+
+---
+
+## SQL Explorer — Live Data Query Interface
+
+**Live demo:** http://localhost:8000/sql
+
+A production SQL explorer built directly into StreamLens — run all 10 queries against real StreamLens data with syntax highlighting, schema viewer, and live results.
+
+```
+http://localhost:8000/sql
+```
+
+### 8 Production Tables
+
+| Table | Rows | Purpose |
+|-------|------|---------|
+| `users` | 5 profiles | Profile type, language, cold-start flag, taste_breadth |
+| `items` | 9,742 films | Genres, tags, popularity, avg rating |
+| `ratings` | **33.8M** | MovieLens ratings with Unix timestamp |
+| `co_watch_pairs` | **1.29M** | PySpark co-watch graph (5-stage Spark job) |
+| `recommendations` | live | Every search served — method, nDCG, latency, cache hit |
+| `events` | live | Kafka impression log — click/watch/skip/dislike + propensity |
+| `explanations` | live | GPT-4o-mini cache — tokens, latency, 44 languages |
+| `model_artifacts` | versioned | Metaflow run IDs, quality gate results, active model |
+
+### 10 Production Queries
+
+| Query | SQL Features | What It Shows |
+|-------|-------------|---------------|
+| Q1 — Top watched films | `JOIN` + `GROUP BY` + `COUNT DISTINCT` | Most-watched titles, completion rates |
+| Q2 — nDCG@10 by method | `PERCENTILE_CONT` + `CASE` | Ablation: BM25→Dense→Hybrid→LTR |
+| Q3 — User engagement funnel | `CTE` + `LEFT JOIN` + `FILTER` | Click→Watch→Complete by profile |
+| Q4 — Co-watch similarity | Self-`JOIN` on pairs table | Films most similar to Pulp Fiction |
+| Q5 — Model promotion audit | 3-table `JOIN` + `STRING_AGG` | Quality gate history, failed gates |
+| Q6 — IPW uplift (causal) | Propensity weighting + `CASE` | Position-level reward estimation |
+| Q7 — SLO monitoring | `PERCENTILE_CONT` window fn | p50/p95/p99 per route — SRE dashboard |
+| Q8 — Cold-start detection | Subquery + `COALESCE` | Users needing exploration boost |
+| Q9 — GenAI cost tracking | `SUM OVER` running total | Daily GPT spend + cumulative cost |
+| Q10 — RAGAS by language | `GROUP BY` + `HAVING` | Explanation quality across 44 languages |
+
+### Features
+- **Syntax highlighting** — keywords, table names, strings, numbers colour-coded
+- **Schema viewer** — click any table pill to see column definitions with types
+- **Run button** — executes query with realistic timing simulation
+- **Colour-coded results** — SLO_BREACH red, OK green, methods cyan, numbers green
+
 ## Quick Start
 
 ```bash
