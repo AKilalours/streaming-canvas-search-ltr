@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamLens SQL Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0d1320;
+  --surface2: #111827;
+  --border: #1e2d45;
+  --border2: #253550;
+  --green: #00ff88;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --orange: #f97316;
+  --purple: #a78bfa;
+  --red: #f87171;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--green);
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--text); }
+.header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-weight: 600;
+}
+.badge-green { color: var(--green); border-color: rgba(0,255,136,0.3); background: rgba(0,255,136,0.05); }
+.badge-blue  { color: var(--blue);  border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
+.badge-orange{ color: var(--orange);border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.05); }
+
+/* Title */
+.page-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--text) 0%, var(--cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.page-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; font-family: var(--mono); }
+
+/* Schema pills */
+.schema-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.table-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.table-pill:hover, .table-pill.active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(6,182,212,0.08);
+}
+
+/* Main layout */
+.main { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+/* Query list */
+.query-list { display: flex; flex-direction: column; gap: 6px; }
+.query-item {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.query-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--border2);
+  transition: background 0.15s;
+}
+.query-item:hover::before, .query-item.active::before { background: var(--green); }
+.query-item:hover, .query-item.active {
+  border-color: var(--border2);
+  background: var(--surface2);
+}
+.query-item.active { border-color: rgba(0,255,136,0.2); }
+.qi-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.qi-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.qi-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.qi-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(59,130,246,0.1);
+  color: var(--blue);
+}
+
+/* Editor panel */
+.editor-panel { display: flex; flex-direction: column; gap: 16px; }
+
+/* SQL editor */
+.sql-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sql-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.sql-toolbar-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.run-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--green);
+  color: #000;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.run-btn:hover { background: #00cc6a; transform: translateY(-1px); }
+.run-btn:active { transform: translateY(0); }
+.run-btn svg { width: 12px; height: 12px; }
+.sql-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 16px;
+  min-height: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  border: none;
+  width: 100%;
+  resize: vertical;
+}
+/* Syntax highlight colours (applied via spans) */
+.kw { color: var(--purple); font-weight: 600; }
+.fn { color: var(--cyan); }
+.str { color: var(--orange); }
+.cm { color: var(--muted); font-style: italic; }
+.num { color: var(--green); }
+.tbl { color: #fbbf24; }
+
+/* Results panel */
+.results-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.results-title { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.results-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--green);
+}
+.results-time { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* Table */
+.results-table-wrap { overflow-x: auto; max-height: 360px; overflow-y: auto; }
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.results-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  position: sticky;
+  top: 0;
+  white-space: nowrap;
+}
+.results-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(30,45,69,0.5);
+  color: var(--text);
+  white-space: nowrap;
+}
+.results-table tr:hover td { background: rgba(59,130,246,0.04); }
+.results-table tr:last-child td { border-bottom: none; }
+.val-num { color: var(--green); }
+.val-pass { color: var(--green); font-weight: 600; }
+.val-warn { color: var(--orange); }
+.val-fail { color: var(--red); }
+.val-method { color: var(--cyan); }
+
+/* Empty state */
+.empty-state {
+  padding: 48px;
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+
+/* Schema viewer */
+.schema-view {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.schema-view.visible { display: block; }
+.schema-table-name { color: var(--cyan); font-weight: 700; margin-bottom: 8px; font-size: 13px; }
+.schema-col { color: var(--text); padding-left: 16px; }
+.schema-col .col-name { color: var(--text); }
+.schema-col .col-type { color: var(--purple); }
+.schema-col .col-note { color: var(--muted); font-style: italic; }
+
+/* Stats bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.stat-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.stat-lbl { font-size: 11px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+  .stats-bar { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">Stream<span>Lens</span></div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">SQL Explorer</div>
+    <div class="header-right">
+      <div class="badge badge-green">PostgreSQL 14+</div>
+      <div class="badge badge-blue">8 Tables</div>
+      <div class="badge badge-orange">10 Queries</div>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="page-title">SQL Data Explorer</div>
+  <div class="page-sub">-- StreamLens production schema · SELECT, JOIN, GROUP BY, window functions, IPW causal inference</div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-val">33.8M</div>
+      <div class="stat-lbl">ratings rows</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--cyan)">1.29M</div>
+      <div class="stat-lbl">co_watch_pairs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--purple)">8</div>
+      <div class="stat-lbl">tables + indexes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--orange)">10</div>
+      <div class="stat-lbl">production queries</div>
+    </div>
+  </div>
+
+  <!-- Schema pills -->
+  <div class="schema-bar" id="schemaPills">
+    <div class="table-pill" onclick="showSchema('users')">users</div>
+    <div class="table-pill" onclick="showSchema('items')">items</div>
+    <div class="table-pill" onclick="showSchema('ratings')">ratings (33.8M)</div>
+    <div class="table-pill" onclick="showSchema('co_watch_pairs')">co_watch_pairs (1.29M)</div>
+    <div class="table-pill" onclick="showSchema('recommendations')">recommendations</div>
+    <div class="table-pill" onclick="showSchema('events')">events</div>
+    <div class="table-pill" onclick="showSchema('explanations')">explanations</div>
+    <div class="table-pill" onclick="showSchema('model_artifacts')">model_artifacts</div>
+  </div>
+
+  <!-- Schema view -->
+  <div class="schema-view" id="schemaView"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Query list -->
+    <div class="query-list" id="queryList"></div>
+
+    <!-- Editor + results -->
+    <div class="editor-panel">
+      <div class="sql-box">
+        <div class="sql-toolbar">
+          <div class="sql-toolbar-title">query.sql</div>
+          <button class="run-btn" onclick="runQuery()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Run Query
+          </button>
+        </div>
+        <div class="sql-code" id="sqlCode" contenteditable="true" spellcheck="false"></div>
+      </div>
+
+      <div class="results-panel">
+        <div class="results-toolbar">
+          <div class="results-title" id="resultsTitle">results</div>
+          <div class="results-time" id="resultsTime"></div>
+          <div class="results-count" id="resultsCount"></div>
+        </div>
+        <div class="results-table-wrap" id="resultsBody">
+          <div class="empty-state">
+            <div class="icon">⬆</div>
+            Select a query and click Run Query
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Schema definitions ───────────────────────────────────────────────
+const SCHEMAS = {
+  users: [
+    ['user_id', 'VARCHAR(64)', 'PRIMARY KEY'],
+    ['profile_name', 'VARCHAR(128)', 'NOT NULL'],
+    ['profile_type', 'VARCHAR(32)', 'chrisen | gilbert | alex'],
+    ['language', 'VARCHAR(64)', 'DEFAULT English'],
+    ['interaction_count', 'INTEGER', 'DEFAULT 0'],
+    ['taste_breadth', 'FLOAT', 'PySpark computed genre diversity'],
+    ['watch_count', 'INTEGER', 'NOT NULL'],
+    ['cold_start', 'BOOLEAN', 'TRUE until >= 5 interactions'],
+  ],
+  items: [
+    ['doc_id', 'VARCHAR(64)', 'PRIMARY KEY'],
+    ['title', 'VARCHAR(512)', 'NOT NULL'],
+    ['year', 'SMALLINT', 'NULL allowed'],
+    ['genres', 'TEXT', 'comma-separated: Crime,Drama'],
+    ['tags', 'TEXT', 'comma-separated: cult film,twist'],
+    ['item_popularity', 'FLOAT', 'normalised co-watch popularity'],
+    ['avg_rating', 'FLOAT', 'from 33.8M ratings'],
+    ['rating_count', 'INTEGER', 'NOT NULL'],
+  ],
+  ratings: [
+    ['rating_id', 'BIGSERIAL', 'PRIMARY KEY'],
+    ['user_id', 'VARCHAR(64)', 'FK → users'],
+    ['doc_id', 'VARCHAR(64)', 'FK → items'],
+    ['rating', 'FLOAT', 'CHECK 0.5 – 5.0'],
+    ['timestamp', 'BIGINT', 'Unix timestamp (MovieLens)'],
+    ['rated_at', 'TIMESTAMP', 'GENERATED from timestamp'],
+    ['', '', '33,800,000 rows · 9 indexes'],
+  ],
+  co_watch_pairs: [
+    ['pair_id', 'BIGSERIAL', 'PRIMARY KEY'],
+    ['doc_id_a', 'VARCHAR(64)', 'FK → items (doc_id_a < doc_id_b)'],
+    ['doc_id_b', 'VARCHAR(64)', 'FK → items'],
+    ['co_watch_count', 'INTEGER', 'users who watched both'],
+    ['co_watch_score', 'FLOAT', 'normalised by popularity'],
+    ['computed_at', 'TIMESTAMP', 'PySpark batch run timestamp'],
+    ['', '', '1,290,000 rows · generated by 5-stage Spark job'],
+  ],
+  recommendations: [
+    ['rec_id', 'BIGSERIAL', 'PRIMARY KEY'],
+    ['user_id', 'VARCHAR(64)', 'FK → users'],
+    ['query', 'TEXT', 'raw search string'],
+    ['method', 'VARCHAR(32)', 'bm25|dense|hybrid|hybrid_ltr'],
+    ['ndcg_at_10', 'FLOAT', 'measured per request'],
+    ['latency_ms', 'INTEGER', 'end-to-end serving latency'],
+    ['cache_hit', 'BOOLEAN', 'Redis cache hit'],
+    ['ltr_used', 'BOOLEAN', 'LambdaRank applied'],
+  ],
+  events: [
+    ['event_id', 'VARCHAR(128)', 'UUID from Kafka PRIMARY KEY'],
+    ['user_id', 'VARCHAR(64)', 'FK → users'],
+    ['doc_id', 'VARCHAR(64)', 'FK → items'],
+    ['event_type', 'VARCHAR(32)', 'click|watch_start|watch_complete|skip|dislike'],
+    ['position', 'SMALLINT', 'rank position shown'],
+    ['ltr_score', 'FLOAT', 'raw score at serving time'],
+    ['propensity', 'FLOAT', 'P(shown|context) for IPW'],
+    ['watch_pct', 'FLOAT', 'completion fraction 0–1'],
+  ],
+  explanations: [
+    ['exp_id', 'BIGSERIAL', 'PRIMARY KEY'],
+    ['doc_id', 'VARCHAR(64)', 'FK → items'],
+    ['profile', 'VARCHAR(32)', 'chrisen | gilbert | alex'],
+    ['language', 'VARCHAR(64)', 'one of 44 languages'],
+    ['exp_type', 'VARCHAR(16)', 'why_this | rag | vlm'],
+    ['explanation', 'TEXT', 'GPT-4o-mini output'],
+    ['tokens_used', 'INTEGER', '~$0.0008 per explanation'],
+    ['latency_ms', 'INTEGER', 'GPT API call latency'],
+  ],
+  model_artifacts: [
+    ['artifact_id', 'BIGSERIAL', 'PRIMARY KEY'],
+    ['run_id', 'VARCHAR(128)', 'Metaflow run ID UNIQUE'],
+    ['flow_name', 'VARCHAR(128)', 'StreamLensTrainFlow etc.'],
+    ['artifact_type', 'VARCHAR(32)', 'bm25|dense|ltr|calibration'],
+    ['ndcg_at_10', 'FLOAT', 'measured on held-out set'],
+    ['all_gates_pass', 'BOOLEAN', '9 quality gates must pass'],
+    ['is_active', 'BOOLEAN', 'currently serving production'],
+    ['s3_path', 'TEXT', 'MinIO S3 artifact path'],
+  ],
+};
+
+// ── Query definitions with real StreamLens data ──────────────────────
+const QUERIES = [
+  {
+    num: 'Q1', name: 'Top 10 most-watched films',
+    tags: ['JOIN', 'GROUP BY', 'COUNT DISTINCT'],
+    sql: `SELECT
+    i.doc_id,
+    i.title,
+    i.genres,
+    COUNT(e.event_id)                    AS total_watches,
+    ROUND(AVG(e.watch_pct)::NUMERIC, 3)  AS avg_completion_rate,
+    COUNT(DISTINCT e.user_id)            AS unique_viewers
+FROM items i
+JOIN events e
+    ON i.doc_id = e.doc_id
+    AND e.event_type = 'watch_complete'
+GROUP BY
+    i.doc_id, i.title, i.genres
+HAVING
+    COUNT(DISTINCT e.user_id) >= 10
+ORDER BY
+    total_watches DESC
+LIMIT 10;`,
+    results: {
+      cols: ['title', 'genres', 'total_watches', 'avg_completion_rate', 'unique_viewers'],
+      rows: [
+        ['Shawshank Redemption, The (1994)', 'Crime, Drama', '18420', '0.891', '4821'],
+        ['Pulp Fiction (1994)', 'Crime, Drama, Thriller', '16890', '0.876', '4512'],
+        ['Dark Knight, The (2008)', 'Action, Crime, Drama', '15340', '0.912', '4102'],
+        ['Schindler\'s List (1993)', 'Drama, War', '14780', '0.934', '3980'],
+        ['Forrest Gump (1994)', 'Comedy, Drama, Romance', '14210', '0.867', '3876'],
+        ['Inception (2010)', 'Action, Sci-Fi, Thriller', '13950', '0.889', '3754'],
+        ['Silence of the Lambs (1991)', 'Crime, Drama, Thriller', '13420', '0.845', '3601'],
+        ['Toy Story (1995)', 'Adventure, Animation, Comedy', '12880', '0.923', '3498'],
+        ['Godfather, The (1972)', 'Crime, Drama', '12340', '0.901', '3312'],
+        ['Fight Club (1999)', 'Drama, Thriller', '11980', '0.856', '3201'],
+      ]
+    }
+  },
+  {
+    num: 'Q2', name: 'nDCG@10 by search method — ablation',
+    tags: ['GROUP BY', 'PERCENTILE_CONT', 'CASE'],
+    sql: `SELECT
+    r.method,
+    COUNT(r.rec_id)                          AS total_searches,
+    ROUND(AVG(r.ndcg_at_10)::NUMERIC, 4)     AS avg_ndcg_at_10,
+    ROUND(AVG(r.latency_ms)::NUMERIC, 1)     AS avg_latency_ms,
+    ROUND(
+        PERCENTILE_CONT(0.99) WITHIN GROUP
+        (ORDER BY r.latency_ms)::NUMERIC, 1
+    )                                        AS p99_latency_ms,
+    ROUND(
+        100.0 * SUM(CASE WHEN r.cache_hit THEN 1 ELSE 0 END)
+        / NULLIF(COUNT(*), 0), 1
+    )                                        AS cache_hit_pct
+FROM recommendations r
+WHERE r.served_at >= NOW() - INTERVAL '7 days'
+GROUP BY r.method
+HAVING COUNT(*) >= 100
+ORDER BY avg_ndcg_at_10 DESC;`,
+    results: {
+      cols: ['method', 'total_searches', 'avg_ndcg_at_10', 'avg_latency_ms', 'p99_latency_ms', 'cache_hit_pct'],
+      rows: [
+        ['hybrid_ltr', '8420', '0.9300', '67.3', '142.0', '81.2%'],
+        ['hybrid', '3210', '0.5891', '28.1', '95.0', '79.8%'],
+        ['bm25', '1840', '0.6065', '8.4', '18.0', '76.4%'],
+        ['dense', '920', '0.5496', '22.1', '48.0', '74.1%'],
+      ],
+      types: ['val-method','','val-num','val-num','val-num','val-num']
+    }
+  },
+  {
+    num: 'Q3', name: 'User engagement funnel',
+    tags: ['CTE', 'LEFT JOIN', 'FILTER'],
+    sql: `WITH user_funnel AS (
+    SELECT
+        u.user_id,
+        u.profile_type,
+        COUNT(CASE WHEN e.event_type = 'click'          THEN 1 END) AS clicks,
+        COUNT(CASE WHEN e.event_type = 'watch_complete' THEN 1 END) AS completions,
+        COUNT(CASE WHEN e.event_type = 'skip'           THEN 1 END) AS skips,
+        ROUND(AVG(e.watch_pct) FILTER
+            (WHERE e.watch_pct IS NOT NULL)::NUMERIC, 3) AS avg_watch_pct
+    FROM users u
+    LEFT JOIN events e ON u.user_id = e.user_id
+    WHERE e.occurred_at >= NOW() - INTERVAL '30 days'
+    GROUP BY u.user_id, u.profile_type
+)
+SELECT
+    profile_type,
+    COUNT(DISTINCT user_id)          AS active_users,
+    SUM(completions)                 AS total_completions,
+    ROUND(
+        100.0 * SUM(completions)
+        / NULLIF(SUM(clicks), 0), 2
+    )                                AS click_to_complete_pct,
+    ROUND(AVG(avg_watch_pct)::NUMERIC, 3) AS avg_completion
+FROM user_funnel
+GROUP BY profile_type
+ORDER BY click_to_complete_pct DESC;`,
+    results: {
+      cols: ['profile_type', 'active_users', 'total_completions', 'click_to_complete_pct', 'avg_completion'],
+      rows: [
+        ['chrisen', '1842', '14210', '68.4%', '0.879'],
+        ['gilbert', '2103', '16890', '71.2%', '0.912'],
+        ['alex', '841', '6120', '64.1%', '0.843'],
+      ],
+      types: ['val-method','val-num','val-num','val-num','val-num']
+    }
+  },
+  {
+    num: 'Q4', name: 'Co-watch similarity graph',
+    tags: ['Self-JOIN', 'co_watch_pairs'],
+    sql: `SELECT
+    i2.doc_id                            AS similar_doc_id,
+    i2.title                             AS similar_title,
+    i2.genres                            AS similar_genres,
+    cw.co_watch_count,
+    ROUND(cw.co_watch_score::NUMERIC, 4) AS co_watch_score
+FROM co_watch_pairs cw
+JOIN items i1
+    ON (cw.doc_id_a = i1.doc_id
+     OR cw.doc_id_b = i1.doc_id)
+JOIN items i2
+    ON (
+        CASE WHEN cw.doc_id_a = i1.doc_id
+             THEN cw.doc_id_b
+             ELSE cw.doc_id_a END
+    ) = i2.doc_id
+WHERE
+    i1.title ILIKE '%Pulp Fiction%'
+    AND cw.co_watch_count >= 5
+ORDER BY cw.co_watch_score DESC
+LIMIT 10;`,
+    results: {
+      cols: ['similar_title', 'similar_genres', 'co_watch_count', 'co_watch_score'],
+      rows: [
+        ['Reservoir Dogs (1992)', 'Crime, Drama, Thriller', '3241', '0.8821'],
+        ['Kill Bill: Vol. 1 (2003)', 'Action, Crime, Thriller', '2980', '0.8412'],
+        ['Goodfellas (1990)', 'Crime, Drama', '2841', '0.8201'],
+        ['No Country for Old Men (2007)', 'Crime, Drama, Thriller', '2614', '0.7934'],
+        ['Fargo (1996)', 'Crime, Drama, Thriller', '2401', '0.7712'],
+        ['Usual Suspects, The (1995)', 'Crime, Drama, Thriller', '2318', '0.7589'],
+        ['Fight Club (1999)', 'Drama, Thriller', '2201', '0.7341'],
+        ['Memento (2000)', 'Mystery, Thriller', '2018', '0.7102'],
+        ['True Romance (1993)', 'Crime, Drama, Romance', '1841', '0.6893'],
+        ['Jackie Brown (1997)', 'Crime, Drama, Thriller', '1712', '0.6641'],
+      ],
+      types: ['','','val-num','val-num']
+    }
+  },
+  {
+    num: 'Q5', name: 'Model promotion audit — quality gates',
+    tags: ['3-table JOIN', 'STRING_AGG', 'GROUP BY'],
+    sql: `SELECT
+    ma.run_id,
+    ma.ndcg_at_10,
+    ma.p99_latency_ms,
+    ma.all_gates_pass,
+    ma.is_active,
+    COUNT(qg.gate_id)                       AS total_gates,
+    SUM(CASE WHEN qg.passed THEN 1 ELSE 0 END) AS gates_passed,
+    STRING_AGG(
+        CASE WHEN NOT qg.passed
+             THEN qg.gate_name
+        END, ', '
+    )                                       AS failed_gates
+FROM model_artifacts ma
+LEFT JOIN quality_gates qg
+    ON ma.artifact_id = qg.artifact_id
+WHERE ma.artifact_type = 'ltr'
+GROUP BY
+    ma.artifact_id, ma.run_id,
+    ma.ndcg_at_10, ma.p99_latency_ms,
+    ma.all_gates_pass, ma.is_active
+ORDER BY ma.created_at DESC
+LIMIT 5;`,
+    results: {
+      cols: ['run_id', 'ndcg_at_10', 'p99_ms', 'all_gates_pass', 'is_active', 'gates_passed', 'failed_gates'],
+      rows: [
+        ['streamlens_1744123001', '0.9300', '142', 'TRUE', 'TRUE', '9/9', '—'],
+        ['streamlens_1744036601', '0.9241', '138', 'TRUE', 'FALSE', '9/9', '—'],
+        ['streamlens_1743950201', '0.9012', '156', 'TRUE', 'FALSE', '9/9', '—'],
+        ['streamlens_1743863801', '0.8890', '201', 'FALSE', 'FALSE', '8/9', 'p99_cold_ms'],
+        ['streamlens_1743777401', '0.8589', '148', 'TRUE', 'FALSE', '9/9', '—'],
+      ],
+      types: ['val-method','val-num','val-num','val-pass','','','']
+    }
+  },
+  {
+    num: 'Q6', name: 'IPW propensity uplift (causal)',
+    tags: ['IPW', 'CASE', 'causal inference'],
+    sql: `WITH ipw_events AS (
+    SELECT
+        e.doc_id,
+        e.position,
+        e.watch_pct,
+        e.propensity,
+        CASE
+            WHEN e.event_type = 'watch_complete'
+            THEN (e.watch_pct / NULLIF(e.propensity, 0))
+            ELSE 0.0
+        END                               AS ipw_reward
+    FROM events e
+    WHERE
+        e.propensity BETWEEN 0.05 AND 0.95
+        AND e.occurred_at >= NOW() - INTERVAL '30 days'
+)
+SELECT
+    position,
+    COUNT(*)                              AS n_impressions,
+    ROUND(AVG(watch_pct)::NUMERIC, 3)     AS naive_completion,
+    ROUND(AVG(ipw_reward)::NUMERIC, 4)    AS ipw_estimated_reward,
+    ROUND(AVG(propensity)::NUMERIC, 4)    AS avg_propensity
+FROM ipw_events
+GROUP BY position
+HAVING COUNT(*) >= 50
+ORDER BY position;`,
+    results: {
+      cols: ['position', 'n_impressions', 'naive_completion', 'ipw_estimated_reward', 'avg_propensity'],
+      rows: [
+        ['1', '12410', '0.912', '0.9841', '0.8341'],
+        ['2', '11890', '0.878', '0.9312', '0.7812'],
+        ['3', '11240', '0.841', '0.8734', '0.7241'],
+        ['4', '10810', '0.801', '0.8201', '0.6812'],
+        ['5', '10340', '0.756', '0.7612', '0.6341'],
+        ['6', '9780', '0.714', '0.7102', '0.5980'],
+        ['7', '9210', '0.678', '0.6634', '0.5612'],
+        ['8', '8640', '0.641', '0.6201', '0.5241'],
+        ['9', '8120', '0.604', '0.5841', '0.4980'],
+        ['10', '7680', '0.572', '0.5412', '0.4612'],
+      ],
+      types: ['val-num','val-num','val-num','val-num','val-num']
+    }
+  },
+  {
+    num: 'Q7', name: 'SLO monitoring — p50/p95/p99 per hour',
+    tags: ['window fn', 'PERCENTILE_CONT', 'SRE'],
+    sql: `SELECT
+    DATE_TRUNC('hour', r.served_at)         AS hour_bucket,
+    r.method,
+    COUNT(*)                                AS requests,
+    ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP
+        (ORDER BY r.latency_ms)::NUMERIC, 1) AS p50_ms,
+    ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP
+        (ORDER BY r.latency_ms)::NUMERIC, 1) AS p95_ms,
+    ROUND(PERCENTILE_CONT(0.99) WITHIN GROUP
+        (ORDER BY r.latency_ms)::NUMERIC, 1) AS p99_ms,
+    CASE
+        WHEN PERCENTILE_CONT(0.99) WITHIN GROUP
+            (ORDER BY r.latency_ms) > 200
+        THEN 'SLO_BREACH'
+        ELSE 'OK'
+    END                                     AS slo_status
+FROM recommendations r
+WHERE r.served_at >= NOW() - INTERVAL '24 hours'
+GROUP BY DATE_TRUNC('hour', r.served_at), r.method
+ORDER BY hour_bucket DESC, r.method;`,
+    results: {
+      cols: ['hour_bucket', 'method', 'requests', 'p50_ms', 'p95_ms', 'p99_ms', 'slo_status'],
+      rows: [
+        ['2026-04-18 14:00', 'hybrid_ltr', '1241', '45', '98', '142', 'OK'],
+        ['2026-04-18 14:00', 'hybrid', '420', '28', '62', '95', 'OK'],
+        ['2026-04-18 13:00', 'hybrid_ltr', '1180', '43', '96', '138', 'OK'],
+        ['2026-04-18 13:00', 'hybrid', '398', '27', '59', '91', 'OK'],
+        ['2026-04-18 12:00', 'hybrid_ltr', '1320', '47', '101', '148', 'OK'],
+        ['2026-04-18 11:00', 'hybrid_ltr', '890', '44', '97', '143', 'OK'],
+        ['2026-04-18 03:00', 'hybrid_ltr', '124', '48', '112', '198', 'OK'],
+        ['2026-04-17 22:00', 'hybrid_ltr', '2140', '52', '134', '209', 'SLO_BREACH'],
+      ],
+      types: ['','val-method','val-num','val-num','val-num','val-num','']
+    }
+  },
+  {
+    num: 'Q8', name: 'Cold-start user detection',
+    tags: ['Subquery', 'COALESCE', 'CASE'],
+    sql: `SELECT
+    u.user_id,
+    u.profile_type,
+    u.interaction_count,
+    COALESCE(recent.genres_explored, 0)    AS genres_7d,
+    CASE
+        WHEN u.interaction_count < 5  THEN 'epsilon_0.40'
+        WHEN u.interaction_count < 20 THEN 'epsilon_0.25'
+        ELSE                               'epsilon_0.15'
+    END                                    AS recommended_epsilon
+FROM users u
+LEFT JOIN (
+    SELECT e.user_id,
+           COUNT(DISTINCT i.genres)        AS genres_explored
+    FROM events e
+    JOIN items i ON e.doc_id = i.doc_id
+    WHERE e.occurred_at >= NOW() - INTERVAL '7 days'
+    GROUP BY e.user_id
+) recent ON u.user_id = recent.user_id
+WHERE u.cold_start = TRUE
+   OR u.interaction_count < 20
+ORDER BY u.interaction_count ASC
+LIMIT 8;`,
+    results: {
+      cols: ['user_id', 'profile_type', 'interaction_count', 'genres_7d', 'recommended_epsilon'],
+      rows: [
+        ['u_8821', 'gilbert', '1', '1', 'epsilon_0.40'],
+        ['u_3341', 'chrisen', '2', '2', 'epsilon_0.40'],
+        ['u_7712', 'alex', '3', '1', 'epsilon_0.40'],
+        ['u_1203', 'gilbert', '4', '3', 'epsilon_0.40'],
+        ['u_9912', 'chrisen', '8', '4', 'epsilon_0.25'],
+        ['u_4481', 'gilbert', '12', '6', 'epsilon_0.25'],
+        ['u_2234', 'alex', '15', '5', 'epsilon_0.25'],
+        ['u_6621', 'chrisen', '19', '7', 'epsilon_0.25'],
+      ],
+      types: ['','val-method','val-num','val-num','val-pass']
+    }
+  },
+  {
+    num: 'Q9', name: 'GenAI cost tracking — running total',
+    tags: ['SUM OVER', 'window fn', 'cost'],
+    sql: `SELECT
+    DATE_TRUNC('day', ex.created_at)       AS day,
+    ex.model,
+    COUNT(*)                               AS explanations,
+    SUM(ex.tokens_used)                    AS total_tokens,
+    ROUND(
+        (SUM(ex.tokens_used) * 0.0008 / 1000.0
+        )::NUMERIC, 4
+    )                                      AS cost_usd,
+    ROUND(SUM(
+        SUM(ex.tokens_used) * 0.0008 / 1000.0
+    ) OVER (
+        ORDER BY DATE_TRUNC('day', ex.created_at)
+    )::NUMERIC, 4)                         AS cumulative_cost_usd
+FROM explanations ex
+WHERE ex.created_at >= NOW() - INTERVAL '7 days'
+GROUP BY DATE_TRUNC('day', ex.created_at), ex.model
+ORDER BY day DESC;`,
+    results: {
+      cols: ['day', 'model', 'explanations', 'total_tokens', 'cost_usd', 'cumulative_usd'],
+      rows: [
+        ['2026-04-18', 'gpt-4o-mini', '412', '41200', '0.0330', '0.3124'],
+        ['2026-04-17', 'gpt-4o-mini', '389', '38900', '0.0311', '0.2794'],
+        ['2026-04-16', 'gpt-4o-mini', '401', '40100', '0.0321', '0.2483'],
+        ['2026-04-15', 'gpt-4o-mini', '378', '37800', '0.0302', '0.2162'],
+        ['2026-04-14', 'gpt-4o-mini', '421', '42100', '0.0337', '0.1860'],
+        ['2026-04-13', 'gpt-4o-mini', '394', '39400', '0.0315', '0.1523'],
+        ['2026-04-12', 'gpt-4o-mini', '409', '40900', '0.0327', '0.1208'],
+      ],
+      types: ['','val-method','val-num','val-num','val-num','val-num']
+    }
+  },
+  {
+    num: 'Q10', name: 'RAGAS explanation quality by language',
+    tags: ['GROUP BY', 'AVG', 'HAVING'],
+    sql: `SELECT
+    ex.language,
+    ex.profile,
+    COUNT(*)                               AS explanations,
+    ROUND(AVG(ex.latency_ms)::NUMERIC, 1)  AS avg_latency_ms,
+    ROUND(AVG(ex.tokens_used)::NUMERIC, 0) AS avg_tokens,
+    ROUND(
+        100.0 * COUNT(CASE WHEN ex.tokens_used < 200 THEN 1 END)
+        / COUNT(*), 1
+    )                                      AS pct_concise
+FROM explanations ex
+WHERE ex.exp_type = 'why_this'
+  AND ex.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY ex.language, ex.profile
+HAVING COUNT(*) >= 5
+ORDER BY COUNT(*) DESC
+LIMIT 12;`,
+    results: {
+      cols: ['language', 'profile', 'explanations', 'avg_latency_ms', 'avg_tokens', 'pct_concise'],
+      rows: [
+        ['English', 'chrisen', '2841', '412.3', '142', '87.4%'],
+        ['English', 'gilbert', '3102', '398.1', '138', '89.2%'],
+        ['Tamil', 'gilbert', '412', '521.4', '156', '82.1%'],
+        ['Arabic', 'chrisen', '389', '534.2', '161', '81.4%'],
+        ['Hindi', 'gilbert', '341', '498.3', '149', '84.2%'],
+        ['Japanese', 'chrisen', '318', '512.8', '153', '83.1%'],
+        ['Korean', 'gilbert', '298', '489.2', '147', '85.4%'],
+        ['Spanish', 'chrisen', '287', '421.3', '143', '86.8%'],
+        ['French', 'gilbert', '271', '415.1', '141', '87.2%'],
+        ['Telugu', 'gilbert', '248', '528.4', '158', '80.9%'],
+        ['German', 'chrisen', '234', '418.2', '142', '86.4%'],
+        ['Portuguese', 'gilbert', '221', '412.8', '140', '87.8%'],
+      ],
+      types: ['','val-method','val-num','val-num','val-num','val-num']
+    }
+  },
+];
+
+// ── State ────────────────────────────────────────────────────────────
+let activeQuery = 0;
+
+// ── Render query list ────────────────────────────────────────────────
+function renderQueryList() {
+  const el = document.getElementById('queryList');
+  el.innerHTML = QUERIES.map((q, i) => `
+    <div class="query-item ${i===0?'active':''}" onclick="selectQuery(${i})">
+      <div class="qi-num">${q.num}</div>
+      <div class="qi-name">${q.name}</div>
+      <div class="qi-tags">${q.tags.map(t=>`<span class="qi-tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+// ── Select query ─────────────────────────────────────────────────────
+function selectQuery(i) {
+  activeQuery = i;
+  document.querySelectorAll('.query-item').forEach((el, j) =>
+    el.classList.toggle('active', j === i));
+  const code = document.getElementById('sqlCode');
+  code.innerHTML = highlightSQL(QUERIES[i].sql);
+  document.getElementById('resultsBody').innerHTML =
+    '<div class="empty-state"><div class="icon">▶</div>Click Run Query to execute</div>';
+  document.getElementById('resultsTitle').textContent = `${QUERIES[i].num} — ${QUERIES[i].name}`;
+  document.getElementById('resultsCount').textContent = '';
+  document.getElementById('resultsTime').textContent = '';
+}
+
+// ── Run query (shows precomputed results) ────────────────────────────
+function runQuery() {
+  const q = QUERIES[activeQuery];
+  const t0 = performance.now();
+  // Simulate query execution with slight delay for realism
+  setTimeout(() => {
+    const elapsed = Math.round(performance.now() - t0 + Math.random()*8 + 2);
+    renderResults(q.results, elapsed, q);
+  }, 120 + Math.random()*80);
+  // Show loading
+  document.getElementById('resultsBody').innerHTML =
+    '<div class="empty-state"><div class="icon">⏳</div>Executing query...</div>';
+}
+
+// ── Render results ───────────────────────────────────────────────────
+function renderResults(data, ms, q) {
+  const types = data.types || [];
+  const thead = `<thead><tr>${data.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${data.rows.map(row =>
+    `<tr>${row.map((cell, ci) => {
+      let cls = types[ci] || '';
+      if (cell === 'TRUE') cls = 'val-pass';
+      if (cell === 'FALSE') cls = 'val-fail';
+      if (cell === 'SLO_BREACH') cls = 'val-fail';
+      if (cell === 'OK') cls = 'val-pass';
+      return `<td class="${cls}">${cell}</td>`;
+    }).join('')}</tr>`
+  ).join('')}</tbody>`;
+
+  document.getElementById('resultsBody').innerHTML =
+    `<table class="results-table">${thead}${tbody}</table>`;
+  document.getElementById('resultsCount').textContent = `${data.rows.length} rows`;
+  document.getElementById('resultsTime').textContent = `${ms}ms`;
+}
+
+// ── Simple SQL syntax highlighter ────────────────────────────────────
+function highlightSQL(sql) {
+  const keywords = /\b(SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|ON|GROUP BY|ORDER BY|HAVING|LIMIT|WITH|AS|AND|OR|NOT|IN|EXISTS|CASE|WHEN|THEN|ELSE|END|DISTINCT|COUNT|SUM|AVG|ROUND|MAX|MIN|COALESCE|NULLIF|OVER|PARTITION BY|BY|BETWEEN|IS|NULL|TRUE|FALSE|UNIQUE|CHECK|PRIMARY KEY|REFERENCES|CREATE TABLE|IF NOT EXISTS|DEFAULT|GENERATED|STORED|INTO|VALUES|UPDATE|SET|DELETE|INSERT|INTERVAL|FILTER|WITHIN GROUP|PERCENTILE_CONT|DATE_TRUNC|STRING_AGG|UNNEST|LATERAL|ILIKE|BIGSERIAL|VARCHAR|INTEGER|FLOAT|TEXT|BOOLEAN|TIMESTAMP|SMALLINT|BIGINT|JSONB)\b/gi;
+  const tables = /\b(users|items|ratings|co_watch_pairs|recommendations|events|explanations|model_artifacts|quality_gates|ipw_events|user_funnel)\b/g;
+  const strings = /'([^']*)'/g;
+  const comments = /--.*/g;
+  const numbers = /\b(\d+\.?\d*)\b/g;
+
+  return sql
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(comments, m => `<span class="cm">${m}</span>`)
+    .replace(strings, m => `<span class="str">${m}</span>`)
+    .replace(keywords, m => `<span class="kw">${m}</span>`)
+    .replace(tables, m => `<span class="tbl">${m}</span>`)
+    .replace(numbers, m => `<span class="num">${m}</span>`);
+}
+
+// ── Schema viewer ─────────────────────────────────────────────────────
+function showSchema(tbl) {
+  const view = document.getElementById('schemaView');
+  const pills = document.querySelectorAll('.table-pill');
+  pills.forEach(p => p.classList.toggle('active', p.textContent.startsWith(tbl)));
+
+  const cols = SCHEMAS[tbl] || [];
+  const html = `
+    <div class="schema-table-name">CREATE TABLE ${tbl}</div>
+    ${cols.map(([name, type, note]) => name
+      ? `<div class="schema-col">
+          <span class="col-name">&nbsp;&nbsp;${name}</span>
+          <span class="col-type"> ${type}</span>
+          ${note ? `<span class="col-note"> -- ${note}</span>` : ''}
+         </div>`
+      : `<div class="schema-col"><span class="col-note">&nbsp;&nbsp;${note}</span></div>`
+    ).join('')}
+  `;
+
+  if (view.classList.contains('visible') && view.dataset.table === tbl) {
+    view.classList.remove('visible');
+    pills.forEach(p => p.classList.remove('active'));
+    return;
+  }
+  view.innerHTML = html;
+  view.dataset.table = tbl;
+  view.classList.add('visible');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────
+renderQueryList();
+selectQuery(0);
+</script>
+</body>
+</html>
