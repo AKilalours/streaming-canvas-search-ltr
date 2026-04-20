@@ -871,6 +871,7 @@ async def lifespan(app: FastAPI):
         _HOUSEHOLD_MERGER = None
         _RATE_LIMITERS = None
 
+
 app = FastAPI(title="streaming-canvas-search-ltr", lifespan=lifespan)
 app.middleware("http")(prom_middleware)
 mount_demo(app)
@@ -923,6 +924,13 @@ def cache_stats() -> dict[str, Any]:
     base = c.stats()
     base.update(_cache_stats_redis(c))
     return base
+
+
+# Stable Diffusion poster static files
+import os as _os
+if _os.path.exists("artifacts/sd_posters"):
+    from fastapi.staticfiles import StaticFiles as _SF
+    app.mount("/static/sd_posters", _SF(directory="artifacts/sd_posters"), name="sd_posters")
 
 @app.get("/health")
 def health() -> dict[str, Any]:
@@ -5033,6 +5041,16 @@ def debug_openai_test(language: str = Query("Arabic")) -> dict:
     
     return result
 
+
+
+@app.get("/diffusion", include_in_schema=False)
+def diffusion_demo():
+    from fastapi.responses import FileResponse
+    import os
+    path = "src/app/demo_ui/diffusion_demo.html"
+    if os.path.exists(path):
+        return FileResponse(path)
+    return FileResponse("src/app/demo_ui/index.html")
 
 @app.get("/sql", include_in_schema=False)
 def sql_explorer():
