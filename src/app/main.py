@@ -3615,16 +3615,49 @@ async def generate_poster(
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key:
         return {"error": "OPENAI_API_KEY not set", "available": False}
-    prompt = f"{style}, {genre} film, title on poster: {title}, professional composition"
-    payload = json.dumps({"model":"gpt-image-1","prompt":prompt,
-                          "n":1,"size":"1024x1024","quality":"low"}).encode()
+    import re, hashlib
+    clean = re.sub(r'\s*\(\d{4}\)\s*$', '', title).strip()
+    genre_styles = {
+        "Crime":"neo-noir atmosphere, rain-slicked streets, dramatic shadows, neon reflections",
+        "Thriller":"tense dark atmosphere, high contrast, psychological intensity",
+        "Action":"explosive dynamic composition, motion blur, cinematic scale",
+        "Sci-Fi":"neon blue cyberpunk, futuristic skyline, holographic elements",
+        "Horror":"dark fog, blood red accents, ominous gothic atmosphere",
+        "Romance":"golden hour warmth, soft bokeh, intimate composition",
+        "Comedy":"vibrant saturated colours, playful warm lighting",
+        "Drama":"desaturated realism, shallow depth of field, emotional lighting",
+        "Animation":"bold vibrant illustration, clean graphic style",
+        "Fantasy":"magical golden light, epic scale, ethereal fog",
+        "War":"desaturated smoke, dramatic epic sky, historical scale",
+        "Western":"dusty golden hour, vast landscape, warm tones",
+    }
+    g = genre.split(",")[0].strip()
+    vis = genre_styles.get(g, "cinematic dramatic lighting, professional composition")
+    prompt = (
+        f"Cinematic movie poster artwork for '{clean}'. "
+        f"{vis}. Professional cinematography, ultra-detailed 4K, "
+        f"dramatic lighting, rich colours, portrait orientation, "
+        f"no text, no words, no letters."
+    )
+    payload = json.dumps({"model":"dall-e-3","prompt":prompt,
+                          "n":1,"size":"1024x1792","quality":"hd",
+                          "response_format":"b64_json"}).encode()
     req = urlreq.Request(
         "https://api.openai.com/v1/images/generations", data=payload,
         headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},
         method="POST")
     try:
-        with urlreq.urlopen(req, timeout=30) as r:
+        with urlreq.urlopen(req, timeout=90) as r:
             result = json.loads(r.read())
+        import base64, pathlib
+        img_bytes = base64.b64decode(result["data"][0]["b64_json"])
+        cache_key = hashlib.md5(f"{title}{genre}".encode()).hexdigest()[:8]
+        out = pathlib.Path(f"artifacts/sd_posters/live_{cache_key}.png")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(img_bytes)
+        return {"url": f"/static/sd_posters/live_{cache_key}.png",
+                "title": title, "genre": genre, "generated": True,
+                "model": "dall-e-3", "cost": "$0.04"}
         img = result["data"][0]
         return {"title":title,"generated":True,"url":img.get("url",""),
                 "b64_preview":(img.get("b64_json","")[:80]+"..."),
