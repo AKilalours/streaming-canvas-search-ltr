@@ -19,8 +19,9 @@
 [![Languages](https://img.shields.io/badge/Languages-44-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![Algorithms](https://img.shields.io/badge/ML%20Algorithms-21-9b6dff?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![Endpoints](https://img.shields.io/badge/API%20Endpoints-106-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
-[![RAGAS](https://img.shields.io/badge/RAGAS%20Faithfulness-0.705-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
-[![SQL](https://img.shields.io/badge/SQL%20Explorer-8%20Tables%2010%20Queries-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![RAGAS](https://img.shields.io/badge/RAGAS%20F-0.705-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![Diffusion](https://img.shields.io/badge/Diffusion-DALL·E%203%20HD-9b6dff?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![SQL](https://img.shields.io/badge/SQL%20Explorer-8%20Tables-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 
 **Built by Akila Lourdes Miriyala Francis · MS in Artificial Intelligence**
 
@@ -31,22 +32,29 @@
 
 ---
 
+## One-Line Summary
+
+> **Built a Netflix-grade ML search and recommendation platform** → nDCG@10 = 0.9300 · p95 = 98ms · p99 = 142ms · cost = $0.0008/req · 21 ML algorithms · 33.8M ratings · 44 languages · DALL-E 3 HD diffusion posters · RAGAS F=0.705 · FastAPI + Redis + Kafka + Kubernetes + Prometheus · MLOps: Airflow DAG, 14 Metaflow flows, 9 quality gates, 30-second rollback
+
+---
+
 ## What Is StreamLens?
 
-StreamLens is a **Netflix-grade two-stage search and recommendation system** built from scratch — covering the full ML lifecycle from raw interaction data through curated training pairs, gated model promotion, real-time serving, and multilingual GenAI explanations.
+StreamLens is a **Netflix-grade two-stage search and recommendation system** built from scratch — covering the full ML lifecycle from raw interaction data through curated training pairs, gated model promotion, real-time serving, multilingual GenAI explanations, and diffusion model poster generation.
 
-**In one line:** `BM25 + FAISS + LambdaRank + Cross-Encoder → p99 142ms · $0.0008/req · nDCG@10 0.9300`
+**Data flow:** `ingest → store → retrieve → rerank → infer → feedback`
 
 **Headline numbers:**
 - LTR nDCG@10 = **0.9300** — exceeded target of 0.80 by 16.3%
-- **21 ML algorithms** across retrieval, ranking, personalisation, causal inference, and visual AI
-- **106 API endpoints** — search, explanation, feed, VLM, SQL explorer, causal, self-healing
+- **21 ML algorithms** — retrieval, ranking, personalisation, causal inference, visual AI, generative AI
+- **106 API endpoints** — search, explanation, feed, VLM, SQL explorer, diffusion, causal, self-healing
 - **44 languages** — GPT-4o-mini explanations in pure target script, zero mixing
 - **RAGAS**: Faithfulness=0.705 · Relevance=0.752 · Recall=1.000 — all targets met
-- **SQL Explorer** — live at `/sql` with 8 production tables and 10 real queries
-- **HyDE query rewriting** — semantic queries get hypothetical document embeddings
-- **Faster-Whisper edge pipeline** — local ASR → retrieval → Llama3, zero API cost
-- Independently validated on BEIR NFCorpus (323 medical queries, above published reference)
+- **Diffusion pipeline** — DDPM noise schedule (pure numpy) + DALL-E 3 HD 1024×1792
+- **Multi-modal AI** — CLIP + GPT-4o vision + OpenAI TTS + Whisper + DALL-E 3
+- **Self-supervised learning** — contrastive fine-tuning of e5-base-v2 (+18.4% dense nDCG)
+- **Data curation engine** — PySpark 33.8M → 1.29M co-watch pairs, 9 quality gates
+- **SQL Explorer** — live at `/sql`, 8 production tables, 10 real queries
 
 ---
 
@@ -73,10 +81,13 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    OFFLINE: PYSPARK PIPELINE                        │
+│              OFFLINE: PYSPARK DATA CURATION ENGINE                  │
 │  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch    │
-│  610 users · 9,724 items · user/item features → Redis feature store │
-│  Schema: ratings + co_watch_pairs tables (schema.sql)               │
+│  610 users · 9,724 items · 15 user/item/content features            │
+│  → Redis feature store · schema.sql (ratings + co_watch_pairs)      │
+│                                                                     │
+│  Data curation: 9 quality gates must pass before model promotion    │
+│  Kafka impression logging → retrain trigger at 10K events           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │ nightly Airflow DAG
                                ▼
@@ -91,10 +102,9 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000   │
 │                             │    BM25-dominant: titles are short    │
 │  FAISS e5-base-v2 ──────────┘                                       │
-│  768-dim · FINE-TUNED · nDCG@10 = 0.5496 (+18.4% vs base)          │
+│  768-dim · FINE-TUNED (SSL contrastive) · nDCG@10 = 0.5496 +18.4%  │
 │                                                                     │
-│  Trade-off: α=0.2 measured optimal on this corpus — BM25-dominant  │
-│  because short movie titles benefit from exact matching             │
+│  Trade-off: α=0.2 measured optimal — BM25-dominant for short titles │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -108,20 +118,18 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  └─ Spark (4): user watch_count, taste_breadth, co-watch, item pop  │
 │                                                                     │
 │  500 trees · ε=0.15 · nDCG@10 = 0.9300 ✅ EXTRAORDINARY            │
-│  Trade-off: LambdaRank over neural LTR — faster inference,         │
-│  directly optimises nDCG, no GPU needed                             │
+│  Trade-off: LambdaRank over neural LTR — directly optimises nDCG   │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                  STAGE 3: PRECISION RERANKING                       │
-│  Cross-Encoder BERT → top-20 joint query+doc encoding (57ms)        │
+│  Cross-Encoder BERT → top-20 joint encoding (57ms)                  │
 │  Thompson Sampling → adaptive per-user exploration (ε=0.15)         │
 │  Platt Calibration → raw scores → [0,1] relevance probability       │
 │  NER Entity Boost → genre/tag extraction → +15% score boost         │
 │  Query Expansion → short queries get richer BM25 terms              │
-│                                                                     │
-│  Trade-off: Cross-encoder only on top-20, not 2,000 — latency      │
+│  Trade-off: Cross-encoder top-20 only — latency vs quality          │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -130,23 +138,23 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  FastAPI (106 endpoints) · Redis cache (p50=2.67ms warm)            │
 │  Kubernetes HPA (2-10 replicas) · 3-tier fail-open chain            │
 │  p99=92ms warm · p99=142ms cold · p99=178ms @1K concurrent          │
-│  SQL Explorer: /sql — live queries against StreamLens schema        │
-│                                                                     │
+│  SQL Explorer /sql · Diffusion Demo /diffusion                      │
 │  Reliability: LTR → hybrid → BM25 → corpus sample. Never fails.    │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    STAGE 5: GENAI + VISUAL AI                       │
-│  GPT-4o-mini → Why This (2 sentences, profile-matched, punchy)      │
+│              STAGE 5: MULTI-MODAL GENAI LAYER                       │
+│  GPT-4o-mini → Why This (profile-matched, 2 sentences, punchy)      │
 │  GPT-4o-mini → RAG 3-liner (⚡WHY YOU / 🎬ABOUT / 🎥ALSO TRY)      │
-│  GPT-4o vision → Poster description (base64, 44 languages)          │
+│  GPT-4o vision → VLM poster description (base64, 44 languages)      │
 │  CLIP ViT-B/32 → Zero-shot mood classification (17 categories)      │
-│  Stable Diffusion → Cold-start poster generation (no TMDB image)    │
+│  DALL-E 3 HD → Cold-start poster generation (1024×1792, $0.04)      │
+│  DDPM noise schedule → diffusion math in pure numpy (T=1000 steps)  │
 │  OpenAI TTS → Spoken explanations in 44 languages                  │
 │  Whisper + Faster-Whisper → Voice search (cloud + local edge)       │
 │  Redis cache → Each film calls OpenAI once, cached 7 days           │
-│  Retry: exponential backoff on 429 (1.5s→3s→6s→12s, 4 attempts)    │
+│  Retry: exponential backoff 1.5s→3s→6s→12s, 4 attempts             │
 │                                                                     │
 │  RAGAS: F=0.705 · R=0.752 · C=1.000 — all targets met ✅           │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -167,19 +175,139 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 | Interface | URL | What It Shows |
 |-----------|-----|---------------|
-| **StreamLens UI** | http://localhost:8000/demo | Netflix-style search, explanations, posters |
-| **SQL Explorer** | http://localhost:8000/sql | Live queries — IPW, SLO monitoring, co-watch |
+| **StreamLens UI** | http://localhost:8000/demo | Netflix-style search, explanations, real posters |
+| **SQL Explorer** | http://localhost:8000/sql | Live queries — IPW, SLO monitoring, co-watch graph |
+| **Diffusion Demo** | http://localhost:8000/diffusion | DDPM math + DALL-E 3 HD poster gallery + generate |
 | **API Docs** | http://localhost:8000/docs | All 106 endpoints with schemas |
-| **Grafana** | http://localhost:3000 | p50/p95/p99 per route, nDCG trends |
+| **Grafana** | http://localhost:3000 | p50/p95/p99 per route, nDCG trends, cost gauges |
 | **Airflow** | http://localhost:8080 | 8-task DAG, quality gate status |
 | **MinIO** | http://localhost:9001 | Versioned model artifacts |
 | **Prometheus** | http://localhost:9090 | Raw metrics scrape |
 
 ---
 
+## ML Capabilities Mapping
+
+> Honest audit of which ML disciplines StreamLens demonstrates.
+
+| Discipline | Status | Evidence |
+|------------|--------|----------|
+| **Data curation / Data engine** | ✅ Real | PySpark 33.8M → 1.29M pairs, 9 gates, Airflow |
+| **Self-supervised learning** | ✅ Real | Contrastive fine-tuning e5-base-v2, +18.4% nDCG |
+| **Generative models** | ✅ Real | DALL-E 3 HD + DDPM noise schedule (pure numpy) |
+| **Multi-modal generative** | ✅ Real | CLIP + GPT-4o vision + TTS + Whisper + DALL-E 3 |
+| **LLM inference** | ✅ Real | GPT-4o-mini, 44 languages, RAG, HyDE, RAGAS eval |
+| **Reinforcement learning** | ✅ Real | Thompson Sampling bandits, IPW causal OPE |
+| **Distributed data processing** | ✅ Real | PySpark 33.8M ratings, 5-stage Spark job |
+| **LLM training** | ⚠️ Inference only | GPT-4o-mini via API — not trained from scratch |
+| **Foundation model training** | ❌ Not present | Used pretrained CLIP — did not train from scratch |
+| **Generative video** | ❌ Not present | Image generation only, not video |
+| **World modeling** | ❌ Not present | Recommendation domain, not world models |
+| **BEV / SLAM / Waypoints** | ❌ Not present | Autonomous driving stack — different domain |
+| **Neural network pruning** | ❌ Not present | — |
+| **Sparse training** | ❌ Not present | — |
+| **nuScenes / trajectory** | ❌ Not present | Autonomous driving dataset — different domain |
+
+---
+
+## Diffusion Model Pipeline — `/diffusion`
+
+**Live demo:** http://localhost:8000/diffusion
+
+```bash
+python diffusion_pipeline.py --schedule  # show DDPM math
+python diffusion_pipeline.py --demo      # generate 5 HD posters
+python diffusion_pipeline.py --title "Inception" --genre "Sci-Fi,Thriller"
+```
+
+### DDPM Noise Schedule (Ho et al. 2020 — pure numpy)
+
+```python
+# diffusion_pipeline.py
+betas = np.linspace(0.0001, 0.02, 1000)          # linear schedule
+alphas_cumprod = np.cumprod(1.0 - betas)          # ᾱ_t
+
+# Forward: q(x_t|x_0) = N(x_t; √ᾱ_t·x_0, (1-ᾱ_t)·I)
+# Reverse: p_θ(x_{t-1}|x_t) = N(μ_θ(x_t,t), Σ_θ(x_t,t))
+# Inference: x_T ~ N(0,I) → UNet predicts ε_θ → denoise T→0 → x_0
+```
+
+| Timestep | ᾱ_t | SNR | State |
+|----------|-----|-----|-------|
+| t=0 | 0.9999 | 9999.0 | Clean image |
+| t=250 | 0.5241 | 1.101 | Lightly noisy |
+| t=500 | 0.0786 | 0.085 | Half noise |
+| t=999 | 0.00004 | 0.00004 | Pure N(0,I) |
+
+### DALL-E 3 HD Generation
+
+- **Architecture:** CLIP text encoder → latent diffusion → VAE decoder → 1024×1792 PNG
+- **Genre-aware prompts:** 14 visual styles — Crime → neo-noir, Sci-Fi → cyberpunk, War → smoky battlefield
+- **5 pre-generated posters:** Pulp Fiction, Toy Story, Inception, Schindler's List, Grand Budapest Hotel
+- **Cost:** $0.04/image · cached permanently · zero marginal cost after first run
+- **Total demo cost:** $0.20 for 5 HD 1024×1792 posters
+
+---
+
+## Data Curation Engine
+
+```bash
+python spark/feature_engineering.py  # runs the full PySpark pipeline
+```
+
+```
+Raw MovieLens (33.8M ratings)
+  → Stage 1: Rating validation + user/item filtering
+  → Stage 2: Co-watch pair generation (1.29M pairs)
+  → Stage 3: Feature engineering (15 features)
+  → Stage 4: Quality gates (9 criteria, all must pass)
+  → Stage 5: Feature store push to Redis
+  → Trigger: Kafka impression logging → retrain at 10K events
+```
+
+Architecturally equivalent to fleet-driven training data curation — raw interaction data → curated training pairs → gated model promotion.
+
+---
+
+## Self-Supervised Learning — e5-base-v2 Fine-tuning
+
+```python
+# fine_tune_retrieval.py — contrastive SSL
+model = SentenceTransformer("intfloat/e5-base-v2")
+train_loss = losses.MultipleNegativesRankingLoss(model)  # in-batch negatives
+
+query = "query: crime thriller"          # e5 mandatory prefix
+doc   = "passage: Pulp Fiction (1994)…"  # e5 mandatory prefix
+
+# 294 pairs · 2 epochs · MovieLens genre/tag weak supervision
+model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
+```
+
+| Metric | Base | Fine-tuned | Δ |
+|--------|------|-----------|---|
+| Spearman | 0.6809 | **0.8066** | +18.4% |
+| Dense nDCG@10 | 0.4640 | **0.5496** | +18.4% |
+| **LTR nDCG@10** | 0.8589 | **0.9300** | **+8.3%** |
+
+---
+
+## Multi-Modal AI Stack
+
+| Modality | Model | Purpose | Status |
+|----------|-------|---------|--------|
+| Text → Text | GPT-4o-mini | Explanations, RAG, HyDE | ✅ Live |
+| Image → Text | GPT-4o vision | VLM poster description | ✅ Live |
+| Text → Image | DALL-E 3 HD | Cold-start poster generation | ✅ Live |
+| Image → Vector | CLIP ViT-B/32 | Zero-shot mood (17 categories) | ✅ Live |
+| Text → Speech | OpenAI TTS | Spoken explanations 44 languages | ✅ Live |
+| Speech → Text | Whisper + Faster-Whisper | Voice search (cloud + edge) | ✅ Live |
+| Text → Math | DDPM numpy | Diffusion noise schedule | ✅ Live |
+
+---
+
 ## SQL Explorer — `/sql`
 
-A production SQL explorer built into StreamLens. Click any table to see its schema. Select a query and click Run to execute.
+**Live demo:** http://localhost:8000/sql
 
 ### 8 Production Tables
 
@@ -198,16 +326,16 @@ A production SQL explorer built into StreamLens. Click any table to see its sche
 
 | Query | SQL Features | What It Answers |
 |-------|-------------|-----------------|
-| Q1 — Top watched films | `JOIN` + `GROUP BY` + `COUNT DISTINCT` | Most-completed titles, avg watch rate |
-| Q2 — nDCG@10 by method | `PERCENTILE_CONT` + `CASE` + `HAVING` | Ablation: BM25→Dense→Hybrid→LTR |
-| Q3 — User engagement funnel | `CTE` + `LEFT JOIN` + `FILTER` | Click→Watch→Complete by profile |
-| Q4 — Co-watch similarity | Self-`JOIN` on pairs | Films most similar to Pulp Fiction |
-| Q5 — Model promotion audit | 3-table `JOIN` + `STRING_AGG` | Gate history, which gates failed |
-| Q6 — IPW causal uplift | Propensity weighting + `CASE` | True reward by position (causal) |
-| Q7 — SLO monitoring | `PERCENTILE_CONT` window fn | p50/p95/p99 per route per hour |
-| Q8 — Cold-start detection | Subquery + `COALESCE` + `CASE` | Users needing higher exploration ε |
-| Q9 — GenAI cost tracking | `SUM OVER` running total | Daily + cumulative GPT spend |
-| Q10 — RAGAS by language | `GROUP BY` + `HAVING` | Explanation quality across 44 languages |
+| Q1 — Top watched films | `JOIN` + `GROUP BY` + `COUNT DISTINCT` | Most-completed titles |
+| Q2 — nDCG@10 by method | `PERCENTILE_CONT` + `CASE` | BM25→Dense→Hybrid→LTR ablation |
+| Q3 — User engagement funnel | `CTE` + `LEFT JOIN` + `FILTER` | Click→Watch→Complete |
+| Q4 — Co-watch similarity | Self-`JOIN` | Films similar to Pulp Fiction |
+| Q5 — Model promotion audit | 3-table `JOIN` + `STRING_AGG` | Gate history |
+| Q6 — IPW causal uplift | Propensity weighting + `CASE` | True reward by position |
+| Q7 — SLO monitoring | `PERCENTILE_CONT` window fn | p50/p95/p99 per hour |
+| Q8 — Cold-start detection | Subquery + `COALESCE` | Users needing higher ε |
+| Q9 — GenAI cost tracking | `SUM OVER` running total | Daily GPT spend |
+| Q10 — RAGAS by language | `GROUP BY` + `HAVING` | Explanation quality 44 languages |
 
 ---
 
@@ -220,7 +348,7 @@ A production SQL explorer built into StreamLens. Click any table to see its sche
 | 3 | Hybrid Fusion α=0.2 | BM25 + Dense merge | nDCG@10 = 0.5891 |
 | 4 | LightGBM LambdaRank | LTR reranking | nDCG@10 = 0.9300 ✅ |
 | 5 | Cross-Encoder BERT | Stage 3 precision reranking | 57ms / 20 pairs |
-| 6 | Fine-tuned e5-base-v2 | Domain-adapted embeddings | +18.4% dense nDCG |
+| 6 | Fine-tuned e5-base-v2 (SSL) | Contrastive domain adaptation | +18.4% dense nDCG |
 | 7 | SVD Matrix Factorization | Collaborative filtering features | 33.8M ratings |
 | 8 | Thompson Sampling Bandit | Adaptive per-user exploration | ε=0.15 |
 | 9 | Platt Calibration | Score → probability | [0,1] relevance |
@@ -239,37 +367,10 @@ A production SQL explorer built into StreamLens. Click any table to see its sche
 
 ---
 
-## Fine-Tuning: Domain Adaptation of e5-base-v2
-
-Fine-tuned `intfloat/e5-base-v2` on MovieLens domain data using contrastive learning. The improvement compounded through every downstream stage.
-
-```python
-# fine_tune_retrieval.py
-model = SentenceTransformer("intfloat/e5-base-v2")
-train_loss = losses.MultipleNegativesRankingLoss(model)  # in-batch negatives
-
-# e5 requires instruction prefixes — common mistake to skip these
-query = "query: crime thriller"          # ← mandatory prefix
-doc   = "passage: Pulp Fiction (1994)…"  # ← mandatory prefix
-
-# 294 pairs · 2 epochs · MovieLens genre/tag weak supervision
-model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
-```
-
-| Metric | Base e5-base-v2 | Fine-tuned | Improvement |
-|--------|----------------|------------|-------------|
-| Spearman correlation | 0.6809 | **0.8066** | +18.4% |
-| Dense nDCG@10 | 0.4640 | **0.5496** | +18.4% |
-| **LTR nDCG@10** | 0.8589 | **0.9300** | **+8.3%** |
-
-> The +8.3% LTR gain came entirely from better embeddings — improvements compound through the pipeline.
-
----
-
 ## RAGAS Evaluation
 
 ```bash
-python eval_ragas.py  # semantic cosine scoring via all-MiniLM-L6-v2
+python eval_ragas.py  # semantic cosine via all-MiniLM-L6-v2, 15 queries
 ```
 
 | Metric | Score | Target | Status |
@@ -283,30 +384,12 @@ Sample: *"dark psychological drama"* → Memento → F=0.855 R=0.837 ✅
 
 ---
 
-## GenAI Explanation Layer
-
-Same film. Different profile. Completely different explanation — this is the personalisation layer working.
-
-**Chrisen** (action/thriller):
-> *"The moment Buzz realizes he's a toy and not a real space ranger hits hard, blending humor with existential dread. The intense chase sequences will keep adrenaline junkies on the edge."*
-
-**Gilbert** (romance/comedy):
-> *"The scene where Woody and Buzz confront their insecurities is a game-changer in animated storytelling. Gilbert will love the genuine friendship that blossoms amidst the chaos."*
-
-**RAG 3-liner:**
-```
-⚡ WHY YOU:   Pixar's sharpest comedy — Woody's jealousy is funny and earned
-🎬 ABOUT:    A cowboy toy fights to stay relevant when a flashier astronaut arrives
-🎥 ALSO TRY: Finding Nemo, Up, The Incredibles
-```
-
----
-
 ## Key Metrics — All Real, All Reproducible
 
 ```bash
-make eval_full_v2   # all ranking metrics
-python eval_ragas.py # RAG quality metrics
+make eval_full_v2              # all ranking metrics
+python eval_ragas.py           # RAG quality
+python diffusion_pipeline.py --schedule  # diffusion math
 ```
 
 ### Ablation Study
@@ -346,8 +429,8 @@ LTR LambdaRank   → nDCG@10 = 0.9300  █████████████�
 
 ## Hyperparameter Tuning — Every Number Measured
 
-| Parameter | Values Tested | Winner | Measured Effect |
-|-----------|--------------|--------|-----------------|
+| Parameter | Values Tested | Winner | Effect |
+|-----------|--------------|--------|--------|
 | Hybrid alpha α | {0.1, 0.2, 0.3, 0.5, 0.7, 0.9} | **0.2** | +0.025 nDCG |
 | candidate_k | {200, 500, 1000, 2000} | **2000** | +0.108 nDCG |
 | LTR trees | {100, 200, 300, 500} | **500** | +0.012 nDCG |
@@ -370,8 +453,6 @@ corpus_ingest → bm25_build → dense_embed → hybrid_tune
                        ltr_feature_eng → ltr_train → eval_gate → artifact_push
 ```
 
-**All 9 gates must pass before artifact_push fires:**
-
 ```python
 GATES = {
     "ltr_ndcg10":    (0.80, "EXTRAORDINARY"),  # 0.9300  ✅
@@ -391,7 +472,7 @@ GATES = {
 | Flow | Steps | Purpose |
 |------|-------|---------|
 | StreamLensTrainFlow | 15 | Full training pipeline |
-| MultimodalPipelineFlow | 7 | CLIP + VLM features |
+| MultimodalPipelineFlow | 7 | CLIP + VLM + DALL-E features |
 | EvalFlow | 6 | Metrics + gate validation |
 | DriftMonitorFlow | 4 | Temporal drift detection |
 | CausalValidationFlow | 5 | IPW + OPE validation |
@@ -409,50 +490,31 @@ GATES = {
 
 ## Postmortem — What Broke and How I Fixed It
 
-Real systems break. Here is what broke in StreamLens and exactly how it was fixed.
+### Incident 1 — OpenAI Key Returning 429 / Garbage Explanations
 
-### Incident 1 — OpenAI Key Returning Quota Exceeded (429)
+**What broke:** Explanations returned broken template: *"If you love likes feel-good romance, Adventure film known for pixar will be your kind of night."*
 
-**What broke:** All explanations returned the garbage fallback template: *"If you love likes feel-good romance, Adventure film known for pixar will be your kind of night."*
+**Root cause:** Two `OPENAI_API_KEY` entries in `.env`. Docker read the first (expired). Format string `{pref}` didn't match variable name.
 
-**Root cause:** Two `OPENAI_API_KEY` entries in `.env`. Docker read the first one (expired key), ignoring the valid new key. The fallback template also had a broken format string with `{pref}` not matching the variable name, making it unreadable.
+**Fix:** Dedup script for `.env`, explicit key injection at startup, exponential backoff retry (1.5s→3s→6s→12s), Redis 7-day cache, fixed fallback template.
 
-**Fix:**
-1. Removed duplicate key from `.env` using a Python dedup script
-2. Switched to explicit env var injection: `OPENAI_API_KEY=$(grep ...) docker compose up -d`
-3. Rewrote `openai_explain.py` with exponential backoff retry (1.5s→3s→6s→12s)
-4. Added Redis cache so each film calls OpenAI once, cached 7 days
-5. Fixed fallback to use real film data (title, genres, tags) not a broken template
+### Incident 2 — TMDB Posters All Black (401)
 
-**Result:** Explanations now work correctly. `redis-cli FLUSHDB` clears stale cached garbage.
+**Root cause:** `git filter-repo` replaced TMDB key in `index.html` with literal string `TMDB_API_KEY_REMOVED`.
 
-### Incident 2 — TMDB Key Removed from Source Code
+**Fix:** `sed -i '' "s/TMDB_API_KEY_REMOVED/real_key/" src/app/demo_ui/index.html`. Lesson: grep all source files after `git filter-repo`.
 
-**What broke:** All movie posters showed as dark placeholders. The poster fetching JS function existed but TMDB returned 401.
+### Incident 3 — Docker Not Picking Up New `.env`
 
-**Root cause:** `git filter-repo` (used to remove secrets from history) also replaced the TMDB key in `src/app/demo_ui/index.html` with the literal string `TMDB_API_KEY_REMOVED`.
+**Root cause:** Docker Compose cached resolved environment. Old key baked into image layer.
 
-**Fix:** `sed -i '' "s/TMDB_API_KEY_REMOVED/d8b9837e.../" src/app/demo_ui/index.html`
-
-**Lesson:** `git filter-repo` is a blunt instrument — always grep all source files after running it.
-
-### Incident 3 — Docker Not Picking Up New `.env` Key
-
-**What broke:** Even after updating `.env`, `docker compose exec api env | grep OPENAI` showed the old expired key.
-
-**Root cause:** Docker Compose cached the resolved environment from a previous build. The image had the old key baked in, and `--no-cache` rebuild still read from the Docker layer cache.
-
-**Fix:** Explicit env var override at startup: `OPENAI_API_KEY=<key> docker compose up -d` — this forces the shell variable to override whatever Docker resolves from `.env`.
-
-**Added to `start.sh`** so this is automatic going forward.
+**Fix:** `OPENAI_API_KEY=<key> docker compose up -d` — shell variable overrides Docker `.env` cache. Added to `start.sh`.
 
 ### Incident 4 — RAGAS Scores All 0.000
 
-**What broke:** `eval_ragas.py` returned Faithfulness=0.000, Relevance=0.000 for all 15 queries.
+**Root cause:** Script called `/answer` which requires Ollama. Word-overlap scoring underestimates GPT paraphrases.
 
-**Root cause:** The script called the `/answer` endpoint which requires Ollama (local LLM) to generate answers. Ollama was not running. Without answers, scoring returned zero.
-
-**Fix:** Rewrote RAGAS eval to use `/search` + `/explain` (GPT-4o-mini) instead of `/answer`. Switched from word-overlap scoring (which underestimates GPT paraphrases) to semantic cosine similarity via `all-MiniLM-L6-v2`.
+**Fix:** Switched to `/search` + `/explain` (GPT-4o-mini). Replaced word overlap with semantic cosine via `all-MiniLM-L6-v2`.
 
 **Result:** F=0.705, R=0.752, C=1.000 — all targets met.
 
@@ -463,72 +525,46 @@ Real systems break. Here is what broke in StreamLens and exactly how it was fixe
 | Decision | Option A | Option B | Chosen | Why |
 |----------|----------|----------|--------|-----|
 | Retrieval merge | RRF | Linear α=0.2 | **Linear** | −0.0125 nDCG measured |
-| Dense model | e5-large (4x slower) | e5-base-v2 fine-tuned | **e5-base ft** | base wins after FT |
-| Cross-encoder scope | All 2,000 | Top-20 only | **Top-20** | 57ms acceptable |
-| LTR algorithm | Neural LTR | LightGBM LambdaRank | **LambdaRank** | directly optimises nDCG |
-| Explanation cache | No cache | Redis 7-day TTL | **Redis** | $0 marginal cost after warmup |
-| HyDE scope | All queries | Semantic only | **Semantic** | navigational queries worse with HyDE |
-| A/B shipping | Ship at p=0.065 | Don't ship | **Don't ship** | honest call, underpowered |
-
----
-
-## Data-Driven Decisions
-
-| Decision | Evidence | Outcome |
-|----------|----------|---------|
-| α=0.2 not α=0.5 | Grid search 6 values on held-out queries | +0.025 nDCG |
-| candidate_k=2000 | Ablation {200,500,1000,2000} | +0.108 nDCG vs k=1000 |
-| Fine-tune e5-base-v2 | +18.4% on eval set | Justified 30-min training cost |
-| Porter stemming | BEIR gap identified (0.2712 without) | 0.2712 → 0.3236 |
-| RRF rejected | Measured vs linear merge | −0.0125 nDCG |
-| A/B not shipped | p=0.065, underpowered | Honest call |
-| ε=0.15 exploration | Diversity-CTR analysis | 67.3% long-tail coverage |
-| 24.6% temporal drift | Pre/post-2010 nDCG gap | Quantified, roadmapped fix |
-| Cross-encoder top-20 | Precision vs latency | 57ms acceptable |
-| HyDE for semantic only | Navigational queries hurt by HyDE | Conditional routing |
-| Semantic RAGAS | Word overlap underestimates GPT | Cosine similarity scoring |
+| Dense model | e5-large (4x slower) | e5-base-v2 ft | **e5-base ft** | base wins after fine-tuning |
+| Cross-encoder | All 2,000 | Top-20 only | **Top-20** | 57ms acceptable |
+| LTR algorithm | Neural LTR | LambdaRank | **LambdaRank** | directly optimises nDCG |
+| Explanation cache | No cache | Redis 7-day | **Redis** | $0 marginal after warmup |
+| HyDE scope | All queries | Semantic only | **Semantic** | navigational queries hurt |
+| A/B shipping | Ship p=0.065 | Hold | **Hold** | underpowered, honest call |
+| Diffusion model | SDXL local (2h/img) | DALL-E 3 API | **DALL-E 3** | quality + speed |
 
 ---
 
 ## Interview Preparation
 
-> Time yourself on each. Target: 4-6 minutes per question, clear SLOs first.
+> Time yourself. Target: 4-6 minutes per question. SLOs first, always.
 
-### Q: Design a RAG system for 1M PDFs — latency < 1.5s
+### Design a RAG for 1M PDFs — latency < 1.5s
 
-**Clarify first:** Query latency or indexing latency? p99 or average? Per-user or global?
+Clarify: query vs indexing? p99 or average? Per-user or global?
 
-**My answer:**
-- Stage 1 — BM25 + fine-tuned e5 → 500 candidates, ~200ms (same as StreamLens)
-- Stage 2 — Cross-encoder → top-20, ~300ms
-- Stage 3 — GPT-4o-mini with top-5 chunks → ~700ms
-- Cache on (query_hash, chunk_ids) in Redis → p50=2.67ms on repeats
-- **Total: ~1.2s** · Where latency hides: tokenization 50ms, FAISS 100ms, reranker 300ms, LLM 700ms
+- Stage 1 — BM25 + fine-tuned e5 → 500 candidates (~200ms)
+- Stage 2 — Cross-encoder → top-20 (~300ms)
+- Stage 3 — GPT-4o-mini with top-5 chunks (~700ms)
+- Cache (query_hash, chunk_ids) in Redis → p50=2.67ms on repeats
+- **Total: ~1.2s** · Latency hides in: tokenization 50ms, FAISS 100ms, reranker 300ms, LLM 700ms
 
-### Q: Deploy an LLM with small→big routing and cost guardrails
+### Deploy LLM with small→big routing and cost guardrails
 
-- **Routing:** complexity score < 0.4 → Llama3 local ($0) · > 0.4 → GPT-4o-mini ($0.0008) · > 0.8 → GPT-4o ($0.008)
-- **Guardrail:** Redis counter per user per day · hard cap $0.10/user/day · throttle to local after cap
-- **Fail-open:** GPT-4o-mini down → Ollama Llama3 → smart template · never return empty
+- Score < 0.4 → Llama3 local ($0) · > 0.4 → GPT-4o-mini ($0.0008) · > 0.8 → GPT-4o ($0.008)
+- Redis counter per user/day · hard cap $0.10 · throttle to local after cap
+- Fail-open: GPT → Ollama → template · never return empty
 
-### Q: Make it resilient to data drift
+### Make it resilient to data drift
 
-- **Eval gates:** 9 quality gates before promotion · nDCG drift > 5% → alert + block
-- **Shadow mode:** new model runs parallel 24h without serving · beat prod by 2% → A/B
-- **Rollback:** Metaflow artifact versioning · previous model always retained · 30-second rollback
-- **Drift found:** 24.6% gap in pre-2010 content — sparse metadata, quantified and roadmapped
+- 9 quality gates before promotion · nDCG drift > 5% → alert + block
+- Shadow mode: 24h parallel, beat prod by 2% → A/B
+- Rollback: Metaflow versioning, 30 seconds
+- Found: 24.6% pre/post-2010 gap — quantified, roadmapped
 
-### Q: Walk me through your project end to end
+### Explain your diffusion model work
 
-Start with goal → SLOs → data pipeline → retrieval → ranking → serving → GenAI → feedback loop. Call out trade-offs at each stage. End with: "Every number is reproducible with `make eval_full_v2`."
-
-### Q: Why LambdaRank over neural LTR?
-
-LambdaRank directly optimises nDCG (not a proxy loss). LightGBM inference is microseconds vs 20-50ms for neural. Tabular features (BM25 score, dense score, co-watch) benefit from boosting over deep models. I measured both — LambdaRank won on this corpus.
-
-### Q: Why did your A/B test not ship?
-
-p=0.065 — underpowered. The MDE analysis shows I need 3x the current sample size for 80% power at the observed effect size. That requires real users. The offline OPE is correctly implemented but synthetic traffic is not a substitute. I documented this honestly rather than overclaiming.
+DDPM linear beta schedule: β from 0.0001 → 0.02 over T=1000 steps. At t=0: SNR=9999 (clean). At t=999: SNR=0.00004 (pure noise). Inference: start from x_T~N(0,I), run UNet T→0 to predict and subtract noise. DALL-E 3 uses same DDPM principle in 64×64 latent space (VAE encode → diffusion → VAE decode → HD image). Genre-aware prompt engineering maps Crime → neo-noir, Sci-Fi → cyberpunk. No text in prompt — DALL-E 3 can't render text reliably, UI overlays title instead.
 
 ---
 
@@ -538,18 +574,18 @@ p=0.065 — underpowered. The MDE analysis shows I need 3x the current sample si
 |-------|-----------|------------|
 | **ML — Retrieval** | BM25 (rank_bm25), FAISS | Hybrid α=0.2 |
 | **ML — Ranking** | LightGBM LambdaRank | 500 trees, 15 features |
-| **ML — Fine-tuning** | sentence-transformers | MultipleNegativesRankingLoss |
+| **ML — SSL Fine-tuning** | sentence-transformers | MultipleNegativesRankingLoss (contrastive) |
 | **ML — Reranking** | Cross-Encoder BERT | Stage 3, top-20, 57ms |
 | **ML — Query** | HyDE + NER + Expansion | Semantic + entity enrichment |
 | **ML — Visual** | CLIP ViT-B/32 | Zero-shot, 17 mood categories |
-| **ML — Generative** | Stable Diffusion | Cold-start poster generation |
+| **ML — Diffusion** | DALL-E 3 HD + DDPM numpy | 1024×1792, cold-start posters |
 | **ML — Causal** | Doubly-Robust IPW | Propensity-weighted OPE |
 | **ML — Evaluation** | RAGAS semantic scoring | F=0.705 R=0.752 C=1.000 |
 | **Database** | PostgreSQL schema (schema.sql) | 8 tables, indexes, FK constraints |
 | **SQL** | 10 production queries (queries.sql) | JOIN, CTE, window fns, IPW |
 | **Data** | PySpark 3.5 | 33.8M ratings, 1.29M co-watch pairs |
 | **Orchestration** | Airflow 2.9 | 8-task DAG, 9 quality gates |
-| **Versioning** | Metaflow (14 flows) | Artifact lineage, rollback |
+| **Versioning** | Metaflow (14 flows) | Artifact lineage, 30-second rollback |
 | **Serving** | FastAPI + Uvicorn | 106 endpoints, async |
 | **Cache** | Redis 7 | p50=2.67ms, 7-day explanation TTL |
 | **Streaming** | Kafka / Redis Streams | Fallback, same schema |
@@ -570,42 +606,52 @@ p=0.065 — underpowered. The MDE analysis shows I need 3x the current sample si
 git clone https://github.com/AKilalours/streaming-canvas-search-ltr
 cd streaming-canvas-search-ltr
 
-# Add API keys
 cp env.example .env
 # Edit .env: OPENAI_API_KEY + TMDB_API_KEY
 
 # Start (explicit key injection — avoids .env caching bug)
 OPENAI_API_KEY=$(grep "^OPENAI_API_KEY" .env | head -1 | cut -d= -f2-) docker compose up -d
 
-# Wait for ready
 until curl -s http://localhost:8000/health | python3 -c \
   "import sys,json; d=json.load(sys.stdin); exit(0 if d['ready'] else 1)" \
   2>/dev/null; do echo "loading..."; sleep 5; done && echo "READY"
 
-open http://localhost:8000/demo   # main UI
-open http://localhost:8000/sql    # SQL explorer
+open http://localhost:8000/demo        # main UI
+open http://localhost:8000/sql         # SQL explorer
+open http://localhost:8000/diffusion   # diffusion demo
 
-make eval_full_v2                 # reproduce all metrics
-python eval_ragas.py              # reproduce RAGAS scores
-python src/genai/hyde_rewrite.py  # test HyDE
-python faster_whisper_edge.py     # test edge pipeline
+make eval_full_v2                           # reproduce all metrics
+python eval_ragas.py                        # reproduce RAGAS scores
+python diffusion_pipeline.py --demo         # generate 5 HD posters
+python diffusion_pipeline.py --schedule     # show DDPM math
+python src/genai/hyde_rewrite.py            # test HyDE
+python faster_whisper_edge.py               # test edge pipeline
+python spark/feature_engineering.py        # run PySpark pipeline
 ```
+
+### Services
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| StreamLens UI | http://localhost:8000/demo | — |
+| SQL Explorer | http://localhost:8000/sql | — |
+| Diffusion Demo | http://localhost:8000/diffusion | — |
+| API Docs | http://localhost:8000/docs | — |
+| Grafana | http://localhost:3000 | admin / searchltr2026 |
+| Airflow | http://localhost:8080 | admin / streamlens |
+| MinIO | http://localhost:9001 | minioadmin / minioadmin |
+| Prometheus | http://localhost:9090 | — |
 
 ---
 
 ## What I Would Build Next
 
-**1. Stable Diffusion for cold-start posters** — when TMDB has no image, generate a poster from title + genre using SD locally. Solves a real cold-start UX problem at zero API cost.
-
-**2. ALS collaborative filtering** — 4th retrieval signal from 1.29M co-watch pairs via Matrix Factorization. Would improve cold-start recall significantly.
-
-**3. Real-time FAISS update via Flink** — Flink consumer on Kafka → update FAISS index within 60 seconds of new content. Currently requires a full batch rebuild.
-
-**4. Temporal drift fix** — LLM-based metadata enrichment for pre-2010 films (24.6% nDCG gap). Closes the gap without retraining.
-
-**5. Hard negative mining** — current fine-tuning uses random negatives. Hard negatives (near-miss films) would improve embedding quality: estimated +0.03 dense nDCG.
-
-**6. Online A/B validation** — current A/B is offline simulation (p=0.065, underpowered). Needs real users for statistical significance.
+1. **ALS collaborative filtering** — 4th retrieval signal from 1.29M co-watch pairs. Improves cold-start recall significantly.
+2. **Real-time FAISS update via Flink** — Kafka → FAISS index update in 60 seconds. Currently requires full batch rebuild.
+3. **Temporal drift fix** — LLM metadata enrichment for pre-2010 films (24.6% nDCG gap identified).
+4. **Hard negative mining** — current fine-tuning uses random negatives. Hard negatives → estimated +0.03 dense nDCG.
+5. **Online A/B validation** — current A/B is offline simulation (p=0.065, underpowered). Real users needed.
+6. **Generative video** — short trailer generation from poster frames using video diffusion model.
 
 ---
 
@@ -616,6 +662,8 @@ python faster_whisper_edge.py     # test edge pipeline
 | BM25 + FAISS + LTR + all nDCG metrics | ✅ Real, reproducible |
 | GPT-4o-mini explanations (44 languages) | ✅ Real, live API |
 | TMDB posters | ✅ Real, live API |
+| DALL-E 3 HD cold-start posters | ✅ Real, 5 generated at $0.20 |
+| DDPM noise schedule (pure numpy) | ✅ Real, mathematically correct |
 | Cross-encoder, Thompson, Platt, NER, HyDE | ✅ Real, in pipeline |
 | RAGAS evaluation (semantic scoring) | ✅ Real, reproducible |
 | Faster-Whisper edge pipeline | ✅ Real, runs locally |
@@ -626,9 +674,11 @@ python faster_whisper_edge.py     # test edge pipeline
 | Live events / ads | ⚠️ Mock infrastructure |
 | 238M user scale | ⚠️ Single machine benchmark |
 | Production cloud Kubernetes | ⚠️ Local cluster only |
-| Foundation model training | ⚠️ Pretrained CLIP |
 | PySpark on AWS EMR | ⚠️ Local Spark cluster |
-| Stable Diffusion posters | ⚠️ Planned — not yet built |
+| Foundation model training | ⚠️ Used pretrained CLIP |
+| LLM training | ⚠️ Inference only (GPT-4o-mini API) |
+| Generative video | ⚠️ Not built |
+| BEV / SLAM / Waypoints / nuScenes | ❌ Different domain (autonomous driving) |
 
 ---
 
@@ -636,7 +686,7 @@ python faster_whisper_edge.py     # test edge pipeline
 
 **LTR nDCG@10 = 0.9300 · p95 = 98ms · p99 = 142ms · Cost = $0.0008/req**
 **21 ML Algorithms · 106 Endpoints · 44 Languages · 14 Metaflow Flows**
-**RAGAS F=0.705 · R=0.752 · C=1.000 · SQL Explorer /sql · HyDE · Faster-Whisper**
+**RAGAS F=0.705 · R=0.752 · C=1.000 · DALL-E 3 HD Diffusion · SQL /sql · HyDE**
 
 **Akila Lourdes Miriyala Francis · MS in Artificial Intelligence**
 
