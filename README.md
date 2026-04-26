@@ -199,7 +199,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 | **LLM inference** | ✅ Real | GPT-4o-mini, 44 languages, RAG, HyDE, RAGAS eval |
 | **Reinforcement learning** | ✅ Real | Thompson Sampling bandits, IPW causal OPE |
 | **Distributed data processing** | ✅ Real | PySpark 33.8M ratings, 5-stage Spark job |
-| **LLM training** | ⚠️ Inference only | GPT-4o-mini via API — not trained from scratch |
+| **LLM training** |  Inference only | GPT-4o-mini via API — not trained from scratch |
 
 ---
 
