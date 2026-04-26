@@ -70,3 +70,26 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Garbage that should never be committed
+.bak/
+.minio/
+.Rhistory
+.metaflow/
+.streamlens_env/
+.venv/
+.ruff_cache/
+.pytest_cache/
+metaflow_card_cache/
+reports/
+*.bkp
+*.bin
+xl.meta
+
+# Generated artifacts (large, not code)
+artifacts/posters_hq/
+artifacts/sd_posters/*.png
+
+# Keep schema and queries (they are code)
+!schema.sql
+!queries.sql
