@@ -345,7 +345,7 @@ model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
 |---|-----------|---------|--------|
 | 1 | BM25 (Okapi k1=1.2) | Keyword retrieval | nDCG@10 = 0.6065 |
 | 2 | FAISS IVF (e5-base-v2) | Dense semantic retrieval | nDCG@10 = 0.5496 |
-| 3 | Hybrid Fusion α=0.2 | BM25 + Dense merge | nDCG@10 = 0.5891 |
+| 3 | Hybrid Fusion α=0.2 | BM25 + Dense merge | nDCG@10 = 0.5848 |
 | 4 | LightGBM LambdaRank | LTR reranking | nDCG@10 = 0.9300 ✅ |
 | 5 | Cross-Encoder BERT | Stage 3 precision reranking | 57ms / 20 pairs |
 | 6 | Fine-tuned e5-base-v2 (SSL) | Contrastive domain adaptation | +18.4% dense nDCG |
@@ -398,7 +398,7 @@ python diffusion_pipeline.py --schedule  # diffusion math
 BM25 baseline    → nDCG@10 = 0.6065  ████████████░░░░░░░░
 Dense (base)     → nDCG@10 = 0.4640  █████████░░░░░░░░░░░
 Dense (ft +18%)  → nDCG@10 = 0.5496  ███████████░░░░░░░░░
-Hybrid (α=0.2)   → nDCG@10 = 0.5891  ████████████░░░░░░░░
+Hybrid (α=0.2)   → nDCG@10 = 0.5848  ████████████░░░░░░░░
 LTR LambdaRank   → nDCG@10 = 0.9300  ██████████████████░░  ← EXTRAORDINARY
 ```
 
@@ -408,7 +408,7 @@ LTR LambdaRank   → nDCG@10 = 0.9300  █████████████�
 |--------|-------|--------|--------|
 | **LTR nDCG@10** | **0.9300** (k=2000) · **0.8589** (k=1000) | > 0.80 | ✅ Both exceed target |
 | Dense nDCG@10 (fine-tuned) | **0.5496** | > 0.35 | ✅ +18.4% |
-| Hybrid nDCG@10 | 0.5891 | > 0.55 | ✅ |
+| Hybrid nDCG@10 | 0.5848 | > 0.55 | ✅ |
 | BM25 nDCG@10 | 0.6065 | > 0.60 | ✅ |
 | **BEIR NFCorpus** | **0.3236** | > 0.325 ref | ✅ Above reference |
 | MRR@10 | 0.8256 | > 0.40 | ✅ |
@@ -620,7 +620,7 @@ open http://localhost:8000/demo        # main UI
 open http://localhost:8000/sql         # SQL explorer
 open http://localhost:8000/diffusion   # diffusion demo
 
-make eval_full_v2                           # reproduce all metrics
+make eval_full_v2                           # reproduce all metrics (150 queries, candidate_k=2000)
 python eval_ragas.py                        # reproduce RAGAS scores
 python diffusion_pipeline.py --demo         # generate 5 HD posters
 python diffusion_pipeline.py --schedule     # show DDPM math
@@ -678,6 +678,7 @@ python spark/feature_engineering.py        # run PySpark pipeline
 | Foundation model training | ⚠️ Used pretrained CLIP |
 | LLM training | ⚠️ Inference only (GPT-4o-mini API) |
 | Generative video | ⚠️ Not built |
+| A/B test p=0.065 | ⚠️ Underpowered — offline simulation only |
 | BEV / SLAM / Waypoints / nuScenes | ❌ Different domain (autonomous driving) |
 
 ---
