@@ -45,7 +45,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 **Data flow:** `ingest → store → retrieve → rerank → infer → feedback`
 
 **Headline numbers:**
-- LTR nDCG@10 = **0.9300** — exceeded target of 0.80 by 16.3%
+- LTR nDCG@10 = **0.9300** (candidate_k=2000, production) · **0.8589** (candidate_k=1000, conservative) — both exceed target of 0.80
 - **21 ML algorithms** — retrieval, ranking, personalisation, causal inference, visual AI, generative AI
 - **106 API endpoints** — search, explanation, feed, VLM, SQL explorer, diffusion, causal, self-healing
 - **44 languages** — GPT-4o-mini explanations in pure target script, zero mixing
@@ -64,7 +64,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 | SLO | Target | Measured | Status |
 |-----|--------|----------|--------|
-| **Retrieval quality** | nDCG@10 > 0.80 | **0.9300** | ✅ Exceeded by 16.3% |
+| **Retrieval quality** | nDCG@10 > 0.80 | **0.9300** / **0.8589** | ✅ Both exceed target |
 | **p95 latency** | < 120ms cold | **98ms** | ✅ Pass |
 | **p99 latency** | < 200ms cold | **142ms** | ✅ 29% headroom |
 | **Cost per request** | < $0.005 | **$0.0008** | ✅ 84% under budget |
@@ -406,7 +406,7 @@ LTR LambdaRank   → nDCG@10 = 0.9300  █████████████�
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| **LTR nDCG@10** | **0.9300** | > 0.80 | ✅ EXTRAORDINARY |
+| **LTR nDCG@10** | **0.9300** (k=2000) · **0.8589** (k=1000) | > 0.80 | ✅ Both exceed target |
 | Dense nDCG@10 (fine-tuned) | **0.5496** | > 0.35 | ✅ +18.4% |
 | Hybrid nDCG@10 | 0.5891 | > 0.55 | ✅ |
 | BM25 nDCG@10 | 0.6065 | > 0.60 | ✅ |
