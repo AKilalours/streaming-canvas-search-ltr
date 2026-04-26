@@ -82,7 +82,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │              OFFLINE: PYSPARK DATA CURATION ENGINE                  │
-│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch    │
+│  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch     │
 │  610 users · 9,724 items · 15 user/item/content features            │
 │  → Redis feature store · schema.sql (ratings + co_watch_pairs)      │
 │                                                                     │
@@ -99,10 +99,10 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  document → FAISS embedding │                                       │
 │                             │                                       │
 │  BM25 (k1=1.2) ─────────────┤                                       │
-│  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000   │
+│  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000    │
 │                             │    BM25-dominant: titles are short    │
 │  FAISS e5-base-v2 ──────────┘                                       │
-│  768-dim · FINE-TUNED (SSL contrastive) · nDCG@10 = 0.5496 +18.4%  │
+│  768-dim · FINE-TUNED (SSL contrastive) · nDCG@10 = 0.5496 +18.4%   │
 │                                                                     │
 │  Trade-off: α=0.2 measured optimal — BM25-dominant for short titles │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -117,8 +117,8 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  ├─ Content (4): genre match, tag overlap, recency, popularity      │
 │  └─ Spark (4): user watch_count, taste_breadth, co-watch, item pop  │
 │                                                                     │
-│  500 trees · ε=0.15 · nDCG@10 = 0.9300 ✅ EXTRAORDINARY            │
-│  Trade-off: LambdaRank over neural LTR — directly optimises nDCG   │
+│  500 trees · ε=0.15 · nDCG@10 = 0.9300 ✅ EXTRAORDINARY             │
+│  Trade-off: LambdaRank over neural LTR — directly optimises nDCG    │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -139,7 +139,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  Kubernetes HPA (2-10 replicas) · 3-tier fail-open chain            │
 │  p99=92ms warm · p99=142ms cold · p99=178ms @1K concurrent          │
 │  SQL Explorer /sql · Diffusion Demo /diffusion                      │
-│  Reliability: LTR → hybrid → BM25 → corpus sample. Never fails.    │
+│  Reliability: LTR → hybrid → BM25 → corpus sample. Never fails.     │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -151,12 +151,12 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  CLIP ViT-B/32 → Zero-shot mood classification (17 categories)      │
 │  DALL-E 3 HD → Cold-start poster generation (1024×1792, $0.04)      │
 │  DDPM noise schedule → diffusion math in pure numpy (T=1000 steps)  │
-│  OpenAI TTS → Spoken explanations in 44 languages                  │
+│  OpenAI TTS → Spoken explanations in 44 languages                   │
 │  Whisper + Faster-Whisper → Voice search (cloud + local edge)       │
 │  Redis cache → Each film calls OpenAI once, cached 7 days           │
-│  Retry: exponential backoff 1.5s→3s→6s→12s, 4 attempts             │
+│  Retry: exponential backoff 1.5s→3s→6s→12s, 4 attempts              │
 │                                                                     │
-│  RAGAS: F=0.705 · R=0.752 · C=1.000 — all targets met ✅           │
+│  RAGAS: F=0.705 · R=0.752 · C=1.000 — all targets met ✅            │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
                                ▼
@@ -200,13 +200,6 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 | **Reinforcement learning** | ✅ Real | Thompson Sampling bandits, IPW causal OPE |
 | **Distributed data processing** | ✅ Real | PySpark 33.8M ratings, 5-stage Spark job |
 | **LLM training** | ⚠️ Inference only | GPT-4o-mini via API — not trained from scratch |
-| **Foundation model training** | ❌ Not present | Used pretrained CLIP — did not train from scratch |
-| **Generative video** | ❌ Not present | Image generation only, not video |
-| **World modeling** | ❌ Not present | Recommendation domain, not world models |
-| **BEV / SLAM / Waypoints** | ❌ Not present | Autonomous driving stack — different domain |
-| **Neural network pruning** | ❌ Not present | — |
-| **Sparse training** | ❌ Not present | — |
-| **nuScenes / trajectory** | ❌ Not present | Autonomous driving dataset — different domain |
 
 ---
 
@@ -670,16 +663,12 @@ python spark/feature_engineering.py        # run PySpark pipeline
 | SQL Explorer (/sql) | ✅ Real, live in demo |
 | Kafka streaming | ✅ Real infrastructure |
 | Kubernetes HPA | ✅ Local kind cluster |
-| Causal OPE / A/B | ⚠️ Offline simulation only |
-| Live events / ads | ⚠️ Mock infrastructure |
-| 238M user scale | ⚠️ Single machine benchmark |
-| Production cloud Kubernetes | ⚠️ Local cluster only |
-| PySpark on AWS EMR | ⚠️ Local Spark cluster |
-| Foundation model training | ⚠️ Used pretrained CLIP |
-| LLM training | ⚠️ Inference only (GPT-4o-mini API) |
-| Generative video | ⚠️ Not built |
+| Causal OPE / A/B |  Offline simulation only |
+| Live events / ads |  Mock infrastructure |
+| 238M user scale |  Single machine benchmark |
+| Production cloud Kubernetes |  Local cluster only |
+| PySpark on AWS EMR |  Local Spark cluster |
 | A/B test p=0.065 | ⚠️ Underpowered — offline simulation only |
-| BEV / SLAM / Waypoints / nuScenes | ❌ Different domain (autonomous driving) |
 
 ---
 
