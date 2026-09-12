@@ -689,9 +689,8 @@ python spark/feature_engineering.py        # run PySpark pipeline
 | PySpark on AWS EMR | ⚠️ Local Spark cluster |
 | Foundation model training | ⚠️ Used pretrained CLIP |
 | LLM training | ⚠️ Inference only (GPT-4o-mini API) |
-| Generative video | ⚠️ Not built |
 | A/B test p=0.065 | ⚠️ Underpowered — offline simulation only |
-| BEV / SLAM / Waypoints / nuScenes | ❌ Different domain (autonomous driving) |
+
 
 ---
 
