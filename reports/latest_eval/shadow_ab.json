@@ -1,0 +1,259 @@
+{
+  "dataset_id": "beir/nfcorpus/test",
+  "num_queries_total": 323,
+  "num_queries_eval": 323,
+  "params": {
+    "k": 100,
+    "candidate_k": 1000,
+    "rerank_k": 200,
+    "alpha": 0.5
+  },
+  "metrics": {
+    "bm25": {
+      "ndcg@10": 0.3059571544789469,
+      "map@10": 0.11746458630767696,
+      "recall@10": 0.14862393869522017,
+      "recall@100": 0.2359441175275098
+    },
+    "dense": {
+      "ndcg@10": 0.19257347525618476,
+      "map@10": 0.055226356917848864,
+      "recall@10": 0.08492734880805937,
+      "recall@100": 0.21965052400404364
+    },
+    "hybrid": {
+      "ndcg@10": 0.31256693131812474,
+      "map@10": 0.1171116539307428,
+      "recall@10": 0.1498959926927715,
+      "recall@100": 0.2690100343232638
+    },
+    "hybrid_ltr": {
+      "ndcg@10": 0.3302850966085027,
+      "map@10": 0.12539553125426692,
+      "recall@10": 0.1574881425028383,
+      "recall@100": 0.280102551145176
+    }
+  },
+  "bootstrap": {
+    "compare": "hybrid_ltr - hybrid (ndcg@10)",
+    "iters": 3000,
+    "p_value_one_sided": 0.002,
+    "observed_mean_lift": 0.017718165290377955
+  },
+  "qrels_coverage": {
+    "qids_with_qrels": 323,
+    "qids_total": 323
+  },
+  "deltas": {
+    "top_improvements": [
+      {
+        "qid": "PLAIN-1679",
+        "query": "myelopathy",
+        "delta": 0.5693234419266069
+      },
+      {
+        "qid": "PLAIN-987",
+        "query": "cumin",
+        "delta": 0.46927872602275644
+      },
+      {
+        "qid": "PLAIN-571",
+        "query": "anisakis",
+        "delta": 0.3932591258696538
+      },
+      {
+        "qid": "PLAIN-441",
+        "query": "Is apple cider vinegar good for you?",
+        "delta": 0.3847368188672702
+      },
+      {
+        "qid": "PLAIN-531",
+        "query": "alternative medicine",
+        "delta": 0.3550011248307363
+      },
+      {
+        "qid": "PLAIN-2790",
+        "query": "Titanium Dioxide & Inflammatory Bowel Disease",
+        "delta": 0.28997736516021183
+      },
+      {
+        "qid": "PLAIN-2240",
+        "query": "titanium dioxide",
+        "delta": 0.28323251649726616
+      },
+      {
+        "qid": "PLAIN-196",
+        "query": "Should We Avoid Titanium Dioxide?",
+        "delta": 0.27358726976933645
+      },
+      {
+        "qid": "PLAIN-1018",
+        "query": "DHA",
+        "delta": 0.2661433103952613
+      },
+      {
+        "qid": "PLAIN-2870",
+        "query": "Filled Full of Lead",
+        "delta": 0.25326335410655304
+      }
+    ],
+    "top_regressions": [
+      {
+        "qid": "PLAIN-977",
+        "query": "crib death",
+        "delta": -0.46927872602275644
+      },
+      {
+        "qid": "PLAIN-3085",
+        "query": "The Difficulty of Arriving at a Vitamin D Recommendation",
+        "delta": -0.41972078914818756
+      },
+      {
+        "qid": "PLAIN-418",
+        "query": "Fresh fruit versus frozen--which is better?",
+        "delta": -0.26582598262939583
+      },
+      {
+        "qid": "PLAIN-1262",
+        "query": "Global Burden of Disease Study",
+        "delta": -0.23251823163171914
+      },
+      {
+        "qid": "PLAIN-332",
+        "query": "Can antioxidant-rich spices counteract the effects of a high-fat meal?",
+        "delta": -0.22629438553091674
+      },
+      {
+        "qid": "PLAIN-1537",
+        "query": "low-carb diets",
+        "delta": -0.20839155298281037
+      },
+      {
+        "qid": "PLAIN-3332",
+        "query": "Alcohol Risks vs. Benefits",
+        "delta": -0.20659506710012931
+      },
+      {
+        "qid": "PLAIN-3026",
+        "query": "Vitamin C-Enriched Bacon",
+        "delta": -0.1989700043360188
+      },
+      {
+        "qid": "PLAIN-2450",
+        "query": "Are Organic Foods Safer?",
+        "delta": -0.1951890007906611
+      },
+      {
+        "qid": "PLAIN-2301",
+        "query": "uterine health",
+        "delta": -0.1610425878239398
+      }
+    ]
+  },
+  "top_misses": {
+    "hybrid": [
+      {
+        "qid": "PLAIN-217",
+        "query": "Plant-Based Diets for Psoriasis",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-395",
+        "query": "What about pepper plus turmeric in V8 juice?",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-457",
+        "query": "How can you believe in any scientific study?",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-478",
+        "query": "accidents",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-520",
+        "query": "Alli",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-551",
+        "query": "amnesia",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-603",
+        "query": "Arkansas",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-751",
+        "query": "BRCA genes",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-782",
+        "query": "Bush administration",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-817",
+        "query": "canker sores",
+        "best_relevant_rank": null
+      }
+    ],
+    "hybrid_ltr": [
+      {
+        "qid": "PLAIN-217",
+        "query": "Plant-Based Diets for Psoriasis",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-395",
+        "query": "What about pepper plus turmeric in V8 juice?",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-457",
+        "query": "How can you believe in any scientific study?",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-478",
+        "query": "accidents",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-520",
+        "query": "Alli",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-551",
+        "query": "amnesia",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-603",
+        "query": "Arkansas",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-751",
+        "query": "BRCA genes",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-782",
+        "query": "Bush administration",
+        "best_relevant_rank": null
+      },
+      {
+        "qid": "PLAIN-817",
+        "query": "canker sores",
+        "best_relevant_rank": null
+      }
+    ]
+  }
+}

@@ -26,6 +26,7 @@ dependencies = [
   "redis>=7.1.1",
   "streamlit>=1.54.0",
   "prometheus-client>=0.24.1",
+  "opensearch-py>=3.2.0",
 ]
 
 [project.optional-dependencies]

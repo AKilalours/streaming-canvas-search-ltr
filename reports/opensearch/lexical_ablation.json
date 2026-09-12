@@ -1,0 +1,90 @@
+{
+  "index": "movielens-hybrid",
+  "num_queries": 150,
+  "candidate_k": 200,
+  "rrf_k": 60,
+  "control_knn": {
+    "ndcg@10": 0.5428128171095449,
+    "recall@100": 0.4160352279332041,
+    "faiss_path_reference": 0.542812817109545
+  },
+  "reference_rank_bm25_ndcg@10": 0.6064944718128008,
+  "variants": [
+    {
+      "variant": "text_standard",
+      "fields": [
+        "text"
+      ],
+      "match_type": "match",
+      "lexical_ndcg@10": 0.6843946059173699,
+      "lexical_recall@100": 0.41702126664507827,
+      "rrf_ndcg@10": 0.585009305048104,
+      "rrf_recall@100": 0.431128455840776,
+      "lexical_delta_vs_rank_bm25": 0.07790013410456909
+    },
+    {
+      "variant": "title_text_standard_xf",
+      "fields": [
+        "title",
+        "text"
+      ],
+      "match_type": "cross_fields",
+      "lexical_ndcg@10": 0.6652735054791841,
+      "lexical_recall@100": 0.4167387393719765,
+      "rrf_ndcg@10": 0.5820507139942547,
+      "rrf_recall@100": 0.43081334239162233,
+      "lexical_delta_vs_rank_bm25": 0.05877903366638326
+    },
+    {
+      "variant": "text_film",
+      "fields": [
+        "text.film"
+      ],
+      "match_type": "match",
+      "lexical_ndcg@10": 0.664589150409462,
+      "lexical_recall@100": 0.42561488811091375,
+      "rrf_ndcg@10": 0.5728833806527464,
+      "rrf_recall@100": 0.43351096046037146,
+      "lexical_delta_vs_rank_bm25": 0.058094678596661176
+    },
+    {
+      "variant": "title_text_film_xf",
+      "fields": [
+        "title.film",
+        "text.film"
+      ],
+      "match_type": "cross_fields",
+      "lexical_ndcg@10": 0.660246838656235,
+      "lexical_recall@100": 0.42458180676500734,
+      "rrf_ndcg@10": 0.5726533522301218,
+      "rrf_recall@100": 0.4333347081801111,
+      "lexical_delta_vs_rank_bm25": 0.05375236684343421
+    },
+    {
+      "variant": "title2_text_standard_bf",
+      "fields": [
+        "title^2",
+        "text"
+      ],
+      "match_type": "best_fields",
+      "lexical_ndcg@10": 0.4218107391981469,
+      "lexical_recall@100": 0.4073217760707838,
+      "rrf_ndcg@10": 0.5523261667888572,
+      "rrf_recall@100": 0.42604561910086386,
+      "lexical_delta_vs_rank_bm25": -0.18468373261465393
+    },
+    {
+      "variant": "title2_text_film_bf",
+      "fields": [
+        "title.film^2",
+        "text.film"
+      ],
+      "match_type": "best_fields",
+      "lexical_ndcg@10": 0.37452321101243075,
+      "lexical_recall@100": 0.41801435683884874,
+      "rrf_ndcg@10": 0.534576399650244,
+      "rrf_recall@100": 0.42790916993050626,
+      "lexical_delta_vs_rank_bm25": -0.23197126080037006
+    }
+  ]
+}

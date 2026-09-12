@@ -98,7 +98,73 @@ concurrency level and cache state is not comparable to anything.
 
 ---
 
-## 5. Corrections made
+## 5. OpenSearch hybrid retrieval (platform migration)
+
+The same corpus, the same fine-tuned e5 vectors and the same metric functions, moved from a
+FAISS library call plus a separate rank_bm25 index onto one OpenSearch index carrying a BM25
+analyzed field and a `knn_vector` on every document.
+
+**Final configuration** (`reports/opensearch/metrics.json`)
+9,742 docs · 150 queries · candidate_k = 200 · RRF k = 60 · lexical: `match` on `text`,
+standard analyzer
+
+| Method | nDCG@10 | recall@100 |
+|---|---|---|
+| OpenSearch BM25 | **0.6844** | 0.4170 |
+| OpenSearch kNN | 0.5428 | 0.4160 |
+| OpenSearch RRF (BM25 + kNN) | 0.5850 | **0.4311** |
+
+Per-query latency, sequential and single-client: p50 77.0ms, p95 130.9ms, p99 250.1ms.
+**Not comparable** to `reports/latest/latency.json`, which measures `/search` at concurrency 20.
+
+### The control arm
+
+OpenSearch kNN scores **0.5428** against the FAISS path's **0.5428** on byte-identical
+vectors. Indexing, HNSW recall and query encoding are therefore correct, and any difference
+elsewhere is attributable to the lexical path alone.
+
+### Lexical ablation (`reports/opensearch/lexical_ablation.json`)
+
+The first OpenSearch run scored 0.3745, well below the rank_bm25 reference of 0.6065. That
+run changed two things at once, so the cause could not be attributed. Holding corpus, qrels,
+metric code and index fixed and varying only the lexical query:
+
+| Variant | nDCG@10 | vs rank_bm25 (0.6065) |
+|---|---|---|
+| `text`, standard analyzer | **0.6844** | +0.0779 |
+| `title` + `text`, cross_fields, standard | 0.6653 | +0.0588 |
+| `text.film`, film analyzer | 0.6646 | +0.0581 |
+| `title.film` + `text.film`, cross_fields | 0.6602 | +0.0538 |
+| `title^2` + `text`, best_fields, standard | 0.4218 | -0.1847 |
+| `title.film^2` + `text.film`, best_fields | 0.3745 | -0.2320 |
+
+**Attribution:** the field boost costs **-0.263** (0.6844 to 0.4218); the stemming and
+synonym analyzer costs **-0.020**. The regression was almost entirely the boost, not the
+analyzer and not the platform.
+
+**Mechanism:** `text` already contains the title. `best_fields` takes the maximum single
+field score rather than combining fields, so a 2x boost on a short duplicated field wins
+nearly every comparison, and the ranker effectively scored on title alone while discarding
+genres and tags.
+
+**Conclusion:** the platform migration did not cost retrieval quality. Correctly configured,
+OpenSearch BM25 is **+0.078 above** the rank_bm25 baseline on the same corpus. The initial
+regression was a query-configuration defect in this repository.
+
+### Fusion does not help on this corpus
+
+RRF over BM25 and kNN scores 0.5850, **below BM25 alone at 0.6844**. The FAISS path shows
+the same shape: weighted hybrid at alpha = 0.2 scores 0.5902, below its BM25 at 0.6065. Two
+different fusion methods, same direction.
+
+The cause is the qrel density documented in section 2: with a median of 502 relevant titles
+per query, the weaker retriever contributes many plausible lower-ranked relevant documents
+that displace the stronger retriever's top hits. Only the learned reranker recovers the loss
+(0.9491). Fusion should not be assumed to be free.
+
+---
+
+## 6. Corrections made
 
 | Previously stated | Corrected to | Why |
 |---|---|---|

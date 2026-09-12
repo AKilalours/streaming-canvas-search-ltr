@@ -1,0 +1,36 @@
+{
+  "dev_metrics": {
+    "hybrid": {
+      "ndcg@10": 0.2766548409068999,
+      "map@10": 0.07756758872094538,
+      "recall@10": 0.11123791040856953,
+      "recall@100": 0.25713957531679166
+    },
+    "hybrid_ltr": {
+      "ndcg@10": 0.29431075421294356,
+      "map@10": 0.0866162556661813,
+      "recall@10": 0.12357817527978489,
+      "recall@100": 0.26259096571411716
+    },
+    "lift_ndcg@10": 0.017655913306043658
+  },
+  "meta": {
+    "dataset": "beir/nfcorpus",
+    "alpha": 0.5,
+    "candidate_k": 1000,
+    "rerank_k": 200,
+    "features": [
+      "bm25",
+      "dense",
+      "merged",
+      "q_len",
+      "title_len",
+      "doc_len",
+      "overlap_title",
+      "overlap_text"
+    ],
+    "train_queries": 2000,
+    "train_rows": 2000000,
+    "out": "artifacts/ltr/ltr.pkl"
+  }
+}

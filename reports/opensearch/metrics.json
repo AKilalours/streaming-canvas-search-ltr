@@ -1,0 +1,34 @@
+{
+  "index": "movielens-hybrid",
+  "num_docs": 9742,
+  "num_queries": 150,
+  "candidate_k": 200,
+  "rrf_k": 60,
+  "embedder": "artifacts/faiss/movielens_ft_e5 (fine-tuned e5-base-v2)",
+  "methods": [
+    {
+      "method": "os_bm25",
+      "ndcg@10": 0.6843946059173699,
+      "recall@100": 0.41702126664507827,
+      "num_queries": 150
+    },
+    {
+      "method": "os_knn",
+      "ndcg@10": 0.5428128171095449,
+      "recall@100": 0.4160352279332041,
+      "num_queries": 150
+    },
+    {
+      "method": "os_rrf",
+      "ndcg@10": 0.585009305048104,
+      "recall@100": 0.431128455840776,
+      "num_queries": 150
+    }
+  ],
+  "query_latency_ms": {
+    "p50": 77.04156249383232,
+    "p95": 130.9400293510407,
+    "p99": 250.06845749943693,
+    "note": "sequential, single client, BM25 + kNN + fusion per query"
+  }
+}

@@ -7,7 +7,22 @@ env.example
 # ── Large artifacts (trained models, datasets, eval outputs) ─────────────────
 artifacts/
 data/
-reports/
+# Run outputs are large and regenerated, so the tree is ignored ...
+reports/**
+# ... except the small metric artifacts that DEFINITIVE_NUMBERS.md cites. Every published
+# figure must resolve to a file in this repository, which requires those files to be in it.
+!reports/**/
+!reports/latest/metrics.json
+!reports/latest/latency.json
+!reports/latest/metrics_test.json
+!reports/latest/metrics_scifact_test.json
+!reports/reference/metrics.json
+!reports/reference/latency.json
+!reports/latest_eval/ablations.csv
+!reports/latest_eval/ltr_train_eval.json
+!reports/latest_eval/shadow_ab.json
+!reports/opensearch/metrics.json
+!reports/opensearch/lexical_ablation.json
 metaflow_card_cache/
 deliverables/
 
@@ -81,7 +96,6 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 metaflow_card_cache/
-reports/
 *.bkp
 *.bin
 xl.meta
