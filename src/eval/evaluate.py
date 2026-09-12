@@ -243,6 +243,9 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # Ranked lists output
     ranked: dict[str, dict[str, list[str]]] = {"bm25": {}, "dense": {}, "hybrid": {}, "hybrid_ltr": {}}
+    # Keep enough of each ranked list to score recall@recall_k correctly.
+    # Truncating to k here made recall@100 mathematically equal to recall@10.
+    keep_k = max(k, recall_k)
 
     # Oracle trackers
     oracle: dict[str, list[float]] = {m: [] for m in ranked.keys()}
@@ -258,17 +261,17 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
         dense_ids_full = [d for d, _ in dense_hits_full]
 
         # bm25
-        ranked["bm25"][qid] = bm25_ids_full[:k]
+        ranked["bm25"][qid] = bm25_ids_full[:keep_k]
         oracle["bm25"].append(_oracle_ndcg_at_k(qr, bm25_ids_full[:bm25_k_max], oracle_k))
 
         # dense
-        ranked["dense"][qid] = dense_ids_full[:k]
+        ranked["dense"][qid] = dense_ids_full[:keep_k]
         oracle["dense"].append(_oracle_ndcg_at_k(qr, dense_ids_full[:dense_k_max], oracle_k))
 
         # hybrid (use method-specific candidate sizes)
         hy_hits = hybrid_merge(bm25_hits_full[:bm25_k_hy], dense_hits_full[:dense_k_hy], alpha=alpha_hybrid)
         hy_ids = [d for d, _ in hy_hits]
-        ranked["hybrid"][qid] = hy_ids[:k]
+        ranked["hybrid"][qid] = hy_ids[:keep_k]
         oracle["hybrid"].append(_oracle_ndcg_at_k(qr, hy_ids[: len(hy_ids)], oracle_k))
 
         # hybrid_ltr
@@ -276,7 +279,7 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
         hy2_ids = [d for d, _ in hy2_hits]
 
         if reranker is None:
-            ranked["hybrid_ltr"][qid] = hy2_ids[:k]
+            ranked["hybrid_ltr"][qid] = hy2_ids[:keep_k]
             oracle["hybrid_ltr"].append(_oracle_ndcg_at_k(qr, hy2_ids, oracle_k))
         else:
             to_rerank = hy2_hits[: min(rerank_k, len(hy2_hits))]
@@ -294,7 +297,7 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
             reranked_set = set(reranked_ids)
 
             tail = [d for d in hy2_ids if d not in reranked_set]
-            final_ids = (reranked_ids + tail)[:k]
+            final_ids = (reranked_ids + tail)[:keep_k]
             ranked["hybrid_ltr"][qid] = final_ids
 
             # oracle over reranked candidate set

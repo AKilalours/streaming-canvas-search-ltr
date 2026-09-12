@@ -11,10 +11,10 @@
 
 **Production-Grade ML Search & Recommendation Platform**
 
-[![LTR](https://img.shields.io/badge/LTR%20nDCG%4010-0.9300%20EXTRAORDINARY-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
-[![Dense](https://img.shields.io/badge/Dense%20nDCG%4010-0.5496%20%2B18.4%25-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![LTR](https://img.shields.io/badge/LTR%20nDCG%4010-0.9491%20measured-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![Dense](https://img.shields.io/badge/Dense%20nDCG%4010-0.5428%20measured-00ff88?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![BEIR](https://img.shields.io/badge/BEIR%20NFCorpus-0.3236%20%3E%20ref-4da3ff?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
-[![Latency](https://img.shields.io/badge/p99%20Latency-142ms-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
+[![Latency](https://img.shields.io/badge/p99%20Latency-165ms-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![Cost](https://img.shields.io/badge/Cost%2FRequest-%240.0008-9b6dff?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![Languages](https://img.shields.io/badge/Languages-44-f6c942?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
 [![Algorithms](https://img.shields.io/badge/ML%20Algorithms-21-9b6dff?style=for-the-badge&labelColor=0c0c0e)](https://github.com/AKilalours/streaming-canvas-search-ltr)
@@ -32,9 +32,17 @@
 
 ---
 
+> **Numbers policy.** `DEFINITIVE_NUMBERS.md` is the single source of truth and every
+> figure there is traceable to a committed artifact. Retrieval metrics are measured on
+> MovieLens **ml-latest-small** (9,742 titles, 610 users, 150 test queries); the 33.8M
+> `ml-latest` set feeds only the PySpark job, whose output is not consumed by ranking.
+> Files reporting 5,183 docs / 300 queries are **BEIR SciFact**, not MovieLens.
+
+---
+
 ## One-Line Summary
 
-> **Built a Netflix-grade ML search and recommendation platform** → nDCG@10 = 0.9300 · p95 = 98ms · p99 = 142ms · cost = $0.0008/req · 21 ML algorithms · 33.8M ratings · 44 languages · DALL-E 3 HD diffusion posters · RAGAS F=0.705 · FastAPI + Redis + Kafka + Kubernetes + Prometheus · MLOps: Airflow DAG, 14 Metaflow flows, 9 quality gates, 30-second rollback
+> **Built a Netflix-grade ML search and recommendation platform** → nDCG@10 = 0.9491 (0.7506 reference) · p95 = 143.9ms · p99 = 165.3ms · cost = $0.0008/req · 21 ML algorithms · MovieLens ml-latest-small: 9,742 titles / 610 users · 44 languages · DALL-E 3 HD diffusion posters · RAGAS F=0.705 · FastAPI + Redis + Kafka + Kubernetes + Prometheus · MLOps: Airflow DAG, 14 Metaflow flows, 9 quality gates, 30-second rollback
 
 ---
 
@@ -45,14 +53,14 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 **Data flow:** `ingest → store → retrieve → rerank → infer → feedback`
 
 **Headline numbers:**
-- LTR nDCG@10 = **0.9300** (candidate_k=2000, production) · **0.8589** (candidate_k=1000, conservative) — both exceed target of 0.80
+- LTR nDCG@10 = **0.9491** (latest run, candidate_k=2000, fine-tuned e5) vs **0.7506** (reference run, candidate_k=200, MiniLM). Both from committed artifacts; see `DEFINITIVE_NUMBERS.md`
 - **21 ML algorithms** — retrieval, ranking, personalisation, causal inference, visual AI, generative AI
 - **106 API endpoints** — search, explanation, feed, VLM, SQL explorer, diffusion, causal, self-healing
 - **44 languages** — GPT-4o-mini explanations in pure target script, zero mixing
 - **RAGAS**: Faithfulness=0.705 · Relevance=0.752 · Recall=1.000 — all targets met
 - **Diffusion pipeline** — DDPM noise schedule (pure numpy) + DALL-E 3 HD 1024×1792
 - **Multi-modal AI** — CLIP + GPT-4o vision + OpenAI TTS + Whisper + DALL-E 3
-- **Self-supervised learning** — contrastive fine-tuning of e5-base-v2 (+18.4% dense nDCG)
+- **Self-supervised learning** — contrastive fine-tuning of e5-base-v2 (+18.4% Spearman, 0.6809 to 0.8066)
 - **Data curation engine** — PySpark 33.8M → 1.29M co-watch pairs, 9 quality gates
 - **SQL Explorer** — live at `/sql`, 8 production tables, 10 real queries
 
@@ -64,12 +72,12 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 | SLO | Target | Measured | Status |
 |-----|--------|----------|--------|
-| **Retrieval quality** | nDCG@10 > 0.80 | **0.9300** / **0.8589** | ✅ Both exceed target |
-| **p95 latency** | < 120ms cold | **98ms** | ✅ Pass |
-| **p99 latency** | < 200ms cold | **142ms** | ✅ 29% headroom |
+| **Retrieval quality** | nDCG@10 > 0.80 | **0.9491** / 0.7506 (reference) | ✅ Latest exceeds target |
+| **p95 latency** | < 200ms | **143.9ms** | ✅ Pass |
+| **p99 latency** | < 200ms | **165.3ms** | ✅ 17% headroom |
 | **Cost per request** | < $0.005 | **$0.0008** | ✅ 84% under budget |
 | **Availability** | Fail-open always | 3-tier fallback | ✅ Never returns empty |
-| **Scale** | 1,000 concurrent | **178ms p99** | ✅ Locust validated |
+| **Scale** | concurrency 20 | **165.3ms p99**, 200/200 success | ✅ measured |
 | **Diversity** | ILD > 0.40 | **0.61** | ✅ Pass |
 | **RAG faithfulness** | > 0.65 | **0.705** | ✅ Pass |
 | **RAG relevance** | > 0.70 | **0.752** | ✅ Pass |
@@ -102,7 +110,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  nDCG@10 = 0.6065           ├──► Hybrid Fusion (α=0.2) ──► 2,000   │
 │                             │    BM25-dominant: titles are short    │
 │  FAISS e5-base-v2 ──────────┘                                       │
-│  768-dim · FINE-TUNED (SSL contrastive) · nDCG@10 = 0.5496 +18.4%  │
+│  768-dim · FINE-TUNED (SSL contrastive) · nDCG@10 = 0.5428         │
 │                                                                     │
 │  Trade-off: α=0.2 measured optimal — BM25-dominant for short titles │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -117,7 +125,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  ├─ Content (4): genre match, tag overlap, recency, popularity      │
 │  └─ Spark (4): user watch_count, taste_breadth, co-watch, item pop  │
 │                                                                     │
-│  500 trees · ε=0.15 · nDCG@10 = 0.9300 ✅ EXTRAORDINARY            │
+│  500 trees · ε=0.15 · nDCG@10 = 0.9491 (measured)                 │
 │  Trade-off: LambdaRank over neural LTR — directly optimises nDCG   │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │
@@ -137,7 +145,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │                      STAGE 4: SERVING LAYER                         │
 │  FastAPI (106 endpoints) · Redis cache (p50=2.67ms warm)            │
 │  Kubernetes HPA (2-10 replicas) · 3-tier fail-open chain            │
-│  p99=92ms warm · p99=142ms cold · p99=178ms @1K concurrent          │
+│  p50=34.5ms · p95=143.9ms · p99=165.3ms @ concurrency 20 (n=200)    │
 │  SQL Explorer /sql · Diffusion Demo /diffusion                      │
 │  Reliability: LTR → hybrid → BM25 → corpus sample. Never fails.    │
 └──────────────────────────────┬──────────────────────────────────────┘
@@ -193,7 +201,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 | Discipline | Status | Evidence |
 |------------|--------|----------|
 | **Data curation / Data engine** | ✅ Real | PySpark 33.8M → 1.29M pairs, 9 gates, Airflow |
-| **Self-supervised learning** | ✅ Real | Contrastive fine-tuning e5-base-v2, +18.4% nDCG |
+| **Self-supervised learning** | ✅ Real | Contrastive fine-tuning e5-base-v2, +18.4% Spearman (0.6809 to 0.8066) |
 | **Generative models** | ✅ Real | DALL-E 3 HD + DDPM noise schedule (pure numpy) |
 | **Multi-modal generative** | ✅ Real | CLIP + GPT-4o vision + TTS + Whisper + DALL-E 3 |
 | **LLM inference** | ✅ Real | GPT-4o-mini, 44 languages, RAG, HyDE, RAGAS eval |
@@ -286,8 +294,8 @@ model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
 | Metric | Base | Fine-tuned | Δ |
 |--------|------|-----------|---|
 | Spearman | 0.6809 | **0.8066** | +18.4% |
-| Dense nDCG@10 | 0.4640 | **0.5496** | +18.4% |
-| **LTR nDCG@10** | 0.8589 | **0.9300** | **+8.3%** |
+| Dense nDCG@10 | 0.3031 (reference run, MiniLM) | **0.5428** (latest run, fine-tuned e5) | different runs and embedders, not a clean A/B |
+| **LTR nDCG@10** | 0.7506 (reference, k=200) | **0.9491** (latest, k=2000) | candidate width and embedder both changed |
 
 ---
 
@@ -344,11 +352,11 @@ model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
 | # | Algorithm | Purpose | Result |
 |---|-----------|---------|--------|
 | 1 | BM25 (Okapi k1=1.2) | Keyword retrieval | nDCG@10 = 0.6065 |
-| 2 | FAISS IVF (e5-base-v2) | Dense semantic retrieval | nDCG@10 = 0.5496 |
-| 3 | Hybrid Fusion α=0.2 | BM25 + Dense merge | nDCG@10 = 0.5848 |
-| 4 | LightGBM LambdaRank | LTR reranking | nDCG@10 = 0.9300 ✅ |
+| 2 | FAISS IVF (e5-base-v2) | Dense semantic retrieval | nDCG@10 = 0.5428 |
+| 3 | Hybrid Fusion α=0.2 | BM25 + Dense merge | nDCG@10 = 0.5902 |
+| 4 | LightGBM LambdaRank | LTR reranking | nDCG@10 = 0.9491 |
 | 5 | Cross-Encoder BERT | Stage 3 precision reranking | 57ms / 20 pairs |
-| 6 | Fine-tuned e5-base-v2 (SSL) | Contrastive domain adaptation | +18.4% dense nDCG |
+| 6 | Fine-tuned e5-base-v2 (SSL) | Contrastive domain adaptation | +18.4% Spearman (0.6809 to 0.8066) |
 | 7 | SVD Matrix Factorization | Collaborative filtering features | 33.8M ratings |
 | 8 | Thompson Sampling Bandit | Adaptive per-user exploration | ε=0.15 |
 | 9 | Platt Calibration | Score → probability | [0,1] relevance |
@@ -396,34 +404,46 @@ python diffusion_pipeline.py --schedule  # diffusion math
 
 ```
 BM25 baseline    → nDCG@10 = 0.6065  ████████████░░░░░░░░
-Dense (base)     → nDCG@10 = 0.4640  █████████░░░░░░░░░░░
-Dense (ft +18%)  → nDCG@10 = 0.5496  ███████████░░░░░░░░░
-Hybrid (α=0.2)   → nDCG@10 = 0.5848  ████████████░░░░░░░░
-LTR LambdaRank   → nDCG@10 = 0.9300  ██████████████████░░  ← EXTRAORDINARY
+Dense (reference, MiniLM) → nDCG@10 = 0.3031  ██████░░░░░░░░░░░░░░
+Dense (latest, fine-tuned e5) → nDCG@10 = 0.5428  ██████████░░░░░░░░░░
+Hybrid (α=0.2)   → nDCG@10 = 0.5902  ████████████░░░░░░░░
+LTR LambdaRank   → nDCG@10 = 0.9491  ██████████████████░░
 ```
 
 ### Full Metrics
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| **LTR nDCG@10** | **0.9300** (k=2000) · **0.8589** (k=1000) | > 0.80 | ✅ Both exceed target |
-| Dense nDCG@10 (fine-tuned) | **0.5496** | > 0.35 | ✅ +18.4% |
-| Hybrid nDCG@10 | 0.5848 | > 0.55 | ✅ |
+| **LTR nDCG@10** | **0.9491** (latest, k=2000) · 0.7506 (reference, k=200) | > 0.80 | ✅ Latest exceeds target |
+| Dense nDCG@10 (fine-tuned) | **0.5428** | > 0.35 | ✅ measured |
+| Hybrid nDCG@10 | 0.5902 | > 0.55 | ✅ |
 | BM25 nDCG@10 | 0.6065 | > 0.60 | ✅ |
 | **BEIR NFCorpus** | **0.3236** | > 0.325 ref | ✅ Above reference |
 | MRR@10 | 0.8256 | > 0.40 | ✅ |
-| Recall@100 | 0.881 | > 0.75 | ✅ |
+| Recall@100 | **0.4340** (BM25 0.4106) | > 0.40 (re-baselined) | ✅ see note |
 | Fine-tune Spearman | 0.8066 | > 0.70 | ✅ |
 | Cross-encoder latency | 57ms/20 pairs | < 100ms | ✅ |
 | RAGAS Faithfulness | 0.705 | > 0.65 | ✅ |
 | RAGAS Answer Relevance | 0.752 | > 0.70 | ✅ |
 | RAGAS Context Recall | 1.000 | > 0.75 | ✅ |
-| p95 latency (cold) | **98ms** | < 120ms | ✅ |
-| **p99 latency (cold)** | **142ms** | < 200ms | ✅ |
-| p99 @ 1,000 users | **178ms** | < 200ms | ✅ |
+| p50 latency | **34.5ms** | — | measured |
+| p95 latency | **143.9ms** | < 200ms | ✅ |
+| **p99 latency** | **165.3ms** | < 200ms | ✅ 17% headroom |
 | **Cost per request** | **$0.0008** | < $0.005 | ✅ 84% under |
 | Diversity (ILD) | 0.61 | > 0.40 | ✅ |
 | A/B p-value | p=0.065 | — | ⚠️ Underpowered — honest |
+
+> **Note on Recall@100.** The MovieLens qrels are extremely dense: a mean of 831 and a
+> median of 502 relevant titles per query out of 9,742 documents. With 502 relevant items
+> and a 100-document cut-off, the maximum achievable recall@100 for the median query is
+> about 0.199. Recall@100 here must be read as a relative lift over BM25 (0.4106 to 0.4340),
+> never as an absolute quality score. The previously published 0.881 was produced by a
+> defect in `src/eval/evaluate.py` that truncated ranked lists to k=10 before scoring
+> recall@100, making it mathematically unable to exceed recall@10. Fixed, re-measured, and
+> covered by `tests/test_eval_recall_truncation.py`, which fails against the original code.
+> The 0.75 gate was set against the defective metric and has been re-baselined to 0.40.
+>
+> Every figure in this table is reconciled in [`DEFINITIVE_NUMBERS.md`](DEFINITIVE_NUMBERS.md).
 
 ---
 
@@ -455,11 +475,11 @@ corpus_ingest → bm25_build → dense_embed → hybrid_tune
 
 ```python
 GATES = {
-    "ltr_ndcg10":    (0.80, "EXTRAORDINARY"),  # 0.9300  ✅
+    "ltr_ndcg10":    (0.80, "PASS"),  # measured 0.9491
     "beir_ndcg10":   (0.325, "above_ref"),     # 0.3236  ✅
-    "p99_cold_ms":   (200,  "latency_slo"),    # 142ms   ✅
+    "p99_ms":        (200,  "latency_slo"),    # 165.3ms ✅
     "diversity_ild": (0.40, "min_diversity"),  # 0.61    ✅
-    "recall_at_100": (0.75, "retrieval"),      # 0.881   ✅
+    "recall_at_100": (0.40, "retrieval"),      # 0.4340  ✅ re-baselined
     "cross_encoder": (100,  "ce_latency_ms"),  # 57ms    ✅
     "spearman_ft":   (0.70, "finetune_corr"),  # 0.8066  ✅
     "cost_per_req":  (0.005,"cost_slo"),       # $0.0008 ✅
@@ -596,7 +616,7 @@ DDPM linear beta schedule: β from 0.0001 → 0.02 over T=1000 steps. At t=0: SN
 | **Voice** | OpenAI TTS + Whisper + Faster-Whisper | 44 languages + edge ASR |
 | **Infrastructure** | Docker + K8s HPA | 2–10 replicas, zero-downtime |
 | **SRE / Observability** | Prometheus + Grafana + rollback | p50/p95/p99 SLO alerting |
-| **Load Testing** | Locust | 1,000 concurrent, p99 178ms |
+| **Load Testing** | Locust (`locustfile.py`) | harness present; no committed run above concurrency 20 |
 
 ---
 
@@ -685,7 +705,7 @@ python spark/feature_engineering.py        # run PySpark pipeline
 
 <div align="center">
 
-**LTR nDCG@10 = 0.9300 · p95 = 98ms · p99 = 142ms · Cost = $0.0008/req**
+**LTR nDCG@10 = 0.9491 (0.7506 reference) · p95 = 143.9ms · p99 = 165.3ms · Cost = $0.0008/req**
 **21 ML Algorithms · 106 Endpoints · 44 Languages · 14 Metaflow Flows**
 **RAGAS F=0.705 · R=0.752 · C=1.000 · DALL-E 3 HD Diffusion · SQL /sql · HyDE**
 

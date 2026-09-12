@@ -32,7 +32,7 @@
 
 | Field | Value |
 |-------|-------|
-| Dataset | MovieLens 25M (grouplens.org) |
+| Dataset | MovieLens **ml-latest-small** (100,836 ratings, 9,742 titles, 610 users). The 33.8M `ml-latest` set feeds only the PySpark job, whose output is not consumed by ranking. |
 | Corpus size | 9,742 unique titles |
 | Query source | User rating histories treated as implicit relevance |
 | Relevance labels | Binarized ratings (≥4.0 = relevant) |
@@ -56,10 +56,10 @@
 |--------|-------|-------|
 | nDCG@10 | 0.7506 | Dense qrels inflate this vs sparse-qrel benchmarks |
 | MRR@10 | 0.8256 | Strong first-result placement |
-| Recall@100 | 0.881 | Requires candidate_k=1000 to compute correctly |
+| Recall@100 | 0.4340 (BM25 0.4106) | Qrels are dense (median 502 relevant / query), so recall@100 is structurally capped near 0.199 for the median query. Read as relative lift, not absolute quality. |
 | Diversity (ILD) | 0.61 | Mean pairwise Jaccard distance |
-| p95 latency | 98ms | API serving path, low load |
-| p99 latency | 142ms | API serving path, low load |
+| p95 latency | 143.9ms | /search, n=200 at concurrency 20 (reports/latest/latency.json) |
+| p99 latency | 165.3ms | /search, n=200 at concurrency 20, 100% success (reports/latest/latency.json) |
 
 ### Ablation
 
@@ -154,6 +154,6 @@
 
 ```
 StreamLens LTR Search System
-Trained on MovieLens 25M (Harper & Konstan, 2015)
+Trained on MovieLens ml-latest-small (Harper & Konstan, 2015)
 https://github.com/AKilalours/streaming-canvas-search-ltr
 ```
