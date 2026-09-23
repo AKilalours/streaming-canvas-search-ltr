@@ -77,7 +77,7 @@ RAG deep explanation (3 lines, any of 44 languages):
 
 The system includes the full operations layer that most portfolio projects skip entirely:
 
-- **Airflow DAG** with 8 tasks and 9 quality gates — model only promotes if every gate passes
+- **Airflow DAG** with 8 tasks and 9 measured gates: trains a candidate, evaluates it against the current model on the val split, and promotes (atomic swap + archive + registry) only if every gate passes
 - **14 Metaflow flows** with artifact versioning and one-command rollback
 - **Shadow mode** — new model runs silently for 24 hours before any promotion
 - **Drift monitoring** — 24.6% temporal gap identified and quantified (pre-2010 content)

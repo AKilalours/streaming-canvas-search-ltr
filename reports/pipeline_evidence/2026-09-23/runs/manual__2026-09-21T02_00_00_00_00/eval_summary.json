@@ -1,0 +1,26 @@
+{
+  "run_id": "manual__2026-09-21T02_00_00_00_00",
+  "created": "2026-09-23T23:11:32+00:00",
+  "candidate_sha256": "95ca13d338cbe33dc965005167bcf09c9010b4cb82baed56e21e9e5a11d3fddb",
+  "champion_sha256": "48b39f56678fddadcc1f83e2414b5929124c2aa875c8a005ae911fbee2ebe2de",
+  "ndcg@10": {
+    "challenger_val": {
+      "bm25": 0.5723,
+      "dense": 0.5105,
+      "hybrid": 0.5724,
+      "hybrid_ltr": 0.9469
+    },
+    "challenger_test": {
+      "bm25": 0.6065,
+      "dense": 0.5428,
+      "hybrid": 0.5902,
+      "hybrid_ltr": 0.9509
+    },
+    "champion_val": {
+      "bm25": 0.5723,
+      "dense": 0.5105,
+      "hybrid": 0.5724,
+      "hybrid_ltr": 0.9476
+    }
+  }
+}

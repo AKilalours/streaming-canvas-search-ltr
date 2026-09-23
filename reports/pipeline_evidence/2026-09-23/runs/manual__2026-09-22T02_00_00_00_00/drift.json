@@ -1,0 +1,31 @@
+{
+  "run_id": "manual__2026-09-22T02_00_00_00_00",
+  "created": "2026-09-23T23:14:28+00:00",
+  "split": "val",
+  "limit": 0.005,
+  "data_fingerprint_changed": false,
+  "comparisons": [
+    {
+      "what": "bm25 (first stage)",
+      "baseline_run": "manual__2026-09-21T02_00_00_00_00",
+      "baseline": 0.5723,
+      "current": 0.5723,
+      "change": 0.0
+    },
+    {
+      "what": "dense (first stage)",
+      "baseline_run": "manual__2026-09-21T02_00_00_00_00",
+      "baseline": 0.5105,
+      "current": 0.5105,
+      "change": 0.0
+    },
+    {
+      "what": "hybrid (first stage)",
+      "baseline_run": "manual__2026-09-21T02_00_00_00_00",
+      "baseline": 0.5724,
+      "current": 0.5724,
+      "change": 0.0
+    }
+  ],
+  "status": "stable"
+}

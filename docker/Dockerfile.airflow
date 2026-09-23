@@ -1,0 +1,19 @@
+# Airflow scheduler/webserver + a separate venv with the StreamLens ML stack.
+# Airflow's own Python stays clean; DAG tasks run STREAMLENS_PYTHON from /opt/streamlens-venv.
+FROM apache/airflow:2.10.5-python3.11
+
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /opt/streamlens-venv && chown airflow: /opt/streamlens-venv
+USER airflow
+
+COPY --chown=airflow: pyproject.toml uv.lock /tmp/streamlens/
+RUN pip install --no-cache-dir uv \
+    && cd /tmp/streamlens \
+    && UV_PROJECT_ENVIRONMENT=/opt/streamlens-venv uv sync --frozen --no-dev --no-install-project
+
+ENV STREAMLENS_HOME=/opt/streamlens \
+    STREAMLENS_PYTHON=/opt/streamlens-venv/bin/python \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1

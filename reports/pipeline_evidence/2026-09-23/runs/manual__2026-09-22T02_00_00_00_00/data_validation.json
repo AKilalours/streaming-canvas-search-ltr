@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "checks": {
+    "files_present": true,
+    "json_parses": true,
+    "required_keys": true,
+    "unique_ids": true,
+    "corpus_min_size": true,
+    "qrels_reference_known_queries": true,
+    "qrels_reference_known_docs": true,
+    "every_query_has_relevant": true,
+    "min_queries_per_split": true,
+    "corpus_consistent_across_splits": true,
+    "cross_split_duplicates_within_limit": true
+  },
+  "stats": {
+    "train": {
+      "num_docs": 9742,
+      "num_queries": 600,
+      "num_unique_query_texts": 305,
+      "median_relevant_per_query": 611.0
+    },
+    "val": {
+      "num_docs": 9742,
+      "num_queries": 150,
+      "num_unique_query_texts": 123,
+      "median_relevant_per_query": 615.0
+    },
+    "test": {
+      "num_docs": 9742,
+      "num_queries": 150,
+      "num_unique_query_texts": 116,
+      "median_relevant_per_query": 502.5
+    },
+    "cross_split_duplicates": {
+      "val_in_train": {
+        "count": 60,
+        "fraction_of_unique_texts": 0.4878
+      },
+      "test_in_train": {
+        "count": 58,
+        "fraction_of_unique_texts": 0.5
+      }
+    }
+  },
+  "errors": [],
+  "warnings": [
+    "val: 60 unique query texts (48.8%) also appear verbatim in train",
+    "test: 58 unique query texts (50.0%) also appear verbatim in train"
+  ],
+  "fingerprint": "b6eeacbcda5fcc76a874662b516c42db30d9c0fe359bd7f04a226a84fa12a653",
+  "run_id": "manual__2026-09-22T02_00_00_00_00",
+  "created": "2026-09-23T23:11:39+00:00"
+}

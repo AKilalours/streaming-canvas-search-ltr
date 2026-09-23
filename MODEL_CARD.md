@@ -140,13 +140,13 @@
 
 ## Deployment Notes
 
-**Promotion criteria**: Model is promoted only when all 9 quality gates pass (see eval/comprehensive endpoint).
+**Promotion criteria**: Model is promoted only when all 9 gates in `src/pipelines/promotion_gates.py` pass on the val split (challenger vs current model in the same run). Evidence: `reports/pipeline_evidence/2026-09-23/`.
 
-**Drift monitoring**: Airflow drift_check task alerts when nDCG drops >0.03 vs reference baseline.
+**Drift monitoring**: Airflow `drift_check` fails the run when scores that should not change (first-stage retrieval, unchanged production model) move > 0.005 nDCG@10 vs the previous run.
 
-**Rollback**: Previous model artifact retained in MinIO. Rollback by updating `artifacts/ltr/movielens_ltr.pkl` symlink.
+**Rollback**: every promotion archives the previous model to `artifacts/ltr/archive/` (sha256 in `artifacts/ltr/registry.jsonl`); roll back by copying the archived file over `artifacts/ltr/movielens_ltr_tuned.pkl`.
 
-**Retraining trigger**: Drift alert OR scheduled weekly retraining via Airflow DAG.
+**Retraining trigger**: scheduled daily Airflow DAG (starts paused).
 
 ---
 
