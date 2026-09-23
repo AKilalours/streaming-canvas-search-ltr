@@ -101,7 +101,7 @@ def candidate_meta_path(cfg: dict[str, Any], run_id: str) -> Path:
 
 
 def _now() -> str:
-    return dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")  # noqa: UP017 (3.10-compatible)
 
 
 # ── steps ───────────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ def step_promote(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
             _write_json(rd / "promotion.json", entry)
             print(f"[PROMOTE] candidate is byte-identical to production ({cand_sha[:12]}); no swap")
             return entry
-        stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
+        stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")  # noqa: UP017 (3.10-compatible)
         shutil.copy2(prod, archive / f"{stamp}_{previous_sha[:12]}_{prod.name}")
         if prod_meta.exists():
             shutil.copy2(prod_meta, archive / f"{stamp}_{previous_sha[:12]}_{prod_meta.name}")
