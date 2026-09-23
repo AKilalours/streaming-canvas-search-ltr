@@ -100,9 +100,22 @@ def _split_params_for_fit(params: dict) -> tuple[dict, dict]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True, help="Path to configs/train.yaml")
+    ap.add_argument(
+        "--out_dir",
+        default=None,
+        help="Override artifacts.ltr_dir (used by the promotion pipeline to write a "
+        "candidate model without touching the production model).",
+    )
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
+    if args.out_dir:
+        cfg.setdefault("artifacts", {})["ltr_dir"] = args.out_dir
+    train(cfg)
+
+
+def train(cfg: dict) -> Path:
+    """Train LambdaRank from a config dict. Returns the written model path."""
     tcfg = cfg["train"]
 
     processed_dir = Path(tcfg["dataset_processed_dir"])
@@ -239,6 +252,7 @@ def main() -> None:
 
     log.info("Saved LTR model -> %s", model_path)
     log.info("Saved LTR meta  -> %s", meta_path)
+    return model_path
 
 
 if __name__ == "__main__":

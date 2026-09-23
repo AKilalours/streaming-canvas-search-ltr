@@ -1,0 +1,10 @@
+{
+  "run_id": "manual__2026-09-22T02_00_00_00_00",
+  "promoted_at": "2026-09-23T23:14:30+00:00",
+  "model_sha256": "263254b5a8f4b98512cfeb0b50f8a5cb40f577587265a0231be392d1bdf9a93b",
+  "previous_sha256": "95ca13d338cbe33dc965005167bcf09c9010b4cb82baed56e21e9e5a11d3fddb",
+  "gates": "9/9",
+  "val_ndcg@10": 0.9481,
+  "test_ndcg@10": 0.9507,
+  "reports": "reports/runs/manual__2026-09-22T02_00_00_00_00"
+}

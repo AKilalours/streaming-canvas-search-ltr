@@ -42,7 +42,7 @@
 
 ## One-Line Summary
 
-> **Built a Netflix-grade ML search and recommendation platform** → nDCG@10 = 0.9491 (0.7506 reference) · p95 = 143.9ms · p99 = 165.3ms · cost = $0.0008/req · 21 ML algorithms · MovieLens ml-latest-small: 9,742 titles / 610 users · 44 languages · DALL-E 3 HD diffusion posters · RAGAS F=0.705 · FastAPI + Redis + Kafka + Kubernetes + Prometheus · MLOps: Airflow DAG, 14 Metaflow flows, 9 quality gates, 30-second rollback
+> **Built a Netflix-grade ML search and recommendation platform** → nDCG@10 = 0.9491 (0.7506 reference) · p95 = 143.9ms · p99 = 165.3ms · cost = $0.0008/req · 21 ML algorithms · MovieLens ml-latest-small: 9,742 titles / 610 users · 44 languages · DALL-E 3 HD diffusion posters · RAGAS F=0.705 · FastAPI + Redis + Kafka + Kubernetes + Prometheus · MLOps: Airflow promotion DAG with 9 measured gates, 14 Metaflow flows, 30-second rollback
 
 ---
 
@@ -61,7 +61,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 - **Diffusion pipeline** — DDPM noise schedule (pure numpy) + DALL-E 3 HD 1024×1792
 - **Multi-modal AI** — CLIP + GPT-4o vision + OpenAI TTS + Whisper + DALL-E 3
 - **Self-supervised learning** — contrastive fine-tuning of e5-base-v2 (+18.4% Spearman, 0.6809 to 0.8066)
-- **Data curation engine** — PySpark 33.8M → 1.29M co-watch pairs, 9 quality gates
+- **Data curation engine** — PySpark 33.8M → 1.29M co-watch pairs
 - **SQL Explorer** — live at `/sql`, 8 production tables, 10 real queries
 
 ---
@@ -94,7 +94,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │  610 users · 9,724 items · 15 user/item/content features            │
 │  → Redis feature store · schema.sql (ratings + co_watch_pairs)      │
 │                                                                     │
-│  Data curation: 9 quality gates must pass before model promotion    │
+│  Model promotion: Airflow DAG, 9 measured gates (see MLOps section) │
 │  Kafka impression logging → retrain trigger at 10K events           │
 └──────────────────────────────┬──────────────────────────────────────┘
                                │ nightly Airflow DAG
@@ -188,7 +188,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 | **Diffusion Demo** | http://localhost:8000/diffusion | DDPM math + DALL-E 3 HD poster gallery + generate |
 | **API Docs** | http://localhost:8000/docs | All 106 endpoints with schemas |
 | **Grafana** | http://localhost:3000 | p50/p95/p99 per route, nDCG trends, cost gauges |
-| **Airflow** | http://localhost:8080 | 8-task DAG, quality gate status |
+| **Airflow** | http://localhost:8080 | 8-task promotion DAG, gate results per run |
 | **MinIO** | http://localhost:9001 | Versioned model artifacts |
 | **Prometheus** | http://localhost:9090 | Raw metrics scrape |
 
@@ -200,7 +200,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 
 | Discipline | Status | Evidence |
 |------------|--------|----------|
-| **Data curation / Data engine** | ✅ Real | PySpark 33.8M → 1.29M pairs, 9 gates, Airflow |
+| **Data curation / Data engine** | ✅ Real | PySpark 33.8M → 1.29M pairs |
 | **Self-supervised learning** | ✅ Real | Contrastive fine-tuning e5-base-v2, +18.4% Spearman (0.6809 to 0.8066) |
 | **Generative models** | ✅ Real | DALL-E 3 HD + DDPM noise schedule (pure numpy) |
 | **Multi-modal generative** | ✅ Real | CLIP + GPT-4o vision + TTS + Whisper + DALL-E 3 |
@@ -260,8 +260,7 @@ Raw MovieLens (33.8M ratings)
   → Stage 1: Rating validation + user/item filtering
   → Stage 2: Co-watch pair generation (1.29M pairs)
   → Stage 3: Feature engineering (15 features)
-  → Stage 4: Quality gates (9 criteria, all must pass)
-  → Stage 5: Feature store push to Redis
+  → Stage 4: Feature store push to Redis
   → Trigger: Kafka impression logging → retrain at 10K events
 ```
 
@@ -457,27 +456,45 @@ LTR LambdaRank   → nDCG@10 = 0.9491  █████████████�
 
 See [MLOPS.md](MLOPS.md) for the complete reference.
 
-### Airflow DAG (8 tasks, 9 quality gates)
+### Airflow promotion DAG (8 tasks, 9 measured gates)
+
+File: `flows/streamlens_airflow_dag.py`. Each task runs `python -m pipelines.promotion <step>`
+(`src/pipelines/promotion.py`); no step is simulated.
 
 ```
-corpus_ingest → bm25_build → dense_embed → hybrid_tune
-                                   ↓
-                       ltr_feature_eng → ltr_train → eval_gate → artifact_push
+validate_data -> train_candidate -> evaluate -+-> run_gates -> decide -+-> promote_model
+                                              |                        +-> block_promotion (fails the run)
+                                              +-> drift_check
 ```
 
-```python
-GATES = {
-    "ltr_ndcg10":    (0.80, "PASS"),  # measured 0.9491
-    "beir_ndcg10":   (0.325, "above_ref"),     # 0.3236  ✅
-    "p99_ms":        (200,  "latency_slo"),    # 165.3ms ✅
-    "diversity_ild": (0.40, "min_diversity"),  # 0.61    ✅
-    "recall_at_100": (0.40, "retrieval"),      # 0.4340  ✅ re-baselined
-    "cross_encoder": (100,  "ce_latency_ms"),  # 57ms    ✅
-    "spearman_ft":   (0.70, "finetune_corr"),  # 0.8066  ✅
-    "cost_per_req":  (0.005,"cost_slo"),       # $0.0008 ✅
-    "ab_pvalue":     (0.05, "statistical_sig"),# 0.065   ⚠️ honest
-}
-```
+| Task | What it does |
+|------|--------------|
+| `validate_data` | 11 checks on corpus/queries/qrels: files, schema, unique ids, qrels reference known docs and queries, same corpus in every split, query-text overlap with train (`src/pipelines/data_quality.py`) |
+| `train_candidate` | LightGBM LambdaRank (`ranking/ltr_train.py`) on the **train** split, written to `artifacts/ltr/candidates/<run_id>/`. Production model untouched |
+| `evaluate` | Candidate on val and test, current production model on val, same code and split, strict model path (no silent fallback) |
+| `run_gates` | 9 gates below, from this run's measured metrics, on **val** (test is reported only) |
+| `promote_model` | Archive current model, atomic rename, sha256 check, append to `artifacts/ltr/registry.jsonl`. Idempotent |
+| `block_promotion` | Fails the DAG run with the failing gate names, production model unchanged |
+| `drift_check` | bm25/dense/hybrid scores vs previous run, and the same production model vs its last evaluation; fails if they move > 0.005 |
+
+Gates (`src/pipelines/promotion_gates.py`, thresholds in `configs/promotion.yaml`):
+
+| # | Gate | Rule |
+|---|------|------|
+| 1 | data_validation_passed | all 11 data checks pass |
+| 2 | candidate_model_was_evaluated | eval loaded exactly the candidate pickle |
+| 3 | feature_schema_matches_serving | candidate features == `ranking.features.FEATURE_NAMES` (names, order, count) |
+| 4 | full_query_coverage | every val query scored |
+| 5 | ndcg10_above_floor | val nDCG@10 >= 0.70 |
+| 6 | beats_best_first_stage | LTR beats best of bm25/dense/hybrid by > 0.05 |
+| 7 | ndcg10_no_regression | drop <= 0.01 vs max(production model, best promoted) |
+| 8 | recall100_no_regression | drop <= 0.01 vs production model |
+| 9 | map10_no_regression | drop <= 0.01 vs production model |
+
+Evidence: three `airflow dags test` runs (Airflow 2.10.5) are committed in
+`reports/pipeline_evidence/2026-09-23/`: two runs promoted (9/9), one run with a stricter demo
+threshold was blocked (8/9) and failed, leaving production unchanged.
+Retrained candidates scored val nDCG@10 0.9465 to 0.9481 and test 0.9497 to 0.9517.
 
 ### Metaflow Pipelines (14 flows)
 
@@ -569,7 +586,7 @@ Clarify: query vs indexing? p99 or average? Per-user or global?
 
 ### Make it resilient to data drift
 
-- 9 quality gates before promotion · nDCG drift > 5% → alert + block
+- 9 measured gates before promotion (val split, challenger vs champion) · drift_check fails the run if unchanged components move > 0.005 nDCG
 - Shadow mode: 24h parallel, beat prod by 2% → A/B
 - Rollback: Metaflow versioning, 30 seconds
 - Found: 24.6% pre/post-2010 gap — quantified, roadmapped
@@ -596,7 +613,7 @@ DDPM linear beta schedule: β from 0.0001 → 0.02 over T=1000 steps. At t=0: SN
 | **Database** | PostgreSQL schema (schema.sql) | 8 tables, indexes, FK constraints |
 | **SQL** | 10 production queries (queries.sql) | JOIN, CTE, window fns, IPW |
 | **Data** | PySpark 3.5 | 33.8M ratings, 1.29M co-watch pairs |
-| **Orchestration** | Airflow 2.9 | 8-task DAG, 9 quality gates |
+| **Orchestration** | Airflow 2.10 | 8-task promotion DAG, 9 measured gates |
 | **Versioning** | Metaflow (14 flows) | Artifact lineage, 30-second rollback |
 | **Serving** | FastAPI + Uvicorn | 106 endpoints, async |
 | **Cache** | Redis 7 | p50=2.67ms, 7-day explanation TTL |
@@ -650,7 +667,7 @@ python spark/feature_engineering.py        # run PySpark pipeline
 | Diffusion Demo | http://localhost:8000/diffusion | — |
 | API Docs | http://localhost:8000/docs | — |
 | Grafana | http://localhost:3000 | admin / searchltr2026 |
-| Airflow | http://localhost:8080 | admin / streamlens |
+| Airflow | http://localhost:8080 | admin / `$AIRFLOW_ADMIN_PASSWORD` (.env) |
 | MinIO | http://localhost:9001 | minioadmin / minioadmin |
 | Prometheus | http://localhost:9090 | — |
 

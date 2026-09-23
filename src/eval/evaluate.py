@@ -119,6 +119,11 @@ def _best_ltr_path(cfg: dict[str, Any]) -> Path | None:
         p = Path(str(cand))
         if p.exists():
             return p
+        # strict mode: the promotion pipeline must evaluate exactly the model it
+        # was given; silently falling back to another pickle would let a missing
+        # candidate be scored with the production model.
+        if bool((cfg.get("eval", {}) or {}).get("strict_ltr_path", False)):
+            raise FileNotFoundError(f"ltr_model_path not found (strict_ltr_path=true): {p}")
 
     # infer dataset name from processed dir, e.g. data/processed/nfcorpus
     eval_cfg = cfg.get("eval", {}) or {}
@@ -338,16 +343,17 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
+    ap.add_argument("--out", default="reports/latest/metrics.json")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
 
     out = run_eval(cfg)
 
-    out_dir = Path("reports/latest")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    write_json(out_dir / "metrics.json", out)
-    log.info("Wrote reports/latest/metrics.json (methods=%s)", [m["method"] for m in out["methods"]])
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(out_path, out)
+    log.info("Wrote %s (methods=%s)", out_path, [m["method"] for m in out["methods"]])
 
 
 if __name__ == "__main__":

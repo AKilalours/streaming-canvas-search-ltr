@@ -1,0 +1,54 @@
+{
+  "k": 10,
+  "split": "test",
+  "diagnostics": {
+    "num_docs": 9742,
+    "num_queries": 150,
+    "has_ltr": true,
+    "ltr_path": "artifacts/ltr/candidates/manual__2026-09-21T02_00_00_00_00/movielens_ltr_tuned.pkl",
+    "embed_model": "artifacts/faiss/movielens_ft_e5",
+    "bm25_candidate_k_max": 2000,
+    "dense_candidate_k_max": 200,
+    "hybrid_alpha": 0.2,
+    "hybrid_ltr_alpha": 0.2,
+    "rerank_k": 200
+  },
+  "methods": [
+    {
+      "method": "bm25",
+      "ndcg@10": 0.6064944718128008,
+      "map@10": 0.12694844534170002,
+      "recall@10": 0.1618439242477083,
+      "recall@100": 0.41058215671940185,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.9809244567540808
+    },
+    {
+      "method": "dense",
+      "ndcg@10": 0.542812817109545,
+      "map@10": 0.1728618509282298,
+      "recall@10": 0.18478472001422114,
+      "recall@100": 0.4164055983035744,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.7000569701951199
+    },
+    {
+      "method": "hybrid",
+      "ndcg@10": 0.5901701990266837,
+      "map@10": 0.12871927802579927,
+      "recall@10": 0.16450898570976952,
+      "recall@100": 0.4170981290397836,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.9817902901651032
+    },
+    {
+      "method": "hybrid_ltr",
+      "ndcg@10": 0.9508669376160725,
+      "map@10": 0.23229726044971064,
+      "recall@10": 0.23355387427551705,
+      "recall@100": 0.43465811823799316,
+      "num_queries": 150.0,
+      "oracle_ndcg@10": 0.9817902901651032
+    }
+  ]
+}

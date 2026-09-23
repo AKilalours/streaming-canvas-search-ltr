@@ -107,3 +107,7 @@ artifacts/sd_posters/*.png
 # Keep schema and queries (they are code)
 !schema.sql
 !queries.sql
+
+# Promotion pipeline: per-run outputs are regenerated daily and stay local;
+# one curated evidence snapshot is tracked.
+!reports/pipeline_evidence/**

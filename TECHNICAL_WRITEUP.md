@@ -68,19 +68,11 @@ MovieLens 25M dataset, preprocessed to 9,742 unique titles with user ratings as 
 
 ### Gates
 
-All 9 quality gates pass before any model is promoted:
-
-| Gate | Value | Target |
-|------|-------|--------|
-| Recall@100 | 0.881 | >0.75 |
-| MRR@10 | 0.826 | >0.40 |
-| nDCG pre-LTR | 0.474 | >0.28 |
-| nDCG post-LTR | 0.751 | >0.34 |
-| LTR abs lift | +0.277 | >0.015 |
-| Diversity | 0.61 | >0.40 |
-| Cold-start nDCG | 0.563 | >0.22 |
-| p95 latency | 98ms | <120ms |
-| p99 latency | 142ms | <180ms |
+Promotion is decided by 9 gates computed from each run's measured metrics on the val split
+(challenger vs current production model in the same run): data validation, candidate actually
+evaluated, feature schema matches serving, full query coverage, nDCG@10 floor 0.70, lift over the
+best first-stage method > 0.05, and no nDCG@10 / recall@100 / MAP@10 drop above 0.01. Definitions
+in `src/pipelines/promotion_gates.py`; three Airflow runs in `reports/pipeline_evidence/2026-09-23/`.
 
 ### Integrity Checks
 
@@ -96,7 +88,7 @@ All 9 quality gates pass before any model is promoted:
 
 **API**: FastAPI, 91 endpoints, uvicorn. Rate limiting, Redis caching, Prometheus instrumentation.
 
-**ML Orchestration**: Airflow 2.9 DAG — validate_data → generate_features → train_ltr → offline_eval → quality_gate → promote_model/gate_failed → drift_check. 14 Metaflow production flows for data processing and training.
+**ML Orchestration**: Airflow 2.10 DAG — validate_data → train_candidate → evaluate → run_gates → decide → promote_model / block_promotion, plus drift_check; every task calls `src/pipelines/promotion.py`. 14 Metaflow production flows for data processing and training.
 
 **Artifact Storage**: MinIO S3-compatible object store. Models versioned by run ID. Artifact lineage from Metaflow. Same API as AWS S3 — swap the endpoint URL for production.
 

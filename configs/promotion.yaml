@@ -1,0 +1,51 @@
+# Promotion pipeline config, used by src/pipelines/promotion.py and the Airflow DAG
+# (flows/streamlens_airflow_dag.py). All paths are relative to the repo root.
+
+dataset_processed_dir: data/processed/movielens
+train_config: configs/train_movielens.yaml
+eval_config: configs/eval_movielens.yaml
+
+# Production model: the file the eval config and the API load.
+production_model: artifacts/ltr/movielens_ltr_tuned.pkl
+production_meta: artifacts/ltr/movielens_ltr_tuned_meta.json
+
+candidates_dir: artifacts/ltr/candidates   # candidates/<run_id>/...
+archive_dir: artifacts/ltr/archive         # previous production models, never deleted
+registry: artifacts/ltr/registry.jsonl     # one line per promotion
+runs_dir: reports/runs                     # reports/runs/<run_id>/*.json
+
+gate_split: val     # promotion decisions are made on val
+report_split: test  # test metrics are recorded for reporting only
+
+data_quality:
+  min_docs: 9000
+  min_queries: {train: 500, val: 100, test: 100}
+  # Share of a held-out split's unique query texts that may also appear verbatim in
+  # train. The current MovieLens build has ~49% overlap; a measured ablation showed
+  # LTR nDCG@10 is 0.944 on the overlapping test queries and 0.961 on the rest, so
+  # overlap is reported as a warning, and only a jump above this limit fails.
+  max_cross_split_duplicate_frac: 0.60
+
+gates:
+  # Floor on val nDCG@10 for the hybrid_ltr method. Only decisive on the first run
+  # (no champion yet); afterwards the non-regression gates are stricter.
+  min_ndcg10: 0.70
+  # The reranker must beat the best first-stage method (bm25/dense/hybrid) by more than this.
+  min_lift_over_first_stage: 0.05
+  # Largest absolute drop vs max(current production model, best promoted so far),
+  # same split, same run. Measured noise (Sept 2026): 5 retrains with the same seed
+  # gave val nDCG@10 0.9465-0.9481, and re-evaluating one unchanged model gave
+  # 0.9465-0.9488, because hybrid_merge breaks score ties in set/hash order
+  # (varies with PYTHONHASHSEED). 0.01 is about 4x that spread.
+  max_ndcg10_drop: 0.01
+  max_recall100_drop: 0.01
+  max_map10_drop: 0.01
+
+drift:
+  # Scores that do not depend on the new model should not move between runs:
+  #   * first-stage retrieval (bm25 / dense / hybrid) vs the previous run
+  #   * the production LTR model vs the last run that evaluated the same sha256
+  # A move beyond this limit fails drift_check: data, index, encoder, code or
+  # dependencies changed. (LightGBM retraining is not byte-deterministic, so a
+  # retrained model is judged by the gates, not by this check.)
+  max_champion_ndcg10_change: 0.005

@@ -32,7 +32,7 @@ demonstrating production-grade ML engineering across:
 - Learning-to-Rank (LightGBM LambdaRank, nDCG@10 = 0.9300)
 - Dense retrieval (fine-tuned intfloat/e5-base-v2, +18.4% improvement)
 - GenAI explanation layer (GPT-4o-mini, 44 languages)
-- MLOps pipeline (Airflow, Metaflow, 14 flows, 9 quality gates)
+- MLOps pipeline (Airflow promotion DAG with 9 measured gates, Metaflow, 14 flows)
 - Real-time serving (FastAPI, Redis, Kafka, WebSocket)
 - Causal inference (Doubly-Robust IPW, Off-Policy Evaluation)
 

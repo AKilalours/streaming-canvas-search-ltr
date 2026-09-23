@@ -186,33 +186,39 @@ services:
       api:
         condition: service_healthy
 
-  # ─── Local Airflow (proves orchestration, no cloud needed) ────────────────
+  # ─── Local Airflow: runs flows/streamlens_airflow_dag.py against the real repo ──
+  # Tasks need data/ and artifacts/ (built locally, not in git), so the whole repo is
+  # mounted at /opt/streamlens. Set AIRFLOW_SECRET_KEY and AIRFLOW_ADMIN_PASSWORD in .env.
   airflow:
-    image: apache/airflow:2.9.0-python3.11
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.airflow
     restart: unless-stopped
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: streamlens2026
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/streamlens/flows
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:?set AIRFLOW_SECRET_KEY in .env}
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+      # the DAG trains and PROMOTES models; start paused and unpause deliberately
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:?set AIRFLOW_ADMIN_PASSWORD in .env}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
-      - ./flows:/opt/airflow/dags
-      - ./reports:/opt/airflow/reports
+      - .:/opt/streamlens
     command: >
       bash -c "
         airflow db migrate &&
-        airflow users create
+        (airflow users create
           --username admin
-          --password streamlens
+          --password \"$$AIRFLOW_ADMIN_PASSWORD\"
           --firstname Stream
           --lastname Lens
           --role Admin
-          --email admin@streamlens.ai
-          2>/dev/null || true &&
+          --email admin@example.com
+          2>/dev/null || true) &&
         airflow webserver --port 8080 &
         sleep 5 &&
         airflow scheduler

@@ -35,7 +35,7 @@ Complete MLOps documentation for the StreamLens production ML pipeline — train
   ──────────────         ──────────            ────────────
   MovieLens CSV           BM25 Build            nDCG@10
   PySpark ETL    ──►      Dense Embed   ──►     BEIR NFCorpus
-  Feature Eng             LTR Train             9 Quality Gates
+  Feature Eng             LTR Train             9 Measured Gates
   Redis Store             Fine-tune e5          Latency SLO
 
                               │
@@ -60,59 +60,57 @@ Complete MLOps documentation for the StreamLens production ML pipeline — train
 
 ## Airflow DAG
 
-**File:** `airflow/dags/streamlens_ml_pipeline.py`
-
-### DAG Structure (8 tasks)
+File: `flows/streamlens_airflow_dag.py`. Each task runs `python -m pipelines.promotion <step>`
+(`src/pipelines/promotion.py`); no step is simulated.
 
 ```
-corpus_ingest
-      │
-      ├──► bm25_build ──────────────────────────────────┐
-      │                                                  │
-      └──► dense_embed ──► fine_tune ──► hybrid_tune ───┤
-                                                         │
-                                         ltr_feature_eng ┤
-                                                         │
-                                              ltr_train ─┤
-                                                         │
-                                              eval_gate ─┤
-                                                         │
-                                          artifact_push ◄┘
+validate_data -> train_candidate -> evaluate -+-> run_gates -> decide -+-> promote_model
+                                              |                        +-> block_promotion (fails the run)
+                                              +-> drift_check
 ```
 
-### Task Descriptions
+| Task | What it does |
+|------|--------------|
+| `validate_data` | 11 checks on corpus/queries/qrels: files, schema, unique ids, qrels reference known docs and queries, same corpus in every split, query-text overlap with train (`src/pipelines/data_quality.py`) |
+| `train_candidate` | LightGBM LambdaRank (`ranking/ltr_train.py`) on the **train** split, written to `artifacts/ltr/candidates/<run_id>/`. Production model untouched |
+| `evaluate` | Candidate on val and test, current production model on val, same code and split, strict model path (no silent fallback) |
+| `run_gates` | 9 gates below, from this run's measured metrics, on **val** (test is reported only) |
+| `promote_model` | Archive current model, atomic rename, sha256 check, append to `artifacts/ltr/registry.jsonl`. Idempotent |
+| `block_promotion` | Fails the DAG run with the failing gate names, production model unchanged |
+| `drift_check` | bm25/dense/hybrid scores vs previous run, and the same production model vs its last evaluation; fails if they move > 0.005 |
 
-| Task | Runtime | Description |
-|------|---------|-------------|
-| `corpus_ingest` | ~2 min | Load MovieLens, build corpus JSONL |
-| `bm25_build` | ~1 min | Build BM25 index, pickle to MinIO |
-| `dense_embed` | ~8 min | FAISS index on e5-base-v2 embeddings |
-| `fine_tune` | ~30 min | Contrastive fine-tuning on domain pairs |
-| `hybrid_tune` | ~5 min | Grid search α ∈ {0.1..0.9} |
-| `ltr_feature_eng` | ~10 min | 15-feature extraction for LambdaRank |
-| `ltr_train` | ~15 min | LightGBM 500 trees, held-out eval |
-| `eval_gate` | ~20 min | All 9 quality gates — blocks on failure |
-| `artifact_push` | ~2 min | Version and push to MinIO S3 |
+Gates (`src/pipelines/promotion_gates.py`, thresholds in `configs/promotion.yaml`):
 
-### Schedule
+| # | Gate | Rule |
+|---|------|------|
+| 1 | data_validation_passed | all 11 data checks pass |
+| 2 | candidate_model_was_evaluated | eval loaded exactly the candidate pickle |
+| 3 | feature_schema_matches_serving | candidate features == `ranking.features.FEATURE_NAMES` (names, order, count) |
+| 4 | full_query_coverage | every val query scored |
+| 5 | ndcg10_above_floor | val nDCG@10 >= 0.70 |
+| 6 | beats_best_first_stage | LTR beats best of bm25/dense/hybrid by > 0.05 |
+| 7 | ndcg10_no_regression | drop <= 0.01 vs max(production model, best promoted) |
+| 8 | recall100_no_regression | drop <= 0.01 vs production model |
+| 9 | map10_no_regression | drop <= 0.01 vs production model |
 
-```python
-# Daily at 2 AM UTC — after MovieLens mirror refresh
-schedule_interval="0 2 * * *"
-```
+Evidence: three `airflow dags test` runs (Airflow 2.10.5) are committed in
+`reports/pipeline_evidence/2026-09-23/`: two runs promoted (9/9), one run with a stricter demo
+threshold was blocked (8/9) and failed, leaving production unchanged.
+Retrained candidates scored val nDCG@10 0.9465 to 0.9481 and test 0.9497 to 0.9517.
 
-### Running Manually
+### Running
 
 ```bash
-# Trigger full pipeline
-airflow dags trigger streamlens_ml_pipeline
+# one-off local run of the whole DAG (no scheduler needed)
+export STREAMLENS_HOME=$PWD STREAMLENS_PYTHON=$PWD/.venv/bin/python
+airflow dags test streamlens_ml_pipeline 2026-09-23T02:00:00+00:00
 
-# Trigger from specific task
-airflow tasks run streamlens_ml_pipeline ltr_train $(date +%Y-%m-%d)
-
-# Check status
-airflow dags state streamlens_ml_pipeline $(date +%Y-%m-%d)
+# or one step at a time, without Airflow
+PYTHONPATH=src python -m pipelines.promotion validate --run-id r1   # then train, evaluate, gate, promote, drift
 ```
+
+Schedule: daily 02:00 UTC, `max_active_runs=1`, `catchup=False`. The docker-compose service
+starts the DAG paused.
 
 ---
 
@@ -176,35 +174,10 @@ s3://artifacts/
 
 ## Quality Gates
 
-**All 9 gates must pass before artifact promotion.**
-
-```python
-QUALITY_GATES = {
-    # ML Quality
-    "ltr_ndcg10":     {"threshold": 0.80,  "measured": 0.9300, "op": ">="},  # ✅
-    "beir_ndcg10":    {"threshold": 0.325, "measured": 0.3236, "op": ">="},  # ✅
-    "spearman_ft":    {"threshold": 0.70,  "measured": 0.8066, "op": ">="},  # ✅
-    "recall_at_100":  {"threshold": 0.75,  "measured": 0.881,  "op": ">="},  # ✅
-    "diversity_ild":  {"threshold": 0.40,  "measured": 0.61,   "op": ">="},  # ✅
-
-    # Latency SLO
-    "p99_cold_ms":    {"threshold": 200,   "measured": 142,    "op": "<="},  # ✅
-    "p95_cold_ms":    {"threshold": 120,   "measured": 98,     "op": "<="},  # ✅
-    "ce_latency_ms":  {"threshold": 100,   "measured": 57,     "op": "<="},  # ✅
-
-    # Cost SLO
-    "cost_per_req":   {"threshold": 0.005, "measured": 0.0008, "op": "<="},  # ✅
-}
-```
-
-### Gate Failure Behavior
-
-```
-Gate fails → Pipeline blocked → Slack alert → On-call notified
-         → Previous artifact remains active
-         → Failure logged to MinIO reports/failures/
-         → Auto-retry after 1 hour (max 3 retries)
-```
+See [Airflow DAG](#airflow-dag): 9 gates computed per run from measured metrics, thresholds in
+`configs/promotion.yaml`. On failure the `block_promotion` task fails the run, the gate names
+and values are in `reports/runs/<run_id>/gates.json`, and the production model is not touched.
+Not yet wired: Slack/on-call alerting (use Airflow `on_failure_callback`).
 
 ---
 
@@ -428,7 +401,9 @@ curl http://localhost:8000/reports/drift | python3 -m json.tool
 
 ### Continuous Drift Monitor (Airflow)
 
-Runs daily. If drift > 5% from baseline → blocks next training run → requires manual override.
+`drift_check` runs in every DAG run. It fails the run when first-stage retrieval scores
+(bm25/dense/hybrid) or the unchanged production model's score move more than 0.005 nDCG@10
+from the previous run, and records whether the data fingerprint changed.
 
 ---
 

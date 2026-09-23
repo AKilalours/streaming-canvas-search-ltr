@@ -4739,7 +4739,7 @@ def multimodal_pipeline_status() -> dict[str, Any]:
             "No training from scratch. Not Netflix MediaFM parity. "
             "Measured cold-start lift from visual mood matching."
         ),
-        "airflow_dag_step": "generate_multimodal_features (step 2b in streamlens_ml_pipeline)",
+        "airflow_dag_step": None,  # not part of streamlens_ml_pipeline; run the Metaflow flow below
         "metaflow_flow": "flows/multimodal_pipeline_flow.py",
     }
 
