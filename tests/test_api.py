@@ -10,6 +10,52 @@ from app.main import app
 from exploration.online_bandit import ContextualSlateBandit
 
 
+class _FixtureBM25:
+    def __init__(self, doc_ids):
+        self.doc_ids = doc_ids
+
+    def query(self, _query, k):
+        return [(doc_id, 1.0 / (rank + 1)) for rank, doc_id in enumerate(self.doc_ids[:k])]
+
+
+class _FixtureDense:
+    def __init__(self, doc_ids):
+        self.doc_ids = doc_ids
+
+    def search(self, _query, k):
+        return [(doc_id, 1.0 / (rank + 1)) for rank, doc_id in enumerate(self.doc_ids[:k])]
+
+
+@pytest.fixture(autouse=True)
+def use_fixture_catalog(monkeypatch):
+    """Keep API tests independent of ignored local MovieLens data and model files."""
+    from app.deps import AppState
+
+    doc_ids = [f"fixture-{index}" for index in range(6)]
+    corpus = {
+        doc_id: {
+            "doc_id": doc_id,
+            "title": f"Fixture Movie {index}",
+            "text": "A test catalog entry with drama and adventure themes.",
+            "genres": ["Drama", "Adventure"],
+        }
+        for index, doc_id in enumerate(doc_ids)
+    }
+
+    def load_fixture_state():
+        state = AppState()
+        state.dataset_id = "api-test-fixture"
+        state.corpus = corpus
+        state.bm25_obj = _FixtureBM25(doc_ids)
+        state.dense = _FixtureDense(doc_ids)
+        state.ready = True
+        return state
+
+    main_module._bm25_cached.cache_clear()
+    main_module._dense_cached.cache_clear()
+    monkeypatch.setattr(main_module, "load_state", load_fixture_state)
+
+
 def test_health(tmp_path, monkeypatch):
     monkeypatch.setenv("STREAMLENS_BANDIT_DB", str(tmp_path / "bandit.sqlite3"))
     with TestClient(app) as c:
