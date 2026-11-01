@@ -1,7 +1,7 @@
 """
 StreamLens — Fine-Tuning e5-base-v2 on MovieLens Domain Data
 =============================================================
-Run: python fine_tune_retrieval.py
+Run: python scripts/experiments/retrieval/fine_tune_retrieval.py
 Expected: Dense nDCG@10 improves from 0.4640 → 0.50+
 """
 from __future__ import annotations

@@ -12,7 +12,7 @@ Techniques from notebook:
   - Cosine similarity content recommender
   - LDA topic modeling
 
-Run: python content_clustering.py
+Run: python scripts/experiments/ranking/content_clustering.py
 Output: artifacts/clustering/cluster_model.pkl
         artifacts/clustering/doc_cluster_map.json
         artifacts/clustering/tfidf_similarity.npy

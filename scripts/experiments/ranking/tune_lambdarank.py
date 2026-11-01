@@ -5,7 +5,7 @@ Current: num_leaves=63, n_estimators=500, reg_alpha=0.0
 Target:  num_leaves=127, n_estimators=1000, reg_alpha=0.1
 Expected: nDCG@10 0.9300 → 0.94+
 
-Run: python tune_lambdarank.py
+Run: python scripts/experiments/ranking/tune_lambdarank.py
 """
 from __future__ import annotations
 import pickle, json, re, subprocess, time
@@ -156,8 +156,8 @@ print(f"""
 {'='*60}
 NEXT STEPS
 {'='*60}
-1. Run ALS:        python als_collaborative_filtering.py
-2. Fix drift:      python temporal_drift_fix.py
+1. Run ALS:        python scripts/experiments/recommendation/als_collaborative_filtering.py
+2. Fix drift:      python scripts/experiments/retrieval/temporal_drift_fix.py
 3. Final commit:   git add -A && git push origin main
 {'='*60}
 """)

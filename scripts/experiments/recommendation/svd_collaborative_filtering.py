@@ -12,7 +12,7 @@ Techniques from notebook:
   - KNNBaseline collaborative filtering
   - RMSE/MAE evaluation
 
-Run: python svd_collaborative_filtering.py
+Run: python scripts/experiments/recommendation/svd_collaborative_filtering.py
 Output: artifacts/svd/svd_model.pkl
         artifacts/svd/item_embeddings.npy
         artifacts/svd/user_embeddings.npy

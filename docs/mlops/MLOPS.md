@@ -211,7 +211,7 @@ python scripts/build_bm25.py \
 
 ```bash
 # Fine-tune e5-base-v2 on MovieLens domain data
-python fine_tune_retrieval.py \
+python scripts/experiments/retrieval/fine_tune_retrieval.py \
   --model intfloat/e5-base-v2 \
   --epochs 2 \
   --output artifacts/faiss/movielens_ft_e5

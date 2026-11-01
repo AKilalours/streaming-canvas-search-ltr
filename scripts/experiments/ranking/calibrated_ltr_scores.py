@@ -9,7 +9,7 @@ Why this matters:
   - Calibrated: 0.89 vs 0.73 — 89% vs 73% probability of relevance
   - Needed for: A/B test effect sizes, business dashboards, cost decisions
 
-Run: python calibrated_ltr_scores.py
+Run: python scripts/experiments/ranking/calibrated_ltr_scores.py
 """
 import json, pickle, os
 import numpy as np

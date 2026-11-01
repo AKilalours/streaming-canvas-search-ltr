@@ -13,10 +13,10 @@ Architecture:
     → VAE decoder → 1024x1792 HD image
 
 Usage:
-    python diffusion_pipeline.py --demo              # generate 5 posters
-    python diffusion_pipeline.py --title "Inception" --genre "Sci-Fi,Thriller"
-    python diffusion_pipeline.py --schedule          # show DDPM math
-    python diffusion_pipeline.py --schedule --plot   # visualise noise curve
+    python scripts/experiments/media/diffusion_pipeline.py --demo              # generate 5 posters
+    python scripts/experiments/media/diffusion_pipeline.py --title "Inception" --genre "Sci-Fi,Thriller"
+    python scripts/experiments/media/diffusion_pipeline.py --schedule          # show DDPM math
+    python scripts/experiments/media/diffusion_pipeline.py --schedule --plot   # visualise noise curve
 """
 from __future__ import annotations
 import argparse, base64, hashlib, json, os, re, time, urllib.request, urllib.error

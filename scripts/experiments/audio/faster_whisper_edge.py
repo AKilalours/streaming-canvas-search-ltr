@@ -8,7 +8,7 @@ Install:
     ollama pull llama3  (already done)
 
 Usage:
-    python faster_whisper_edge.py --audio query.webm
+    python scripts/experiments/audio/faster_whisper_edge.py --audio query.webm
     
 Architecture (edge pipeline):
     Audio → Faster-Whisper ASR → Query → BM25+FAISS retrieval → 

@@ -5,7 +5,7 @@ Named Entity Recognition on user queries.
 'movies with Tom Hanks' → extract actor → boost matching docs
 
 Bridges vocabulary gap between user intent and metadata.
-Run: python ner_query_understanding.py
+Run: python scripts/experiments/retrieval/ner_query_understanding.py
 """
 import os, json, re
 from pathlib import Path

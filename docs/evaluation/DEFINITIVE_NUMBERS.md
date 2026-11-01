@@ -1,7 +1,7 @@
 # StreamLens — Definitive Numbers
 
 **Single source of truth.** Every figure here comes from a committed artifact, named
-per row. If a number appears in `README.md`, `MODEL_CARD.md` or a resume and is not in
+per row. If a number appears in `README.md`, `../models/MODEL_CARD.md` or a resume and is not in
 this file, it is not supported.
 
 Last reconciled after fixing a recall-truncation defect in `src/eval/evaluate.py`

@@ -327,16 +327,11 @@ eval_full_v2:
 	docker compose exec -e PYTHONPATH=/app/src api /app/.venv/bin/python3.11 /app/src/eval/evaluate.py --config /app/configs/eval_movielens.yaml
 	@echo "Eval complete — check reports/latest/metrics.json"
 
-eval_quick:
-	curl -s "http://localhost:8000/eval/comprehensive" | python3 -m json.tool
 tune_ltr:
-	python tune_lambdarank.py
+	python scripts/experiments/ranking/tune_lambdarank.py
 
 als:
-	python als_collaborative_filtering.py
+	python scripts/experiments/recommendation/als_collaborative_filtering.py
 
 fix_drift:
-	python temporal_drift_fix.py
-
-improve_all:
-	bash run_all_improvements.sh
+	python scripts/experiments/retrieval/temporal_drift_fix.py

@@ -32,7 +32,7 @@
 
 ---
 
-> **Numbers policy.** `DEFINITIVE_NUMBERS.md` is the single source of truth and every
+> **Numbers policy.** [`DEFINITIVE_NUMBERS.md`](docs/evaluation/DEFINITIVE_NUMBERS.md) is the single source of truth and every
 > figure there is traceable to a committed artifact. Retrieval metrics are measured on
 > MovieLens **ml-latest-small** (9,742 titles, 610 users, 150 test queries); the 33.8M
 > `ml-latest` set feeds only the PySpark job, whose output is not consumed by ranking.
@@ -53,7 +53,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 **Data flow:** `ingest → store → retrieve → rerank → infer → feedback`
 
 **Headline numbers:**
-- LTR nDCG@10 = **0.9491** (latest run, candidate_k=2000, fine-tuned e5) vs **0.7506** (reference run, candidate_k=200, MiniLM). Both from committed artifacts; see `DEFINITIVE_NUMBERS.md`
+- LTR nDCG@10 = **0.9491** (latest run, candidate_k=2000, fine-tuned e5) vs **0.7506** (reference run, candidate_k=200, MiniLM). Both from committed artifacts; see [`DEFINITIVE_NUMBERS.md`](docs/evaluation/DEFINITIVE_NUMBERS.md)
 - **21 ML algorithms** — retrieval, ranking, personalisation, causal inference, visual AI, generative AI
 - **106 API endpoints** — search, explanation, feed, VLM, SQL explorer, diffusion, causal, self-healing
 - **44 languages** — GPT-4o-mini explanations in pure target script, zero mixing
@@ -92,7 +92,7 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 │              OFFLINE: PYSPARK DATA CURATION ENGINE                  │
 │  MovieLens ratings (33.8M) → 5-stage Spark job → 1.29M co-watch    │
 │  610 users · 9,724 items · 15 user/item/content features            │
-│  → Redis feature store · schema.sql (ratings + co_watch_pairs)      │
+│  → Redis feature store · sql/schema.sql (ratings + co_watch_pairs)   │
 │                                                                     │
 │  Model promotion: Airflow DAG, 9 measured gates (see MLOps section) │
 │  Kafka impression logging → retrain trigger at 10K events           │
@@ -215,9 +215,9 @@ StreamLens is a **Netflix-grade two-stage search and recommendation system** bui
 **Live demo:** http://localhost:8000/diffusion
 
 ```bash
-python diffusion_pipeline.py --schedule  # show DDPM math
-python diffusion_pipeline.py --demo      # generate 5 HD posters
-python diffusion_pipeline.py --title "Inception" --genre "Sci-Fi,Thriller"
+python scripts/experiments/media/diffusion_pipeline.py --schedule  # show DDPM math
+python scripts/experiments/media/diffusion_pipeline.py --demo      # generate 5 HD posters
+python scripts/experiments/media/diffusion_pipeline.py --title "Inception" --genre "Sci-Fi,Thriller"
 ```
 
 ### DDPM Noise Schedule (Ho et al. 2020 — pure numpy)
@@ -271,7 +271,7 @@ Architecturally equivalent to fleet-driven training data curation — raw intera
 ## Self-Supervised Learning — e5-base-v2 Fine-tuning
 
 ```python
-# fine_tune_retrieval.py — contrastive SSL
+# scripts/experiments/retrieval/fine_tune_retrieval.py — contrastive SSL
 model = SentenceTransformer("intfloat/e5-base-v2")
 train_loss = losses.MultipleNegativesRankingLoss(model)  # in-batch negatives
 
@@ -369,7 +369,7 @@ model.fit(train_objectives=[(train_loader, train_loss)], epochs=2)
 ## RAGAS Evaluation
 
 ```bash
-python eval_ragas.py  # semantic cosine via all-MiniLM-L6-v2, 15 queries
+python scripts/experiments/retrieval/eval_ragas.py  # semantic cosine via all-MiniLM-L6-v2, 15 queries
 ```
 
 | Metric | Score | Target | Status |
@@ -387,8 +387,8 @@ Sample: *"dark psychological drama"* → Memento → F=0.855 R=0.837 ✅
 
 ```bash
 make eval_full_v2              # all ranking metrics
-python eval_ragas.py           # RAG quality
-python diffusion_pipeline.py --schedule  # diffusion math
+python scripts/experiments/retrieval/eval_ragas.py  # RAG quality
+python scripts/experiments/media/diffusion_pipeline.py --schedule  # diffusion math
 ```
 
 ### Ablation Study
@@ -434,7 +434,7 @@ LTR LambdaRank   → nDCG@10 = 0.9491  █████████████�
 > covered by `tests/test_eval_recall_truncation.py`, which fails against the original code.
 > The 0.75 gate was set against the defective metric and has been re-baselined to 0.40.
 >
-> Every figure in this table is reconciled in [`DEFINITIVE_NUMBERS.md`](DEFINITIVE_NUMBERS.md).
+> Every figure in this table is reconciled in [`DEFINITIVE_NUMBERS.md`](docs/evaluation/DEFINITIVE_NUMBERS.md).
 
 ---
 
@@ -454,7 +454,7 @@ LTR LambdaRank   → nDCG@10 = 0.9491  █████████████�
 
 ## MLOps & CI/CD
 
-See [MLOPS.md](MLOPS.md) for the complete reference.
+See [MLOPS.md](docs/mlops/MLOPS.md) for the complete reference.
 
 ### Airflow promotion DAG (8 tasks, 9 measured gates)
 
@@ -610,8 +610,8 @@ DDPM linear beta schedule: β from 0.0001 → 0.02 over T=1000 steps. At t=0: SN
 | **ML — Diffusion** | DALL-E 3 HD + DDPM numpy | 1024×1792, cold-start posters |
 | **ML — Causal** | Doubly-Robust IPW | Propensity-weighted OPE |
 | **ML — Evaluation** | RAGAS semantic scoring | F=0.705 R=0.752 C=1.000 |
-| **Database** | PostgreSQL schema (schema.sql) | 8 tables, indexes, FK constraints |
-| **SQL** | 10 production queries (queries.sql) | JOIN, CTE, window fns, IPW |
+| **Database** | PostgreSQL schema ([sql/schema.sql](sql/schema.sql)) | 8 tables, indexes, FK constraints |
+| **SQL** | 10 production queries ([sql/queries.sql](sql/queries.sql)) | JOIN, CTE, window fns, IPW |
 | **Data** | PySpark 3.5 | 33.8M ratings, 1.29M co-watch pairs |
 | **Orchestration** | Airflow 2.10 | 8-task promotion DAG, 9 measured gates |
 | **Versioning** | Metaflow (14 flows) | Artifact lineage, 30-second rollback |
@@ -650,11 +650,11 @@ open http://localhost:8000/sql         # SQL explorer
 open http://localhost:8000/diffusion   # diffusion demo
 
 make eval_full_v2                           # reproduce all metrics (150 queries, candidate_k=2000)
-python eval_ragas.py                        # reproduce RAGAS scores
-python diffusion_pipeline.py --demo         # generate 5 HD posters
-python diffusion_pipeline.py --schedule     # show DDPM math
+python scripts/experiments/retrieval/eval_ragas.py  # reproduce RAGAS scores
+python scripts/experiments/media/diffusion_pipeline.py --demo         # generate 5 HD posters
+python scripts/experiments/media/diffusion_pipeline.py --schedule      # show DDPM math
 python src/genai/hyde_rewrite.py            # test HyDE
-python faster_whisper_edge.py               # test edge pipeline
+python scripts/experiments/audio/faster_whisper_edge.py  # test edge pipeline
 python spark/feature_engineering.py        # run PySpark pipeline
 ```
 

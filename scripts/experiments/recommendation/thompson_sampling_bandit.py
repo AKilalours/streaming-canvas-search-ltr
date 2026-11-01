@@ -8,7 +8,7 @@ Thompson Sampling adapts exploration per user:
 
 Used by: Netflix, Spotify, Booking.com, LinkedIn
 
-Run: python thompson_sampling_bandit.py
+Run: python scripts/experiments/recommendation/thompson_sampling_bandit.py
 Output: src/app/bandit.py (drop-in replacement for ε-greedy)
 """
 import os, json

@@ -5,8 +5,8 @@ Runs on CPU (Apple Silicon MPS if available).
 Zero API cost after model download (~4GB one-time).
 
 Usage:
-    python diffusion_posters.py --title "The Dark Knight" --genre "Crime,Action"
-    python diffusion_posters.py --doc_id 272 --api http://localhost:8000
+    python scripts/experiments/media/diffusion_posters.py --title "The Dark Knight" --genre "Crime,Action"
+    python scripts/experiments/media/diffusion_posters.py --doc_id 272 --api http://localhost:8000
 
 Pipeline:
     Film metadata → prompt engineering → SD v1.5 → poster PNG

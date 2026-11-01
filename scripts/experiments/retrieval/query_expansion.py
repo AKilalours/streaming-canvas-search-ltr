@@ -5,7 +5,7 @@ Expands short queries with synonyms + related terms before BM25.
 "crime" → "crime, gangster, heist, mob, thriller, detective"
 
 Typical improvement: +0.02-0.04 nDCG on short queries
-Run: python query_expansion.py
+Run: python scripts/experiments/retrieval/query_expansion.py
 """
 from __future__ import annotations
 import json, os, urllib.request, time

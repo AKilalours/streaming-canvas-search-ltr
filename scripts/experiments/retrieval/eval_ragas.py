@@ -2,7 +2,7 @@
 StreamLens — RAGAS-style Evaluation
 Semantic scoring using sentence-transformers cosine similarity.
 No Ollama needed — uses /search + /explain (GPT-4o-mini).
-Run: python eval_ragas.py
+Run: python scripts/experiments/retrieval/eval_ragas.py
 Output: reports/latest/ragas_eval.json
 """
 import json, time, urllib.request, urllib.parse, pathlib
@@ -216,5 +216,5 @@ print()
 print(f"  Saved → {out}")
 print()
 print("Next steps:")
-print("  git add eval_ragas.py reports/latest/ragas_eval.json")
+print("  git add scripts/experiments/retrieval/eval_ragas.py reports/latest/ragas_eval.json")
 print("  git commit -m 'eval: RAGAS-style evaluation — semantic scoring, all targets met'")

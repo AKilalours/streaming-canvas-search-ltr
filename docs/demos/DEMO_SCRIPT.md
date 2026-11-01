@@ -172,7 +172,7 @@ curl -s http://localhost:8000/eval/comprehensive | python3 -m json.tool | head -
 ## CLOSING LINE (15 seconds)
 
 > "Every number you saw is reproducible with make eval_full_v2.
-> The GitHub repo has 7,739 files — schema.sql, all 14 Metaflow flows,
+> The GitHub repo includes `sql/schema.sql` and the Metaflow flows,
 > the full PySpark pipeline, RAGAS evaluation, DDPM implementation.
 > What questions do you have?"
 

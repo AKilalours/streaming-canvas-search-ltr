@@ -7,7 +7,7 @@ Cross-encoders see query + document TOGETHER → much better relevance.
 Pipeline: BM25+Dense → LTR LambdaRank → Cross-Encoder (top-20)
 Used by: Bing, Google, Amazon, LinkedIn for precision reranking
 
-Run: python cross_encoder_reranker.py
+Run: python scripts/experiments/ranking/cross_encoder_reranker.py
 Expected: +0.02-0.05 nDCG on top-20 results
 """
 import os, json, time

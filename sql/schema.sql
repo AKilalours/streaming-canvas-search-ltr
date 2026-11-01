@@ -4,8 +4,8 @@
 -- ============================================================
 -- Supports: PostgreSQL 14+ / SQLite 3.35+
 -- Usage:
---   psql -U streamlens -d streamlens_db -f schema.sql
---   sqlite3 streamlens.db < schema.sql
+--   psql -U streamlens -d streamlens_db -f sql/schema.sql
+--   sqlite3 streamlens.db < sql/schema.sql
 -- ============================================================
 
 -- ── Users ────────────────────────────────────────────────────

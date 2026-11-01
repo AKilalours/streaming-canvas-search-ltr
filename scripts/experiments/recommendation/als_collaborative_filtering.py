@@ -4,7 +4,7 @@ StreamLens — ALS Collaborative Filtering (4th Retrieval Signal)
 Trains Matrix Factorization on 1.29M co-watch pairs from PySpark.
 Adds ALS embeddings as a 4th retrieval signal alongside BM25, dense, hybrid.
 
-Run: python als_collaborative_filtering.py
+Run: python scripts/experiments/recommendation/als_collaborative_filtering.py
 Expected: +0.03-0.05 nDCG improvement on cold-start queries
 """
 from __future__ import annotations

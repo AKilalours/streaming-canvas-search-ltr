@@ -9,9 +9,9 @@ Setup:
     export HF_TOKEN=hf_your_token_here
 
 Usage:
-    python poster_generator.py --title "Pulp Fiction" --genre "Crime,Thriller"
-    python poster_generator.py --title "Toy Story" --genre "Animation,Comedy" --tier dalle3
-    python poster_generator.py --title "Inception" --genre "Sci-Fi,Thriller" --tier sdxl
+    python scripts/experiments/media/poster_generator.py --title "Pulp Fiction" --genre "Crime,Thriller"
+    python scripts/experiments/media/poster_generator.py --title "Toy Story" --genre "Animation,Comedy" --tier dalle3
+    python scripts/experiments/media/poster_generator.py --title "Inception" --genre "Sci-Fi,Thriller" --tier sdxl
 """
 from __future__ import annotations
 import argparse, base64, hashlib, json, os, time, urllib.request, urllib.error

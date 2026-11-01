@@ -4,7 +4,7 @@ StreamLens — Temporal Drift Fix
 Closes the 24.6% gap between pre-2010 and post-2010 content.
 Strategy: GPT-4o-mini enriches metadata for sparse pre-2010 films.
 
-Run: python temporal_drift_fix.py
+Run: python scripts/experiments/retrieval/temporal_drift_fix.py
 Expected: Closes 24.6% temporal scoring gap
 """
 from __future__ import annotations

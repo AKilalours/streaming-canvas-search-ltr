@@ -52,7 +52,7 @@ python scripts/opensearch/eval_hybrid.py --out reports/opensearch
 ```
 
 Results land in `reports/opensearch/metrics.json` and are reconciled into
-`DEFINITIVE_NUMBERS.md` like every other figure in this repo.
+[`DEFINITIVE_NUMBERS.md`](../../docs/evaluation/DEFINITIVE_NUMBERS.md) like every other figure in this repo.
 
 ## Results
 

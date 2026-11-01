@@ -1,7 +1,7 @@
 """
 StreamLens — Flux.1 Poster Generator (fixed API endpoint)
 Flux.1-schnell: 4 steps, ~10 seconds, phenomenal quality, free.
-Usage: python flux_poster.py --title "Pulp Fiction" --genre "Crime,Thriller"
+Usage: python scripts/experiments/media/flux_poster.py --title "Pulp Fiction" --genre "Crime,Thriller"
 """
 import argparse, hashlib, json, os, time, urllib.request, urllib.error, re
 from pathlib import Path

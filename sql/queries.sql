@@ -2,7 +2,7 @@
 -- StreamLens — Production SQL Queries
 -- Akila Lourdes Miriyala Francis · MS in Artificial Intelligence
 -- ============================================================
--- All queries run against schema.sql
+-- All queries run against sql/schema.sql
 -- Covers: SELECT, JOIN, GROUP BY, HAVING, window functions,
 --         CTEs, subqueries, aggregation, ranking
 -- ============================================================

@@ -5,7 +5,7 @@ Maximal Marginal Relevance reranking to reduce redundancy in results.
 Used by Google, Spotify, Netflix to prevent "filter bubble" effect.
 
 Current diversity ILD = 0.61 → Target: 0.72+
-Run: python mmr_diversity_reranking.py
+Run: python scripts/experiments/ranking/mmr_diversity_reranking.py
 """
 from __future__ import annotations
 import json, numpy as np, os, sys
