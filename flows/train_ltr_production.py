@@ -75,7 +75,7 @@ class ProductionLTRFlow(FlowSpec):
         if Path(self.bm25_artifact).exists():
             print(f"[SKIP] BM25 exists: {self.bm25_artifact}", flush=True)
         else:
-            _run(f"python scripts/build_bm25.py --corpus {self.processed_corpus} --out {self.bm25_artifact}")
+            _run(f"python scripts/build/build_bm25.py --corpus {self.processed_corpus} --out {self.bm25_artifact}")
         self.next(self.build_embeddings)
 
     @netflix_standard(retry=1, cpu=4, memory_mb=8192, prune_large_attrs=["_embed_buffer"])
@@ -89,7 +89,7 @@ class ProductionLTRFlow(FlowSpec):
             print(f"[SKIP] Embeddings exist: {emb_file}", flush=True)
         else:
             _run(
-                f"python scripts/build_embeddings.py "
+                f"python scripts/build/build_embeddings.py "
                 f"--corpus {self.processed_corpus} "
                 f"--out_dir {self.emb_dir} "
                 f'--model "{self.model}" '
@@ -176,7 +176,7 @@ class ProductionLTRFlow(FlowSpec):
     def drift_check(self):
         """Run drift monitor post-training."""
         result = subprocess.run(
-            ["python", "scripts/drift_monitor.py",
+            ["python", "scripts/evaluation/drift_monitor.py",
              "--latest",    "reports/latest/metrics.json",
              "--reference", "reports/reference/metrics.json",
              "--out",       "reports/latest/drift_report.json",

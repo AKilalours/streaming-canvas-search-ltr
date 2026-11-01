@@ -127,7 +127,7 @@ drift: reports_latest
 	  cp reports/latest/metrics.json reports/reference/metrics.json; \
 	  echo '{"status":"ok","note":"first run — no prior reference"}' > reports/latest/drift_report.json; \
 	else \
-	  PYTHONPATH=$(PYTHONPATH) uv run python scripts/drift_monitor.py \
+	  PYTHONPATH=$(PYTHONPATH) uv run python scripts/evaluation/drift_monitor.py \
 	    --latest   reports/latest/metrics.json \
 	    --reference reports/reference/metrics.json \
 	    --out       reports/latest/drift_report.json \
@@ -159,7 +159,7 @@ failure_report: reports_latest
 
 shadow_ab: reports_latest
 	mkdir -p reports/latest_eval
-	PYTHONPATH=$(PYTHONPATH) uv run python scripts/shadow_ab_eval.py \
+	PYTHONPATH=$(PYTHONPATH) uv run python scripts/evaluation/shadow_ab_eval.py \
 	  --api http://localhost:8000 \
 	  --out reports/latest_eval/shadow_ab.json
 
@@ -181,7 +181,7 @@ phase5_feedback:
 # ── Phase 6: Production Load Test ──────────────────────────────────────────────
 
 phase6_load_test: reports_latest
-	PYTHONPATH=$(PYTHONPATH) uv run python scripts/load_test.py \
+	PYTHONPATH=$(PYTHONPATH) uv run python scripts/evaluation/load_test.py \
 	  --url http://localhost:8000 \
 	  --rps $(RPS) \
 	  --duration $(LOAD_DURATION) \
@@ -275,11 +275,11 @@ help:
 
 scale_bench_quick: ## Quick scale test: 10/50/100 concurrent users
 	@echo "Running quick scale benchmark (100 concurrent)..."
-	PYTHONPATH=src uv run python scripts/scale_bench.py --quick --base-url http://localhost:8000
+	PYTHONPATH=src uv run python scripts/evaluation/scale_bench.py --quick --base-url http://localhost:8000
 
 scale_bench: ## Full scale test: up to 1000 concurrent users
 	@echo "Running full scale benchmark (up to 1000 concurrent)..."
-	PYTHONPATH=src uv run python scripts/scale_bench.py --max-concurrency 1000 --base-url http://localhost:8000
+	PYTHONPATH=src uv run python scripts/evaluation/scale_bench.py --max-concurrency 1000 --base-url http://localhost:8000
 
 graph_build: ## Build knowledge graph from MovieLens corpus
 	@echo "Building knowledge graph..."

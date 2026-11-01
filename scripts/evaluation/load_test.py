@@ -9,8 +9,8 @@ Runs a concurrent load test against the Search API and reports:
   - Gate check: p95 < 300ms, error_rate < 2%
 
 Usage:
-  python scripts/load_test.py --url http://localhost:8000 --rps 100 --duration 60
-  python scripts/load_test.py --url http://localhost:8000 --rps 50 --duration 30 --out reports/latest/load_test.json
+  python scripts/evaluation/load_test.py --url http://localhost:8000 --rps 100 --duration 60
+  python scripts/evaluation/load_test.py --url http://localhost:8000 --rps 50 --duration 30 --out reports/latest/load_test.json
 """
 from __future__ import annotations
 

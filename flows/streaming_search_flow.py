@@ -126,7 +126,7 @@ class StreamingSearchLTRFlow(FlowSpec):
         if self.bm25_artifact.exists():
             print(f"[SKIP] BM25 exists: {self.bm25_artifact}", flush=True)
         else:
-            _run(f"python scripts/build_bm25.py --corpus {self.processed_corpus} --out {self.bm25_artifact}")
+            _run(f"python scripts/build/build_bm25.py --corpus {self.processed_corpus} --out {self.bm25_artifact}")
         self.next(self.build_embeddings)
 
     @step
@@ -137,7 +137,7 @@ class StreamingSearchLTRFlow(FlowSpec):
             print(f"[SKIP] embeddings exist: {emb_file}", flush=True)
         else:
             _run(
-                "python scripts/build_embeddings.py "
+                "python scripts/build/build_embeddings.py "
                 f"--corpus {self.processed_corpus} "
                 f"--out_dir {self.emb_dir} "
                 f'--model "{self.model}" '

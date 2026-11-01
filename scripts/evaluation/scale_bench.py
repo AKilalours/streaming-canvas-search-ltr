@@ -1,4 +1,4 @@
-# scripts/scale_bench.py
+# scripts/evaluation/scale_bench.py
 """
 Real Scale Benchmark — 1000 concurrent requests
 ================================================
@@ -10,8 +10,8 @@ Tests the API under sustained concurrent load:
   - Reports throughput (RPS), error rate, and cache hit rate
   - Identifies the concurrency ceiling (where p99 > 300ms SLO)
 
-Run: uv run python scripts/scale_bench.py --max-concurrency 1000
-     uv run python scripts/scale_bench.py --quick  (100 concurrent, 30s)
+Run: uv run python scripts/evaluation/scale_bench.py --max-concurrency 1000
+     uv run python scripts/evaluation/scale_bench.py --quick  (100 concurrent, 30s)
 """
 from __future__ import annotations
 

@@ -133,7 +133,7 @@ class StreamingSearchLTRFlow(FlowSpec):
             _run(
                 [
                     sys.executable,
-                    "scripts/build_bm25.py",
+                    "scripts/build/build_bm25.py",
                     "--corpus",
                     str(self.processed_corpus),
                     "--out",
@@ -152,7 +152,7 @@ class StreamingSearchLTRFlow(FlowSpec):
             _run(
                 [
                     sys.executable,
-                    "scripts/build_embeddings.py",
+                    "scripts/build/build_embeddings.py",
                     "--corpus",
                     str(self.processed_corpus),
                     "--out_dir",

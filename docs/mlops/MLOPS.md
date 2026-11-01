@@ -201,7 +201,7 @@ python spark/feature_engineering.py \
 ### 2. BM25 Index
 
 ```bash
-python scripts/build_bm25.py \
+python scripts/build/build_bm25.py \
   --corpus data/processed/movielens/test/corpus.jsonl \
   --output artifacts/bm25/movielens_bm25.pkl \
   --k1 1.2 --b 0.75
@@ -379,7 +379,7 @@ Pre-2010 content scores 24.6% lower than post-2010 — caused by sparse metadata
 
 ```bash
 # Run drift detection
-python scripts/drift_monitor.py \
+python scripts/evaluation/drift_monitor.py \
   --corpus data/processed/movielens/test/corpus.jsonl \
   --threshold 0.05
 

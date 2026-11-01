@@ -1,4 +1,4 @@
-# scripts/shadow_ab_eval.py
+# scripts/evaluation/shadow_ab_eval.py
 from __future__ import annotations
 
 import argparse
