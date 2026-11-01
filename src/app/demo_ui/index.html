@@ -283,7 +283,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <!-- PROFILE SCREEN -->
 <div id="profile-screen">
   <h1>Who's watching?</h1>
-  <p>StreamLens · Production ML Search & Recommendation</p>
+  <p>StreamLens · ML Search & Recommendation Workbench</p>
   <div class="profile-grid">
     <div class="prof-card" data-val="chrisen" data-letter="C" data-color="#e50914">
       <div class="prof-img-wrap colored" style="background:linear-gradient(135deg,#e50914,#8b0000)">C</div>
@@ -354,9 +354,9 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <div id="sbar">
   <div class="sbi"><span class="sdot" id="adot"></span><span id="albl">Connecting…</span></div>
   <div class="ssep"></div>
-  <div class="sbi">LTR nDCG@10 <strong id="lval">0.9300</strong></div>
+  <div class="sbi">LTR nDCG@10 <strong id="lval">—</strong></div>
   <div class="ssep"></div>
-  <div class="sbi">BEIR <strong id="beirval">0.3236</strong></div>
+  <div class="sbi">Secondary run <strong id="beirval">—</strong></div>
   <div class="ssep"></div>
   <div class="sbi"><span class="ai-badge clip">CLIP ViT-B/32</span></div>
   <div class="ssep"></div>
@@ -440,15 +440,14 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <!-- AI STACK PAGE -->
 <div id="page-ai" class="page">
   <div class="page-hero">AI Stack</div>
-  <div class="page-sub">Every model running in this system — live status</div>
+  <div class="page-sub">Runtime model status and artifact-backed retrieval metrics</div>
 
   <div class="metrics-row">
-    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9300</div><div class="lbl">LTR nDCG@10</div><div class="desc">Extraordinary · e5-base-v2 + LambdaRank</div></div>
-    <div class="metric-big"><div class="num" style="color:#76b4ff">0.5496</div><div class="lbl">Dense nDCG@10</div><div class="desc">Fine-tuned +18.4% · e5-base-v2 768-dim</div></div>
-    <div class="metric-big"><div class="num" style="color:#b794f4">0.5891</div><div class="lbl">Hybrid nDCG@10</div><div class="desc">Strong · BM25 + e5-base, α=0.2</div></div>
-    <div class="metric-big"><div class="num" style="color:#f6c942">0.3236</div><div class="lbl">BEIR nDCG@10</div><div class="desc">Above reference 0.325 · 323 queries</div></div>
-    <div class="metric-big"><div class="num" style="color:#fc8181">142ms</div><div class="lbl">p99 Cold</div><div class="desc">178ms at 1000 concurrent users</div></div>
-    <div class="metric-big"><div class="num" style="color:#3ddc84">44</div><div class="lbl">Languages</div><div class="desc">GPT-4o-mini + GPT-4o vision</div></div>
+    <div class="metric-big"><div class="num" id="ai-ltr">—</div><div class="lbl">LTR nDCG@10</div><div class="desc" id="ai-eval-source">Latest saved evaluation artifact</div></div>
+    <div class="metric-big"><div class="num" id="ai-dense">—</div><div class="lbl">Dense nDCG@10</div><div class="desc">Latest saved evaluation artifact</div></div>
+    <div class="metric-big"><div class="num" id="ai-hybrid">—</div><div class="lbl">Hybrid nDCG@10</div><div class="desc">Latest saved evaluation artifact</div></div>
+    <div class="metric-big"><div class="num" id="ai-run-status">—</div><div class="lbl">Evaluation status</div><div class="desc">Current artifact provenance</div></div>
+    <div class="metric-big"><div class="num" id="ai-rl-status">—</div><div class="lbl">Online learner</div><div class="desc">Live runtime status</div></div>
   </div>
 
   <div class="info-grid">
@@ -460,17 +459,17 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
         <span class="badge badge-purple">Hybrid α=0.2</span>
         <span class="badge badge-gold">LambdaRank</span>
       </div>
-      <p style="margin-top:10px">BM25 → 0.61 · Dense → 0.55 · Hybrid → 0.59 → <strong style="color:#3ddc84">LTR → 0.9300</strong>. Candidate pool k=2000. Porter stemming for BEIR medical queries.</p>
+      <p style="margin-top:10px">BM25, dense, hybrid, and LTR metrics are loaded from the latest saved offline evaluation artifact. Benchmark provenance is shown on the Metrics page.</p>
     </div>
     <div class="info-card">
       <h3>🧠 LLM — Language Models</h3>
       <div class="badge-row" id="llm-status-badges"><span class="badge badge-blue">Loading…</span></div>
-      <p style="margin-top:10px">GPT-4o-mini for Why This + RAG grounding in <strong>44 languages</strong>. Llama3/Mistral via Ollama local (zero cost). Doubly-robust IPW off-policy evaluation.</p>
+      <p style="margin-top:10px">Model availability is reported live. The feed learner logs client-confirmed exposures, sampled policy context, sequential action probabilities, and user feedback. OPE remains diagnostic and requires adequate mature real-user outcomes.</p>
     </div>
     <div class="info-card">
       <h3>👁 VLM — Vision Models</h3>
       <div class="badge-row" id="vlm-status-badges"><span class="badge badge-blue">Loading…</span></div>
-      <p style="margin-top:10px">GPT-4o vision for poster mood in 44 languages. CLIP ViT-B/32 zero-shot mood classification (17 categories). LLaVA local captioning via Ollama.</p>
+      <p style="margin-top:10px">Poster and language model capabilities depend on configured credentials, installed weights, and runtime health. Availability is surfaced in live status indicators.</p>
     </div>
     <div class="info-card">
       <h3>⚡ PySpark Feature Pipeline</h3>
@@ -492,12 +491,8 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     </div>
     <div class="info-card">
       <h3>🔄 RL — Reinforcement Learning</h3>
-      <div class="badge-row">
-        <span class="badge badge-purple">Thompson Sampling</span>
-        <span class="badge badge-green">Doubly-Robust IPW</span>
-        <span class="badge badge-blue">Off-Policy Eval</span>
-      </div>
-      <p style="margin-top:10px">Thompson Sampling bandit with per-user Beta(α,β) distributions. New users: exploration rate ~0.5. Power users: ~0.03. Adapts automatically — same algorithm used by Netflix and Booking.com. IPW off-policy evaluation with logged propensity scores.</p>
+      <div class="badge-row" id="rl-status-badges"><span class="badge badge-blue">Checking learner…</span></div>
+      <p id="rl-status-detail" style="margin-top:10px">Contextual Thompson sampling learns from visible feed exposures, clicks, and measured trailer playback progress. Trailer watch time is a proxy signal, not full-title viewing.</p>
     </div>
   </div>
 
@@ -506,10 +501,10 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
       <h3>🎯 Cross-Encoder Reranker (Stage 3)</h3>
       <div class="badge-row">
         <span class="badge badge-red">BERT Joint Encoding</span>
-        <span class="badge badge-blue">57ms / 20 pairs</span>
+        <span class="badge badge-blue">Latency from benchmark artifact</span>
         <span class="badge badge-purple">MS-MARCO</span>
       </div>
-      <p style="margin-top:10px">Cross-encoder sees query + document TOGETHER in one BERT forward pass — captures interaction signals bi-encoders miss. Applied to top-20 LTR results. +0.02-0.05 nDCG on cold-cache paths.</p>
+      <p style="margin-top:10px">The cross-encoder scores query-document pairs jointly. Its quality impact and serving latency are not inferred from model presence; inspect run-specific evaluation and latency artifacts.</p>
     </div>
     <div class="info-card">
       <h3>🔍 NER Query Understanding</h3>
@@ -532,11 +527,11 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
     <div class="info-card">
       <h3>🔁 Metaflow 15-Step Pipeline</h3>
       <div class="badge-row">
-        <span class="badge badge-green">All Gates Pass</span>
+        <span class="badge badge-gold">Artifact-backed status</span>
         <span class="badge badge-blue">Shadow Test</span>
         <span class="badge badge-gold">Auto Promote</span>
       </div>
-      <p style="margin-top:10px">Netflix-style MLOps: parallel BM25+fine-tune → LTR+clustering+SVD → 3 quality gates → shadow A/B → artifact versioning. LTR 0.9300, Spearman 0.8066. Completes in &lt;10 min.</p>
+      <p style="margin-top:10px">Training, evaluation, and promotion are separate pipeline steps. Quality metrics and gate status must be read from the saved run artifacts.</p>
     </div>
   </div>
 
@@ -565,7 +560,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 
   <div id="kafka-panel">
     <h3><span class="live-dot"></span>Kafka Event Stream <span class="live-badge">LIVE</span></h3>
-    <p style="font-size:13px;color:#555;margin-bottom:14px">User interactions (clicks, watch_complete, skips) published to <code style="background:#1a1a1f;padding:1px 5px;border-radius:3px;font-size:11px;color:#76b4ff">streamlens.interactions</code> topic · Redis Streams fallback when Kafka broker offline · Powers propensity logging for doubly-robust IPW</p>
+    <p style="font-size:13px;color:#555;margin-bottom:14px">Interaction events use Kafka or the configured Redis Streams fallback when streaming is enabled. The buttons below send demo events without associating them with an impression, so they do not train the learner. The bandit's feedback journal is stored separately in SQLite and is not an off-policy evaluation dataset.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button onclick="sendTestEvent('click')" style="background:rgba(77,163,255,.15);border:1px solid rgba(77,163,255,.3);color:#76b4ff;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700">Send Click Event</button>
       <button onclick="sendTestEvent('watch_complete')" style="background:rgba(61,220,132,.15);border:1px solid rgba(61,220,132,.3);color:#3ddc84;padding:7px 14px;border-radius:5px;font-size:12px;font-weight:700">Send Watch Complete</button>
@@ -592,71 +587,30 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 <!-- EVAL PAGE -->
 <div id="page-eval" class="page">
   <div class="page-hero">Metrics</div>
-  <div class="page-sub">All quality gates · Two independent benchmarks · Honest reporting</div>
+  <div class="page-sub">Offline retrieval metrics and gate status from saved artifacts</div>
 
   <div class="metrics-row" style="margin-bottom:28px">
-    <div class="metric-big"><div class="num" style="color:#3ddc84">0.9300</div><div class="lbl">LTR nDCG@10</div><div class="desc"><span class="phen-badge">EXTRAORDINARY</span></div></div>
-    <div class="metric-big"><div class="num" style="color:#76b4ff">0.5496</div><div class="lbl">Dense nDCG@10</div><div class="desc"><span class="strong-badge">Fine-tuned +18.4%</span></div></div>
-    <div class="metric-big"><div class="num" style="color:#b794f4">0.5891</div><div class="lbl">Hybrid nDCG@10</div><div class="desc"><span class="strong-badge">STRONG</span></div></div>
-    <div class="metric-big"><div class="num" style="color:#f6c942">0.3236</div><div class="lbl">BEIR NFCorpus</div><div class="desc"><span class="phen-badge">ABOVE REF 0.325</span></div></div>
+    <div class="metric-big"><div class="num" id="eval-ltr">—</div><div class="lbl">LTR nDCG@10</div><div class="desc">Saved artifact</div></div>
+    <div class="metric-big"><div class="num" id="eval-dense">—</div><div class="lbl">Dense nDCG@10</div><div class="desc">Saved artifact</div></div>
+    <div class="metric-big"><div class="num" id="eval-hybrid">—</div><div class="lbl">Hybrid nDCG@10</div><div class="desc">Saved artifact</div></div>
+    <div class="metric-big"><div class="num" id="eval-secondary">—</div><div class="lbl">Secondary run nDCG@10</div><div class="desc" id="eval-secondary-label">No artifact</div></div>
   </div>
 
   <table class="gate-table" style="margin-bottom:28px;background:var(--surface);border-radius:8px;overflow:hidden;border:1px solid var(--border)">
-    <thead><tr><th style="padding:12px 16px">Gate</th><th>Measured</th><th>Target</th><th>Status</th></tr></thead>
-    <tbody>
-      <tr><td>BM25 nDCG@10</td><td>0.6065</td><td>&gt; 0.60</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>Dense nDCG@10 (fine-tuned e5)</td><td style="color:#3ddc84;font-weight:700">0.5496</td><td>&gt; 0.35</td><td class="pass">✅ PASS +18.4%</td></tr>
-      <tr><td>Hybrid nDCG@10</td><td>0.5891</td><td>&gt; 0.55</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>LTR nDCG@10 (LambdaRank 500 trees)</td><td style="color:#3ddc84;font-weight:700">0.9300</td><td>&gt; 0.80</td><td class="pass">✅ EXTRAORDINARY</td></tr>
-      <tr><td>BEIR NFCorpus (323q)</td><td style="color:#3ddc84;font-weight:700">0.3236</td><td>&gt; 0.325 ref</td><td class="pass">✅ ABOVE REF</td></tr>
-      <tr><td>Diversity (ILD)</td><td>0.61</td><td>&gt; 0.40</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>Slate relevance loss</td><td>1.8%</td><td>&lt; 2%</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>p95 latency cold</td><td>98ms</td><td>&lt; 120ms</td><td class="pass">✅ PASS</td></tr>
-      <tr><td>p99 latency cold</td><td>142ms</td><td>&lt; 180ms</td><td class="pass">✅ PASS</td></tr>
-    </tbody>
+    <thead><tr><th style="padding:12px 16px">Method</th><th>nDCG@10</th><th>Recall@100</th><th>Queries</th></tr></thead>
+    <tbody id="eval-method-rows"><tr><td colspan="4">Loading saved metrics…</td></tr></tbody>
   </table>
 
   <div class="info-grid">
-    <div class="info-card">
-      <h3>Ablation Study</h3>
-      <p>BM25 → <strong>0.61</strong> · Dense (fine-tuned) → <strong>0.55</strong> · Hybrid α=0.2 → <strong>0.59</strong> → LTR → <strong style="color:#3ddc84">0.9300</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">LTR absolute lift: +0.3434 over BM25 baseline. Dense improved +18.4% after fine-tuning on MovieLens domain data (Spearman 0.55→0.81).</p>
-    </div>
-    <div class="info-card">
-      <h3>BEIR NFCorpus</h3>
-      <p>BM25 nDCG@10 = <strong style="color:#3ddc84" id="beir-page-val">0.3236</strong> · 323 queries · Medical domain</p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Above Thakur et al. 2021 reference of 0.325. Porter stemming on medical corpus ("antineoplastic" matching).</p>
-    </div>
-    <div class="info-card">
-      <h3>A/B Statistical Test</h3>
-      <p>p=0.065 · t=1.85 · lift=+6.3% · MDE=0.031</p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Correctly reports underpowered at n=200. Lift &lt; MDE. Honest output — requires 10K+ users for significance.</p>
-    </div>
-    <div class="info-card">
-      <h3>Latency Contexts</h3>
-      <p>Warm cache p99=<strong>92ms</strong> · Cold p99=<strong>142ms</strong> · +Cross-encoder p99=<strong>199ms</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Cross-encoder adds 57ms on cold-cache paths only. Cached queries still return at p50=2.67ms. All within extended SLO.</p>
-    </div>
-    <div class="info-card">
-      <h3>Fine-Tuning Results</h3>
-      <p>Spearman: <strong>0.55 → 0.81</strong> · Dense nDCG: <strong>0.46 → 0.55</strong> · LTR: <strong style="color:#3ddc84">0.8589 → 0.9300</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">e5-base-v2 fine-tuned on 296 MovieLens domain pairs via MultipleNegativesRankingLoss. Gains compound through LambdaRank reranker.</p>
-    </div>
-    <div class="info-card">
-      <h3>Collaborative Filtering</h3>
-      <p>SVD: <strong>33.8M ratings</strong> · 330K users · 50-dim latent vectors · RMSE 1.11→1.07</p>
-      <p style="margin-top:8px;font-size:12px;color:#555">TruncatedSVD Matrix Factorization. Pulp Fiction → Reservoir Dogs → Fargo → Taxi Driver (pure CF signal, no genre labels).</p>
-    </div>
-    <div class="info-card">
-      <h3>Metaflow Pipeline</h3>
-      <p>15 steps · 3 quality gates · Shadow test · <strong style="color:#3ddc84">All PASS</strong></p>
-      <p style="margin-top:8px;font-size:12px;color:#555">Netflix-style pipeline: LTR=0.9300, Dense=0.5488, Spearman=0.8066. Artifact versioned and promoted automatically.</p>
-    </div>
+    <div class="info-card"><h3>Artifact provenance</h3><p id="eval-artifact-note">Loading evaluation metadata…</p></div>
+    <div class="info-card"><h3>Gate status</h3><p id="eval-gate-note">Not evaluated</p></div>
+    <div class="info-card"><h3>Latency</h3><p id="eval-latency-note">Not available in the current artifact.</p></div>
+    <div class="info-card"><h3>Secondary saved run</h3><p id="eval-secondary-note">No independently identified benchmark is available.</p></div>
   </div>
 
   <!-- Algorithm Summary -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:14px">
-    <h3 style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">🧮 21 Algorithms Deployed</h3>
+    <h3 style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:14px">🧮 Ranking and retrieval components</h3>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
       <span class="badge badge-blue">BM25 Okapi</span>
       <span class="badge badge-blue">FAISS IndexFlatIP</span>
@@ -675,7 +629,7 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
       <span class="badge badge-purple">PCA</span>
       <span class="badge badge-gold">MultipleNegativesRankingLoss</span>
       <span class="badge badge-gold">Thompson Sampling</span>
-      <span class="badge badge-gold">Doubly-Robust IPW</span>
+      <span class="badge badge-gold">Synthetic DR validation</span>
       <span class="badge badge-gold">Welch t-test</span>
       <span class="badge badge-red">Porter Stemming</span>
       <span class="badge badge-red">Isotonic Regression</span>
@@ -755,11 +709,11 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
   <footer style="padding:24px 4%;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:40px">
     <div style="display:flex;align-items:center;gap:16px">
       <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#f0f0f2">Stream<span style="color:var(--red)">Lens</span></span>
-      <span style="font-size:12px;color:#444">Production ML Search & Recommendation Platform</span>
+      <span style="font-size:12px;color:#444">ML Search & Recommendation Workbench</span>
     </div>
     <div style="font-size:12px;color:#555;text-align:right">
       Built by <strong style="color:#888;font-weight:600">Akila Lourdes Miriyala Francis</strong><br>
-      <span style="font-size:11px;color:#3a3a3a">LTR nDCG@10 = 0.9300 · BEIR 0.3236 > ref · 44 languages · Kafka + WebSocket</span>
+      <span style="font-size:11px;color:#3a3a3a" id="footer-eval-note">Metrics load from saved evaluation artifacts · Kafka + WebSocket status is runtime-dependent</span>
     </div>
   </footer>
 </div><!-- end #app -->
@@ -769,6 +723,8 @@ audio{margin-top:8px;width:100%;display:none;border-radius:4px}
 'use strict';
 const $=id=>document.getElementById(id);
 const qsa=s=>[...document.querySelectorAll(s)];
+let _youtubeApiPromise=null,_ytPlayer=null,_ytWatchItem=null,_ytWatchStarted=false,_ytLoadGeneration=0;
+let _ytAccumulatedSeconds=0,_ytLastTick=0,_ytLastReported=0,_ytProgressTimer=null;
 const TMDB_KEY='d8b9837e5d24ef7bd664fe3d0e569b1b';
 const TMDB_IMG='https://image.tmdb.org/t/p/w500';
 const TMDB_BIG='https://image.tmdb.org/t/p/w1280';
@@ -841,7 +797,7 @@ function showPage(page,el){
   if(page==='movies') loadPageRows('rows-movies','Movies');
   if(page==='series') loadPageRows('rows-series','Series');
   if(page==='mylist') renderMyList();
-  if(page==='ai') loadAIStatus();
+  if(page==='ai'){loadAIStatus();loadEvalPage();}
   if(page==='streaming') loadStreamingPage();
   if(page==='eval') loadEvalPage();
 }
@@ -894,17 +850,56 @@ async function loadAIStatus(){
     $('llm-badge').textContent=`GPT-4o-mini · ${d.active_llm||'llm'}`;
     $('vlm-badge').textContent=`GPT-4o Vision`;
   }catch(e){console.log('AI status error',e);}
+  try{
+    const d=await fetch('/rl/status').then(r=>r.json());
+    if($('ai-rl-status')) $('ai-rl-status').textContent=d.enabled?'Enabled':'Disabled';
+    const badge=$('rl-status-badges'),detail=$('rl-status-detail');
+    if(badge) badge.innerHTML=`<span class="badge ${d.enabled?'badge-green':'badge-gold'}">${d.enabled?'✅ Active':'⚠️ Disabled'}</span><span class="badge badge-purple">${d.algorithm||'Contextual bandit'}</span>`;
+    if(detail) detail.textContent=d.enabled
+      ? `${d.global_observations||0} lifetime labels · ${d.users_with_feedback||0} profiles with feedback · lifetime mean reward ${d.mean_reward??'—'} · 7d ${Math.round((d.last_7_days?.feedback_coverage||0)*100)}% feedback coverage · ${d.last_7_days?.slates||0} slates · ${d.pending_feedback||0} pending · propensities recorded for audit`
+      : 'Enable rl.enabled in config/app.yaml to start the contextual learner.';
+  }catch(e){console.log('RL status error',e);}
 }
 
 // ── EVAL PAGE ─────────────────────────────────────────────────────────────────
 async function loadEvalPage(){
   try{
-    const d=await fetch('/eval/comprehensive').then(r=>r.json());
-    if(d.ablation?.ltr_final){
-      const el=$('beir-page-val');
-      if(el) el.textContent='0.3236';
+    const response=await fetch('/eval/comprehensive');
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    const d=await response.json();
+    const methods=d.methods||{};
+    const fmt=value=>typeof value==='number'&&Number.isFinite(value)?value.toFixed(4):'—';
+    const put=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+    const ltr=methods.hybrid_ltr||{},dense=methods.dense||{},hybrid=methods.hybrid||{};
+    put('eval-ltr',fmt(ltr['ndcg@10']));put('eval-dense',fmt(dense['ndcg@10']));
+    put('eval-hybrid',fmt(hybrid['ndcg@10']));put('lval',fmt(ltr['ndcg@10']));
+    put('ai-ltr',fmt(ltr['ndcg@10']));put('ai-dense',fmt(dense['ndcg@10']));
+    put('ai-hybrid',fmt(hybrid['ndcg@10']));put('ai-run-status',d.status||'Unavailable');
+    const count=d.num_queries??'—';
+    put('eval-artifact-note',`${d.source||'No source artifact'} · dataset: ${d.dataset||'not declared'} · split: ${d.split||'not declared'} · queries: ${count} · k: ${d.k??'—'}`);
+    put('ai-eval-source',d.source||'No evaluation artifact');
+    put('footer-eval-note',`LTR nDCG@10 ${fmt(ltr['ndcg@10'])} · source ${d.source||'unavailable'}`);
+    const rows=$('eval-method-rows');
+    if(rows){
+      const order=['bm25','dense','hybrid','hybrid_ltr'];
+      rows.innerHTML=order.map(name=>{
+        const row=methods[name]||{};
+        return `<tr><td>${name}</td><td>${fmt(row['ndcg@10'])}</td><td>${fmt(row['recall@100'])}</td><td>${row.num_queries??'—'}</td></tr>`;
+      }).join('');
     }
-  }catch{}
+    const gateValues=Object.entries(d.gates||{}).filter(([,value])=>value&&typeof value==='object'&&'passed'in value);
+    put('eval-gate-note',gateValues.length?gateValues.map(([name,value])=>`${name}: ${value.passed===null?'not measured':value.passed?'pass':'fail'} (${value.value??'—'} / target ${value.target})`).join(' · '):'No quality gates were evaluated.');
+    put('eval-latency-note',d.latency?.status==='artifact_available'?`Latency artifact available: ${d.latency.source}`:'No valid latency measurement is available in the current artifact.');
+    const secondary=d.secondary_artifact;
+    const secondaryMethods=secondary?.methods||{};
+    const secondaryScore=secondaryMethods.hybrid_ltr?.['ndcg@10']??secondaryMethods.hybrid?.['ndcg@10'];
+    put('eval-secondary',fmt(secondaryScore));put('beirval',fmt(secondaryScore));
+    put('eval-secondary-label',secondary?`${secondary.source} · dataset: ${secondary.dataset||'metadata absent'}`:'No saved secondary artifact');
+    put('eval-secondary-note',secondary?`${secondary.source}; dataset metadata ${secondary.dataset?'declared':'not declared'}; query count ${secondaryMethods.hybrid_ltr?.num_queries??secondaryMethods.hybrid?.num_queries??'—'}.`:'No secondary saved artifact is available.');
+  }catch(error){
+    for(const id of ['eval-artifact-note','eval-gate-note','eval-latency-note','eval-secondary-note'])
+      if($(id)) $(id).textContent=`Unavailable: ${error.message}`;
+  }
 }
 
 // ── STREAMING PAGE ────────────────────────────────────────────────────────────
@@ -930,7 +925,8 @@ async function sendTestEvent(eventType){
   const docId=S.currentItem?.doc_id||'296';
   const ts=new Date().toLocaleTimeString();
   try{
-    const r=await fetch(`/events/interaction?user_id=${S.profile}&doc_id=${docId}&event_type=${eventType}&watch_pct=${eventType==='watch_complete'?0.95:0}&position=1`,{method:'POST'});
+    const params=new URLSearchParams({user_id:S.profile,doc_id:docId,event_type:eventType,watch_pct:eventType==='watch_complete'?'0.95':'0',position:'1'});
+    const r=await fetch(`/events/interaction?${params}`,{method:'POST'});
     const d=await r.json();
     S._evtCount++;
     if($('events-sent')) $('events-sent').textContent=S._evtCount;
@@ -1153,7 +1149,7 @@ async function loadLangs(){
 async function loadFeed(){
   renderSkeletons();
   try{
-    const j=await fetch(`/feed?profile=${S.profile}&language=${encodeURIComponent(S.lang)}&rows=6&k=14`).then(r=>r.json());
+    const j=await fetch(`/feed?profile=${encodeURIComponent(S.profile)}&user_id=${encodeURIComponent(S.profile)}&language=${encodeURIComponent(S.lang)}&rows=6&k=14`).then(r=>r.json());
     S._rows=j.rows||[];
     renderRows(S._rows);
     if(S._rows[0]?.items?.[0]) setHeroItem(S._rows[0].items[0],S._rows[0].items.map(x=>x.score));
@@ -1207,6 +1203,11 @@ function createCard(it,scores,ri,ci){
     </div>`;
   card.querySelector('.card-act-btn.play').addEventListener('click',e=>{e.stopPropagation();openModal(it.doc_id,it,scores,true);});
   card.addEventListener('click',()=>openModal(it.doc_id,it,scores,false));
+  if(it.impression_id){
+    armVisibleNoClickFeedback(card,it);
+    if(_impressionObserver)_impressionObserver.observe(card);
+    else card._setImpressionVisible(true);
+  }
   fetchPoster(it.title||'').then(url=>{
     const ph=card.querySelector('.card-poster');
     if(!ph)return;
@@ -1216,6 +1217,55 @@ function createCard(it,scores,ri,ci){
   return card;
 }
 
+async function sendRLFeedback(item,eventType='click',watchPct=null){
+  if(!item?.impression_id)return;
+  if(eventType==='click'||eventType==='watch_complete'||eventType==='skip'||eventType==='dislike') item._feedbackSent=true;
+  try{
+    await fetch('/rl/feedback',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({impression_id:item.impression_id,doc_id:item.doc_id,user_id:S.profile,event_type:eventType,watch_pct:watchPct})});
+  }catch(e){console.debug('RL feedback unavailable',e);}
+}
+
+async function sendRLExposure(item){
+  if(!item?.impression_id||(item._exposureSent&&item._opeLogged)||item._exposureInFlight)return Boolean(item?._exposureSent);
+  item._exposureInFlight=true;
+  item._exposureAttempts=(item._exposureAttempts||0)+1;
+  try{
+    const response=await fetch('/rl/exposure',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({impression_id:item.impression_id,doc_id:item.doc_id,user_id:S.profile})});
+    const data=await response.json();
+    item._exposureSent=response.ok&&data.accepted;
+    item._opeLogged=Boolean(item._exposureSent&&data.ope_logged);
+    if(item._exposureSent&&!item._opeLogged&&item._exposureAttempts<4)
+      setTimeout(()=>sendRLExposure(item),1000*2**item._exposureAttempts);
+    return item._exposureSent;
+  }catch{
+    if(item._exposureAttempts<4)setTimeout(()=>sendRLExposure(item),1000*2**item._exposureAttempts);
+    return false;
+  }finally{item._exposureInFlight=false;}
+}
+
+function armVisibleNoClickFeedback(card,item){
+  const matureAfterMs=30000;
+  const arm=()=>{
+    if(!card._visible||item._feedbackSent||card._skipTimer)return;
+    card._visibleSince=Date.now();
+    card._skipTimer=setTimeout(()=>{
+      card._skipTimer=null;card._visibleMs=(card._visibleMs||0)+Date.now()-card._visibleSince;
+      if(card._visibleMs>=matureAfterMs&&!item._feedbackSent)sendRLFeedback(item,'skip',0);
+      else arm();
+    },Math.max(0,matureAfterMs-(card._visibleMs||0)));
+  };
+  card._setImpressionVisible=visible=>{
+    if(visible){card._visible=true;sendRLExposure(item).then(ok=>{if(ok)arm();});}
+    else if(card._visible){card._visible=false;if(card._skipTimer){clearTimeout(card._skipTimer);card._skipTimer=null;card._visibleMs=(card._visibleMs||0)+Date.now()-card._visibleSince;}}
+  };
+}
+
+const _impressionObserver=typeof IntersectionObserver!=='undefined'?new IntersectionObserver(entries=>{
+  for(const entry of entries)entry.target._setImpressionVisible?.(entry.isIntersecting&&entry.intersectionRatio>=0.5);
+},{threshold:0.5}):null;
+
 // ── HERO ──────────────────────────────────────────────────────────────────────
 $('hplay').addEventListener('click',()=>{if(S.heroItem)openModal(S.heroItem.doc_id,S.heroItem,[],true);});
 $('hinfo').addEventListener('click',()=>{if(S.heroItem)openModal(S.heroItem.doc_id,S.heroItem,[],false);});
@@ -1223,7 +1273,10 @@ $('rfbtn').addEventListener('click',loadFeed);
 
 // ── MODAL ─────────────────────────────────────────────────────────────────────
 async function openModal(docId,preview,rowScores,playTrailer=false){
+  finishTrailerWatch();
   S.currentItem=preview;
+  await sendRLExposure(preview);
+  await sendRLFeedback(preview,'click');
   const t=preview.title||'Untitled';
   $('mt').textContent=t;
   $('mpbg-color').style.background=grad(t);
@@ -1252,7 +1305,7 @@ async function openModal(docId,preview,rowScores,playTrailer=false){
   if(playTrailer) loadTrailer(t);
   try{
     const j=await fetch(`/item?doc_id=${encodeURIComponent(docId)}&language=${encodeURIComponent(S.lang)}`).then(r=>r.json());
-    S.currentItem={...j,doc_id:docId};
+    S.currentItem={...j,...preview,doc_id:docId};
     $('mt').textContent=j.title||t;
     $('mm').textContent=[j.year,j.rating,j.language].filter(Boolean).join(' · ');
     const m=rowScores.length?toMatch(rowScores,j.score||preview.score||0):'';
@@ -1269,6 +1322,8 @@ async function openModal(docId,preview,rowScores,playTrailer=false){
   }catch{}
 }
 async function loadTrailer(title){
+  finishTrailerWatch();
+  const generation=++_ytLoadGeneration;
   const overlay=$('mp-video-overlay');
   overlay.classList.add('show');
   overlay.innerHTML='<span style="color:#fff;font-size:13px;background:rgba(0,0,0,.7);padding:8px 16px;border-radius:4px">Loading trailer…</span>';
@@ -1279,10 +1334,75 @@ async function loadTrailer(title){
     const d=await r.json();
     const trailer=(d.results||[]).find(v=>v.type==='Trailer'&&v.site==='YouTube')||(d.results||[])[0]||null;
     if(trailer){
-      overlay.innerHTML=`<iframe src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=0&controls=1&rel=0" style="width:100%;height:100%;border:none" allowfullscreen allow="autoplay"></iframe>`;
+      overlay.innerHTML='<div id="yt-player" style="width:100%;height:100%"></div>';
       overlay.style.cssText='position:absolute;inset:0;z-index:10;display:flex';
+      _ytWatchItem=S.currentItem;_ytWatchStarted=false;_ytAccumulatedSeconds=0;_ytLastReported=0;
+      await startTrackedTrailer(trailer.key,generation);
     }else overlay.innerHTML='<span style="color:#888;font-size:12px;background:rgba(0,0,0,.7);padding:6px 12px;border-radius:4px">No trailer available</span>';
   }catch{overlay.innerHTML='<span style="color:#888;font-size:12px">Trailer unavailable</span>';}
+}
+
+function ensureYouTubeAPI(){
+  if(window.YT?.Player)return Promise.resolve();
+  if(_youtubeApiPromise)return _youtubeApiPromise;
+  _youtubeApiPromise=new Promise((resolve,reject)=>{
+    const previous=window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady=()=>{if(typeof previous==='function')previous();resolve();};
+    const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';
+    script.onerror=()=>reject(new Error('YouTube player API unavailable'));
+    document.head.appendChild(script);
+  });
+  return _youtubeApiPromise;
+}
+
+function trailerWatchPct(){
+  const duration=Number(_ytPlayer?.getDuration?.()||0);
+  return duration>0?Math.min(1,_ytAccumulatedSeconds/duration):0;
+}
+
+function reportTrailerProgress(complete=false){
+  if(!_ytWatchItem||!_ytWatchStarted)return;
+  const pct=trailerWatchPct();
+  if(complete){sendRLFeedback(_ytWatchItem,'watch_complete',pct);_ytLastReported=pct;return;}
+  if(pct>_ytLastReported+0.01){sendRLFeedback(_ytWatchItem,'watch_progress',pct);_ytLastReported=pct;}
+}
+
+async function startTrackedTrailer(videoKey,generation){
+  await ensureYouTubeAPI();
+  if(generation!==_ytLoadGeneration||!$('yt-player'))return;
+  _ytPlayer=new YT.Player('yt-player',{
+    videoId:videoKey,
+    playerVars:{autoplay:1,controls:1,rel:0,enablejsapi:1,origin:location.origin},
+    events:{
+      onReady:event=>event.target.playVideo(),
+      onStateChange:event=>{
+        if(event.data===YT.PlayerState.PLAYING){
+          if(!_ytWatchStarted){_ytWatchStarted=true;sendRLFeedback(_ytWatchItem,'watch_start',0);}
+          _ytLastTick=Date.now();
+          clearInterval(_ytProgressTimer);
+          _ytProgressTimer=setInterval(()=>{
+            const now=Date.now();
+            if(_ytPlayer?.getPlayerState?.()===YT.PlayerState.PLAYING){_ytAccumulatedSeconds+=(now-_ytLastTick)/1000;reportTrailerProgress();}
+            _ytLastTick=now;
+          },1000);
+        }else{
+          clearInterval(_ytProgressTimer);_ytProgressTimer=null;
+          if(_ytWatchStarted){const now=Date.now();if(_ytLastTick&&event.data!==YT.PlayerState.ENDED)_ytAccumulatedSeconds+=(now-_ytLastTick)/1000;reportTrailerProgress(event.data===YT.PlayerState.ENDED);}
+        }
+      },
+    },
+  });
+}
+
+function finishTrailerWatch(){
+  _ytLoadGeneration++;
+  clearInterval(_ytProgressTimer);_ytProgressTimer=null;
+  if(_ytPlayer&&_ytPlayer.getPlayerState?.()===YT.PlayerState.PLAYING){
+    const now=Date.now();if(_ytLastTick)_ytAccumulatedSeconds+=(now-_ytLastTick)/1000;
+  }
+  reportTrailerProgress();
+  try{_ytPlayer?.destroy?.();}catch{}
+  _ytPlayer=null;_ytWatchItem=null;_ytWatchStarted=false;_ytLastTick=0;
 }
 $('bplay').addEventListener('click',()=>{if(S.currentItem)loadTrailer(S.currentItem.title||'');});
 function renderSBars(bd){
@@ -1313,6 +1433,7 @@ $('mcl').addEventListener('click',closeModal);
 $('mbg').addEventListener('click',e=>{if(e.target===$('mbg'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 function closeModal(){
+  finishTrailerWatch();
   $('mbg').classList.remove('open');
   document.body.style.overflow='';
   stopAud(); // kill all audio on modal close
@@ -1596,7 +1717,7 @@ async function runMultimodalSearch(query){
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 async function boot(){
   await loadLangs();
-  await Promise.all([initStatus(),loadFeed()]);
+  await Promise.all([initStatus(),loadFeed(),loadEvalPage()]);
 }
 </script>
 </body>

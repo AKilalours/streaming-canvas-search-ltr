@@ -8,7 +8,7 @@ But we can build a serious counterfactual simulation harness:
   - synthetic user cohorts with realistic preference distributions
   - session replay over 7/14/30-day horizons
   - policy A vs policy B comparison
-  - doubly-robust IPW estimators
+  - IPW/SNIPS estimator smoke tests with known action probabilities
   - satisfaction-aware vs relevance-only comparison
   - offline-vs-shadow score alignment
 
@@ -16,10 +16,10 @@ Honest claim: "offline causal evaluation infrastructure is built;
 online validation needs real traffic."
 """
 from __future__ import annotations
-import math, random, time
+
+import random
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ── Synthetic user cohorts ────────────────────────────────────────────────────
 
@@ -65,7 +65,9 @@ class TrafficSimulator:
     """
 
     def __init__(self, n_users: int = 200, seed: int = 42) -> None:
-        random.seed(seed)
+        if n_users < 1:
+            raise ValueError("n_users must be at least 1")
+        self._rng = random.Random(seed)
         self.users = self._create_users(n_users)
         self.events: list[SimulatedEvent] = []
 
@@ -74,15 +76,15 @@ class TrafficSimulator:
         cohorts = list(COHORT_PROFILES.items())
         weights = [v["weight"] for _, v in cohorts]
         for i in range(n):
-            cohort_name, cohort_data = random.choices(cohorts, weights=weights, k=1)[0]
+            cohort_name, cohort_data = self._rng.choices(cohorts, weights=weights, k=1)[0]
             users.append(SyntheticUser(
                 user_id=f"sim_user_{i:04d}",
                 cohort=cohort_name,
                 preferred_genres=cohort_data["genres"],
-                session_length=random.gauss(1.5, 0.5),
-                sessions_per_week=random.gauss(3, 1),
-                completion_rate=random.gauss(0.72, 0.1),
-                exploration_rate=random.gauss(0.15, 0.05),
+                session_length=max(0.1, self._rng.gauss(1.5, 0.5)),
+                sessions_per_week=max(0.0, self._rng.gauss(3, 1)),
+                completion_rate=min(1.0, max(0.0, self._rng.gauss(0.72, 0.1))),
+                exploration_rate=min(1.0, max(0.0, self._rng.gauss(0.15, 0.05))),
             ))
         return users
 
@@ -101,25 +103,27 @@ class TrafficSimulator:
         sessions_per_day: int = 3,
     ) -> list[SimulatedEvent]:
         """Simulate n_days of user sessions under a given policy."""
+        if n_days < 1 or sessions_per_day < 1:
+            raise ValueError("n_days and sessions_per_day must be at least 1")
         events = []
         for day in range(n_days):
             for _ in range(sessions_per_day):
-                user = random.choice(self.users)
+                user = self._rng.choice(self.users)
                 # Each session: user sees top-K items from policy
                 session_items = items[:12]
-                for item in session_items[:random.randint(3, 8)]:
+                for item in session_items[:self._rng.randint(3, 8)]:
                     genres = [g.strip() for g in item.get("genres","").split(",") if g.strip()]
                     rel = self._genre_relevance(user, genres)
 
                     # Click probability: relevance + exploration noise
-                    click_prob = rel * 0.7 + random.uniform(0, 0.3) * user.exploration_rate
-                    clicked = random.random() < click_prob
+                    click_prob = rel * 0.7 + self._rng.uniform(0, 0.3) * user.exploration_rate
+                    clicked = self._rng.random() < click_prob
 
                     # Completion: conditional on click + relevance
                     completed = False
                     watch_pct = 0.0
                     if clicked:
-                        watch_pct = rel * user.completion_rate + random.gauss(0, 0.15)
+                        watch_pct = rel * user.completion_rate + self._rng.gauss(0, 0.15)
                         watch_pct = max(0, min(1, watch_pct))
                         completed = watch_pct > 0.8
 
@@ -204,35 +208,49 @@ class TrafficSimulator:
         }
 
 
-# ── IPW / Doubly-Robust OPE ──────────────────────────────────────────────────
+# ── IPW / SNIPS diagnostic ───────────────────────────────────────────────────
 
 def ipw_estimate(
     logged_events: list[dict[str, Any]],
     new_policy_scores: dict[str, float],
     clip_threshold: float = 10.0,
-) -> dict[str, float]:
-    """
-    Inverse Propensity Weighted off-policy estimator.
-    Estimates new policy value from logged data.
+) -> dict[str, Any]:
+    """Estimate a target policy using exact logged action propensities.
+
+    Requires logged events to contain ``doc_id``, exact ``propensity``,
+    ``shown`` and ``watched`` (or binary ``reward``). This is SNIPS, not a
+    doubly robust estimator. The synthetic simulator output must not be used
+    as production evidence.
     """
     if not logged_events:
-        return {"ipw_estimate": 0.0, "n_events": 0}
+        return {"ipw_estimate": 0.0, "n_events": 0, "method": "snips"}
 
-    weighted_rewards = []
+    from causal.uplift import LoggedEvent, OffPolicyEvaluator
+
+    events: list[LoggedEvent] = []
     for event in logged_events:
-        doc_id = str(event.get("doc_id", ""))
-        reward = float(event.get("reward", 0))
-        log_propensity = float(event.get("propensity", 0.1))
-        new_score = new_policy_scores.get(doc_id, 0.1)
-
-        # Importance weight with clipping for variance reduction
-        w = min(new_score / max(log_propensity, 1e-9), clip_threshold)
-        weighted_rewards.append(w * reward)
-
-    ipw = sum(weighted_rewards) / max(len(weighted_rewards), 1)
+        if "propensity" not in event:
+            raise ValueError("each logged event must include an exact action propensity")
+        reward = event.get("watched", event.get("reward", 0))
+        events.append(LoggedEvent(
+            doc_id=str(event.get("doc_id", "")),
+            shown=bool(event.get("shown", True)),
+            watched=bool(reward),
+            propensity=float(event["propensity"]),
+            user_id=str(event.get("user_id", "")),
+            context=dict(event.get("context") or {}),
+        ))
+    result = OffPolicyEvaluator(
+        min_lift=0.0,
+        clip_weight=float(clip_threshold),
+        min_effective_sample_size=1.0,
+    ).evaluate(new_policy_scores, events)
     return {
-        "ipw_estimate": round(ipw, 6),
-        "n_events": len(logged_events),
+        "ipw_estimate": result.estimated_reward,
+        "n_events": result.n_samples,
         "clip_threshold": clip_threshold,
-        "method": "clipped_ipw",
+        "effective_sample_size": result.effective_sample_size,
+        "weight_clipping_fraction": result.weight_clipping_fraction,
+        "method": "snips",
+        "deployable": False,
     }

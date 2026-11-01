@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import numpy as np
+import sqlite3
 import time
 import zlib
 from collections.abc import Iterable
@@ -30,6 +32,7 @@ except Exception:
 # ─────────────────────────────────────────────────────────────────────────────
 from app.demo_ui import mount_demo
 from app.deps import AppState, load_state
+from exploration.online_bandit import ContextualSlateBandit
 
 # ── Phase 3: Serendipity & Diversity ──────────────────────────────────────────
 try:
@@ -153,8 +156,10 @@ CACHE: CacheClient | None = None
 CFG: dict[str, Any] = {
     "retrieval": {"alpha": 0.5, "candidate_k": 200, "rerank_k": 50},
     "personalization": {"enabled": False, "boost_weight": 0.15},
+    "rl": {"enabled": False},
 }
 USERS: dict[str, Any] = {}
+_RL_BANDIT: ContextualSlateBandit | None = None
 
 # ── Phase 3 globals ────────────────────────────────────────────────────────────
 _BANDIT: "ContextualBandit | None" = None
@@ -688,6 +693,12 @@ def _search_core(
     for did, score in final:
         row = st.corpus.get(str(did), {})
         breakdown = None
+        _cal_prob = None
+        if _CALIB_AVAILABLE and _calibrate is not None:
+            try:
+                _cal_prob = round(float(_calibrate([float(score)])[0]), 3)
+            except Exception:
+                pass
         if debug:
             breakdown = {
                 "bm25": float(score_break_bm25.get(did, 0.0)),
@@ -697,14 +708,6 @@ def _search_core(
                 "ce_active": _CE_AVAILABLE,
                 "thompson_active": _THOMPSON_AVAILABLE,
             }
-        # ── Platt Calibration ───────────────────────────────────────────────
-        _cal_prob = None
-        if _CALIB_AVAILABLE and _calibrate is not None:
-            try:
-                _cal_prob = round(float(_calibrate([float(score)])[0]), 3)
-            except Exception:
-                pass
-        # ─────────────────────────────────────────────────────────────────────
         lang_tag = _lang_for_doc_id(str(did))
         hits.append(
             SearchHit(
@@ -730,6 +733,14 @@ def _load_config() -> dict[str, Any]:
     base = {
         "retrieval": {"alpha": 0.5, "candidate_k": 200, "rerank_k": 50},
         "personalization": {"enabled": False, "boost_weight": 0.15},
+        "rl": {
+            "enabled": False,
+            "temperature": 0.30,
+            "relevance_weight": 2.8,
+            "exploration_scale": 0.35,
+            "shared_weight": 0.25,
+            "max_impressions": 250000,
+        },
     }
 
     # Respect dataset switching via APP_CONFIG
@@ -792,6 +803,7 @@ async def lifespan(app: FastAPI):
     global STATE, _OLLAMA, CACHE, CFG, USERS
     global _BANDIT, _DIVERSITY_RERANKER, _SERENDIPITY_SCORER, _MULTI_OBJ_RERANKER
     global _PERSONALIZER_V2, _FEEDBACK_COLLECTOR, _HOUSEHOLD_MERGER, _RATE_LIMITERS
+    global _RL_BANDIT
     try:
         try:
             import torch  # type: ignore
@@ -805,6 +817,20 @@ async def lifespan(app: FastAPI):
 
         CFG = _load_config()
         USERS = _load_users()
+        _rl_cfg = CFG.get("rl", {})
+        if bool(_rl_cfg.get("enabled", False)):
+            _RL_BANDIT = ContextualSlateBandit(
+                db_path=os.environ.get(
+                    "STREAMLENS_BANDIT_DB", "artifacts/bandit/online_contextual.sqlite3"
+                ),
+                temperature=float(_rl_cfg.get("temperature", 0.30)),
+                relevance_weight=float(_rl_cfg.get("relevance_weight", 2.8)),
+                exploration_scale=float(_rl_cfg.get("exploration_scale", 0.35)),
+                shared_weight=float(_rl_cfg.get("shared_weight", 0.25)),
+                max_impressions=int(_rl_cfg.get("max_impressions", 250000)),
+            )
+        else:
+            _RL_BANDIT = None
         log.info("Loaded config: %s", CFG)
         log.info("Loaded users: %s", list(USERS.keys())[:10])
 
@@ -870,6 +896,7 @@ async def lifespan(app: FastAPI):
         _FEEDBACK_COLLECTOR = None
         _HOUSEHOLD_MERGER = None
         _RATE_LIMITERS = None
+        _RL_BANDIT = None
 
 
 app = FastAPI(title="streaming-canvas-search-ltr", lifespan=lifespan)
@@ -1217,12 +1244,17 @@ def item_path(doc_id: str, language: str = "English") -> dict[str, Any]:
 
 @app.get("/feed")
 def feed(
+    request: Request,
     profile: str = Query("chrisen"),
     language: str = Query("English"),
     rows: int = Query(6, ge=1, le=12),
     k: int = Query(12, ge=6, le=200),
     user_id: str | None = Query(default=None),
 ) -> dict[str, Any]:
+    if RATE_LIMITING_AVAILABLE and _RATE_LIMITERS is not None:
+        ip = get_client_ip(request)
+        _RATE_LIMITERS["global"].require(ip)
+        _RATE_LIMITERS["search"].require(ip)
     seeds = {
         "chrisen": [
             ("Trending for you", "gritty action"),
@@ -1245,6 +1277,8 @@ def feed(
     seeds = seeds[:rows]
     out_rows: list[dict[str, Any]] = []
     st = _ensure_ready()
+    rl_enabled = _RL_BANDIT is not None and bool(CFG.get("rl", {}).get("enabled", False))
+    rl_degraded = False
     method_used = "hybrid_ltr" if getattr(st, "reranker", None) is not None else "hybrid"
     for title, q in seeds:
         sres = _search_core(
@@ -1253,9 +1287,170 @@ def feed(
             debug=False, language=language, device_type=None, network_speed=None,
             user_id=user_id,
         )
-        items = [{"doc_id": h.doc_id, "title": h.title, "score": float(h.score), "language": _lang_for_doc_id(h.doc_id)} for h in sres.hits]
-        out_rows.append({"title": title, "query": q, "items": items})
-    return {"profile": profile, "language": language, "rows": out_rows, "user_id": user_id}
+        items = [
+            {"doc_id": h.doc_id, "title": h.title, "score": float(h.score),
+             "language": _lang_for_doc_id(h.doc_id)}
+            for h in sres.hits
+        ]
+        rl_user_id = user_id or profile
+        if rl_enabled:
+            if len(rl_user_id) > 128 or rl_user_id == "__global__":
+                raise HTTPException(status_code=422, detail="Invalid RL user_id.")
+            try:
+                selected = _RL_BANDIT.recommend(
+                    rl_user_id,
+                    [(h.doc_id, float(h.score)) for h in sres.hits],
+                    st.corpus,
+                    k=k,
+                )
+                by_id = {item["doc_id"]: item for item in items}
+                items = [
+                    {**by_id[item["doc_id"]],
+                     "impression_id": item["impression_id"],
+                     "propensity": item["propensity"],
+                     "slate_id": item["slate_id"],
+                     "position": item["position"],
+                     "candidate_count": item["candidate_count"],
+                     "baseline_rank": item["baseline_rank"],
+                     "policy": item["policy"]}
+                    for item in selected if item["doc_id"] in by_id
+                ]
+                row_policy = "contextual_thompson_sampling_v1"
+            except (OSError, sqlite3.Error, np.linalg.LinAlgError, ValueError):
+                # Keep search/feed availability if local learning state is
+                # inaccessible or invalid; the degraded policy is explicit.
+                log.exception("Contextual bandit failed; serving relevance-ranked feed row.")
+                rl_degraded = True
+                row_policy = "relevance_ranker_fallback"
+        else:
+            row_policy = "relevance_ranker"
+        out_rows.append({"title": title, "query": q, "items": items, "policy": row_policy})
+    return {
+        "profile": profile, "language": language, "rows": out_rows,
+        "user_id": user_id or profile,
+        "policy": (
+            "relevance_ranker_fallback" if rl_degraded else
+            "contextual_thompson_sampling_v1" if rl_enabled else "relevance_ranker"
+        ),
+    }
+
+
+@app.get("/rl/status")
+def rl_status() -> dict[str, Any]:
+    """Return aggregate learning-loop health without exposing user-level history."""
+    enabled = _RL_BANDIT is not None and bool(CFG.get("rl", {}).get("enabled", False))
+    if not enabled:
+        return {"enabled": False, "algorithm": "Bayesian linear contextual Thompson sampling"}
+    return _RL_BANDIT.status()
+
+
+@app.post("/rl/feedback")
+def rl_feedback(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Attribute one bounded outcome to a logged recommendation impression."""
+    if _RATE_LIMITERS is not None:
+        _RATE_LIMITERS["global"].require(get_client_ip(request))
+    if _RL_BANDIT is None or not bool(CFG.get("rl", {}).get("enabled", False)):
+        raise HTTPException(status_code=503, detail="Online bandit is disabled.")
+    impression_id = str(payload.get("impression_id") or "")
+    user_id = str(payload.get("user_id") or "")
+    event_type = str(payload.get("event_type") or "")
+    doc_id = str(payload.get("doc_id") or "")
+    watch_pct = payload.get("watch_pct")
+    if watch_pct is not None:
+        try:
+            watch_pct = float(watch_pct)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail="watch_pct must be between 0 and 1.") from exc
+        if not math.isfinite(watch_pct) or not 0.0 <= watch_pct <= 1.0:
+            raise HTTPException(status_code=422, detail="watch_pct must be between 0 and 1.")
+    if not user_id or not doc_id:
+        raise HTTPException(
+            status_code=422,
+            detail="user_id and doc_id are required for feedback attribution.",
+        )
+    if len(user_id) > 128 or len(impression_id) > 128 or len(doc_id) > 128:
+        raise HTTPException(status_code=422, detail="user_id, doc_id, or impression_id is too long.")
+    try:
+        result = _RL_BANDIT.record_feedback(
+            impression_id,
+            event_type,
+            watch_pct=watch_pct,
+            user_id=user_id or None,
+            doc_id=doc_id or None,
+            require_exposure=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not result["accepted"]:
+        raise HTTPException(status_code=409, detail=result["reason"])
+    if PROP_LOGGER_AVAILABLE and _PROP_LOGGER is not None:
+        try:
+            _PROP_LOGGER.record_outcome(
+                impression_id,
+                watch_pct=(float(watch_pct) if event_type in {"watch_progress", "watch_complete"}
+                           and watch_pct is not None else 0.0),
+                clicked=event_type in {"click", "watch_start", "watch_progress", "watch_complete"},
+            )
+        except (OSError, TypeError, ValueError):
+            log.exception("Could not persist outcome to the causal impression journal.")
+    return result
+
+
+@app.post("/rl/exposure")
+def rl_exposure(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Record a client-confirmed visible feed impression and its exact action probability."""
+    if _RATE_LIMITERS is not None:
+        _RATE_LIMITERS["global"].require(get_client_ip(request))
+    if _RL_BANDIT is None or not bool(CFG.get("rl", {}).get("enabled", False)):
+        raise HTTPException(status_code=503, detail="Online bandit is disabled.")
+    impression_id = str(payload.get("impression_id") or "")
+    user_id = str(payload.get("user_id") or "")
+    doc_id = str(payload.get("doc_id") or "")
+    if any(not value or len(value) > 128 for value in (impression_id, user_id, doc_id)):
+        raise HTTPException(status_code=422, detail="Valid impression_id, user_id, and doc_id are required.")
+    try:
+        exposure = _RL_BANDIT.mark_exposure(impression_id, user_id=user_id, doc_id=doc_id)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Could not confirm impression exposure.") from exc
+    if not exposure["accepted"]:
+        raise HTTPException(status_code=404, detail=exposure["reason"])
+    logged = False
+    if not exposure["causal_logged"] and PROP_LOGGER_AVAILABLE and _PROP_LOGGER is not None:
+        context = exposure["candidate_context"]
+        context["target_scores"] = context.get("candidate_scores", {})
+        logged_distribution = context.get("behavior_probabilities", {})
+        selected_probability = logged_distribution.get(doc_id)
+        if (selected_probability is None
+                or not math.isclose(float(selected_probability), exposure["propensity"], rel_tol=1e-8)
+                or not math.isclose(sum(map(float, logged_distribution.values())), 1.0, rel_tol=1e-6)):
+            raise HTTPException(status_code=500, detail="Logged action distribution failed integrity validation.")
+        context["policy_state"] = "sampled_posterior_action_distribution_logged"
+        try:
+            _PROP_LOGGER.log_impression(
+                user_id=user_id,
+                doc_id=doc_id,
+                ltr_score=exposure["base_score"],
+                position=max(0, exposure["position"] - 1),
+                propensity=exposure["propensity"],
+                randomized=True,
+                serving_verified=True,
+                policy_name="contextual_thompson_sampling_v1",
+                page_type="feed",
+                event_id=impression_id,
+                context=context,
+            )
+            logged = _RL_BANDIT.mark_causal_logged(impression_id, user_id=user_id)
+        except (OSError, TypeError, ValueError):
+            log.exception("Could not persist randomized feed impression to the causal journal.")
+    causal_logged = logged or exposure["causal_logged"]
+    return {
+        "accepted": True,
+        "new_exposure": exposure["new_exposure"],
+        "ope_logged": causal_logged,
+        "ope_eligible": bool(causal_logged and exposure["propensity"] > 0),
+        "propensity": exposure["propensity"],
+        "note": "Exact action probability and full remaining-candidate distribution are logged for this sequential slate decision.",
+    }
 
 def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False) -> dict[str, Any]:
     doc_id = doc_id.strip()
@@ -1926,54 +2121,92 @@ def uplift_score(
     q: str = Query("action", min_length=1),
     k: int = Query(10, ge=1, le=50),
 ) -> dict[str, Any]:
-    """
-    2026: Causal incrementality score for a single item.
-    Returns P(watch|shown) - P(watch|not_shown) — the true recommendation value.
-    """
+    """Return item-level observed outcomes; causal uplift needs a valid control arm."""
     if not CAUSAL_AVAILABLE:
         return {"error": "causal module not available", "available": False}
-    scorer = IncrementalityScorer()
-    us = scorer.score(doc_id)
+    if not PROP_LOGGER_AVAILABLE or _PROP_LOGGER is None:
+        return {
+            "doc_id": doc_id,
+            "status": "unavailable",
+            "incrementality_score": None,
+            "confident": False,
+            "data_source": "live_randomized_feed_logs",
+            "note": "The eligible feed outcome journal is unavailable.",
+        }
+    events = [
+        event for event in _PROP_LOGGER.load_events_for_ope(n=50000)
+        if event.get("doc_id") == doc_id
+    ]
+    if not events:
+        return {
+            "doc_id": doc_id,
+            "status": "insufficient_data",
+            "incrementality_score": None,
+            "p_watch_shown": None,
+            "p_watch_not_shown": None,
+            "confident": False,
+            "data_source": "live_randomized_feed_logs",
+            "n_treated": 0,
+            "n_control": 0,
+            "note": "No mature, serving-verified randomized outcomes exist for this item.",
+        }
+    weights = np.asarray([1.0 / float(event["propensity"]) for event in events])
+    rewards = np.asarray([float(event.get("watch_pct", 0.0)) for event in events])
+    weight_sum = float(weights.sum())
+    observed_watch = float(np.dot(weights / weight_sum, rewards))
+    effective_sample_size = weight_sum ** 2 / max(float(np.dot(weights, weights)), 1e-12)
     return {
         "doc_id": doc_id,
-        "incrementality_score": us.incrementality_score,
-        "p_watch_shown": us.p_watch_shown,
-        "p_watch_not_shown": us.p_watch_not_shown,
-        "method": us.method,
-        "confident": us.confident,
-        "is_incremental": us.incrementality_score >= 0.05,
-        "note": "Cold start: using Thompson Beta prior. Score improves with logged data.",
+        "status": "observed_outcomes_only",
+        "incrementality_score": None,
+        "p_watch_shown": round(observed_watch, 6),
+        "p_watch_not_shown": None,
+        "observed_click_rate": round(sum(bool(event.get("clicked")) for event in events) / len(events), 6),
+        "method": "inverse_propensity_weighted_observed_mean",
+        "confident": False,
+        "is_incremental": None,
+        "data_source": "live_randomized_feed_logs",
+        "n_treated": len(events),
+        "n_control": 0,
+        "effective_sample_size_treated": round(effective_sample_size, 3),
+        "effective_sample_size_control": 0.0,
+        "note": "Outcome telemetry is connected, but item-level control outcomes are unavailable; this is not a causal uplift estimate.",
     }
 
 
 @app.get("/uplift/ope")
 def ope_evaluate(
-    q: str = Query("action movies", min_length=1),
-    k: int = Query(10, ge=1, le=50),
+    n: int = Query(10000, ge=1, le=50000),
 ) -> dict[str, Any]:
-    """
-    2026: Off-Policy Evaluation — estimates new policy reward without live deployment.
-    Uses importance-sampling over logged bandit data.
-    """
+    """Evaluate the logged contextual softmax target policy with live mature events."""
     if not CAUSAL_AVAILABLE:
-        return {"error": "causal module not available"}
-    st = _ensure_ready()
-    sres = _search_core(query=q, method="hybrid_ltr", k=k, candidate_k=200, rerank_k=50, alpha=0.5)
-    new_scores = {h.doc_id: float(h.score) for h in sres.hits}
-
-    # Simulate logged events (in prod: load from Redis/S3 feedback store)
-    import random
+        raise HTTPException(status_code=503, detail="Causal evaluation module is unavailable.")
+    if not PROP_LOGGER_AVAILABLE or _PROP_LOGGER is None:
+        raise HTTPException(status_code=503, detail="Randomized impression journal is unavailable.")
+    events = _PROP_LOGGER.load_events_for_ope(n=n)
     log = [
         LoggedEvent(
-            doc_id=random.choice(sres.hits).doc_id if sres.hits else "doc_0",
-            shown=random.random() > 0.5,
-            watched=random.random() > 0.7,
-            propensity=random.uniform(0.1, 0.9),
+            doc_id=event["doc_id"],
+            shown=True,
+            watched=float(event.get("watch_pct", 0.0)),
+            propensity=float(event["propensity"]),
+            user_id=event.get("user_id", ""),
+            context=event.get("context") or {},
         )
-        for _ in range(200)
+        for event in events
+        if (event.get("context") or {}).get("target_scores")
     ]
+    if not log:
+        return {
+            "status": "insufficient_data",
+            "n_samples": 0,
+            "data_source": "live_randomized_feed_impressions",
+            "synthetic_only": False,
+            "deployment_eligible": False,
+            "note": "No mature feed outcomes with exact randomized propensities and candidate context are available yet.",
+        }
     evaluator = OffPolicyEvaluator(min_lift=0.02)
-    result = evaluator.evaluate(new_scores, log)
+    result = evaluator.evaluate({}, log)
     return {
         "policy_name": result.policy_name,
         "estimated_reward": result.estimated_reward,
@@ -1981,7 +2214,15 @@ def ope_evaluate(
         "relative_lift": result.relative_lift,
         "passed": result.passed,
         "n_samples": result.n_samples,
-        "note": "OPE using clipped importance sampling. Deploy only if passed=true.",
+        "effective_sample_size": result.effective_sample_size,
+        "weight_clipping_fraction": result.weight_clipping_fraction,
+        "standard_error": result.standard_error,
+        "estimator": result.estimator,
+        "data_source": "live_randomized_feed_impressions",
+        "synthetic_only": False,
+        "deployment_eligible": False,
+        "status": "diagnostic_only" if result.n_samples >= 30 else "insufficient_data",
+        "note": "Per-decision SNIPS diagnostic on client-confirmed impressions. It is not a deployment or causal promotion decision.",
     }
 
 
@@ -2349,146 +2590,129 @@ def household_contamination(
 
 @app.get("/eval/comprehensive")
 def eval_comprehensive() -> dict[str, Any]:
-    """
-    Full evaluation report with all gates.
-    
-    Uses real measured values from MovieLens test set.
-    - Recall computed with candidate_k=1000 (correct pool size)
-    - Latency = API serving path, not eval pipeline
-    - All targets from spec checked against real numbers
-    
-    Run `make eval_full` to refresh with latest eval run.
-    """
-    import pathlib, json as _json
+    """Expose measured offline metrics without substituting demo constants."""
+    import json as _json
+    from pathlib import Path as _Path
 
-    # Try to load fresh metrics if available and valid
-    raw = {}
-    for p in ["reports/latest/metrics.json"]:
-        mp = pathlib.Path(p)
-        if mp.exists():
-            try:
-                m = _json.loads(mp.read_text())
-                methods = {r.get("method"): r for r in m.get("methods", []) if isinstance(r, dict)}
-                ltr = methods.get("hybrid_ltr", {})
-                # Only use if recall is correct (run with candidate_k=1000)
-                if float(ltr.get("recall@100", 0)) > 0.5 and int(ltr.get("num_queries", 0)) > 0:
-                    raw = m
-                    break
-            except Exception:
-                pass
+    metrics_path = _Path("reports/latest/metrics.json")
+    if not metrics_path.is_file():
+        return {
+            "status": "unavailable",
+            "note": "No reports/latest/metrics.json artifact is available.",
+            "ablation": {},
+            "retrieval": {},
+            "latency": {"status": "unavailable"},
+            "gates": {"status": "not_evaluated"},
+        }
+    try:
+        raw = _json.loads(metrics_path.read_text())
+    except (OSError, ValueError) as exc:
+        return {
+            "status": "invalid_artifact",
+            "note": f"Could not read evaluation artifact: {type(exc).__name__}.",
+            "ablation": {},
+            "retrieval": {},
+            "latency": {"status": "unavailable"},
+            "gates": {"status": "not_evaluated"},
+        }
 
-    # Build metrics from real measured values
-    # These are real numbers from MovieLens eval with candidate_k=1000
-    # REAL measured values — e5-base-v2 + LTR retrained with candidate_k=2000
-    # Dense model: intfloat/e5-base-v2 (768-dim) replacing all-MiniLM-L6-v2 (384-dim)
-    # All numbers from make eval_full_v2, real evaluation, no fabrication
-    MEASURED = {
-        "bm25":       {"ndcg@10": 0.6065, "mrr": 0.4200, "recall@100": 0.1618, "diversity": 0.48, "p50": 8,  "p95": 18,  "p99": 28},
-        "dense":      {"ndcg@10": 0.4640, "mrr": 0.4800, "recall@100": 0.1820, "diversity": 0.52, "p50": 22, "p95": 48,  "p99": 72},
-        "hybrid":     {"ndcg@10": 0.5848, "mrr": 0.5900, "recall@100": 0.2200, "diversity": 0.55, "p50": 28, "p95": 62,  "p99": 95},
-        "hybrid_ltr": {"ndcg@10": 0.8589, "mrr": 0.8900, "recall@100": 0.2450, "diversity": 0.61, "p50": 45, "p95": 98,  "p99": 142},
+    methods = {
+        row.get("method"): row
+        for row in raw.get("methods", [])
+        if isinstance(row, dict) and isinstance(row.get("method"), str)
     }
+    def numeric(row: dict[str, Any], key: str) -> float | int | None:
+        value = row.get(key)
+        return value if isinstance(value, (int, float)) else None
+    bm25, dense = methods.get("bm25", {}), methods.get("dense", {})
+    hybrid, ltr = methods.get("hybrid", {}), methods.get("hybrid_ltr", {})
+    ltr_ndcg, hybrid_ndcg = numeric(ltr, "ndcg@10"), numeric(hybrid, "ndcg@10")
+    lift = round(ltr_ndcg - hybrid_ndcg, 6) if ltr_ndcg is not None and hybrid_ndcg is not None else None
 
-    if raw:
-        # Use real eval output if available
-        methods = {r.get("method"): r for r in raw.get("methods", []) if isinstance(r, dict)}
-        for k, v in methods.items():
-            if k in MEASURED:
-                MEASURED[k].update({mk: float(mv) for mk, mv in v.items() if isinstance(mv, (int, float))})
-
-    ltr = MEASURED["hybrid_ltr"]
-    hybrid = MEASURED["hybrid"]
-    ltr_abs_lift = round(ltr["ndcg@10"] - hybrid["ndcg@10"], 4)
-    ltr_rel_lift = round(ltr_abs_lift / hybrid["ndcg@10"] * 100, 2)
-
-    # Gate evaluation against all targets
-    def gate(val, target, op):
-        passed = (val >= target) if op == ">=" else (val <= target)
-        return {"value": round(val,4), "target": target, "passed": passed,
-                "gap": round(val-target if op==">=" else target-val, 4)}
-
+    # These targets are explicit gates, evaluated only when the artifact contains
+    # the corresponding metric. Missing evidence can never count as a pass.
+    targets = {
+        "recall@100": (numeric(ltr, "recall@100"), 0.75, ">="),
+        "ndcg_post_ltr": (ltr_ndcg, 0.34, ">="),
+        "ltr_abs_lift": (lift, 0.015, ">="),
+    }
     gates = {
-        "recall@100":      gate(ltr["recall@100"], 0.75,  ">="),
-        "mrr@10":          gate(ltr["mrr"],         0.40,  ">="),
-        "ndcg_pre_ltr":    gate(hybrid["ndcg@10"],  0.28,  ">="),
-        "ndcg_post_ltr":   gate(ltr["ndcg@10"],     0.34,  ">="),
-        "ltr_abs_lift":    gate(ltr_abs_lift,        0.015, ">="),
-        "diversity":       gate(ltr["diversity"],    0.40,  ">="),
-        "cold_start_ndcg": gate(ltr["ndcg@10"]*0.75,0.22,  ">="),
-        "p95_latency_ms":  gate(ltr["p95"],          120.0, "<="),
-        "p99_latency_ms":  gate(ltr["p99"],          180.0, "<="),
+        key: {
+            "value": round(value, 6), "target": target,
+            "passed": value >= target if op == ">=" else value <= target,
+        } if value is not None else {"value": None, "target": target, "passed": None}
+        for key, (value, target, op) in targets.items()
     }
-    gates["all_pass"] = all(g["passed"] for g in gates.values() if isinstance(g, dict))
+    gates["all_pass"] = all(item["passed"] is True for item in gates.values())
+
+    latency = {"status": "unavailable"}
+    latency_path = _Path("reports/latest/latency.json")
+    if latency_path.is_file():
+        try:
+            latency_artifact = _json.loads(latency_path.read_text())
+            latency = {"status": "artifact_available", "source": str(latency_path), "metrics": latency_artifact}
+        except (OSError, ValueError):
+            latency = {"status": "invalid_artifact", "source": str(latency_path)}
+
+    def summarize_methods(artifact: dict[str, Any]) -> dict[str, Any]:
+        return {
+            row["method"]: {
+                key: row[key]
+                for key in ("ndcg@10", "recall@100", "num_queries")
+                if isinstance(row.get(key), (int, float))
+            }
+            for row in artifact.get("methods", [])
+            if isinstance(row, dict) and isinstance(row.get("method"), str)
+        }
+
+    secondary = None
+    secondary_path = _Path("reports/latest/metrics_latest.json")
+    if secondary_path.is_file():
+        try:
+            secondary_raw = _json.loads(secondary_path.read_text())
+            secondary = {
+                "source": str(secondary_path),
+                "dataset": secondary_raw.get("dataset"),
+                "split": secondary_raw.get("split"),
+                "diagnostics": secondary_raw.get("diagnostics", {}),
+                "methods": summarize_methods(secondary_raw),
+            }
+        except (OSError, ValueError):
+            secondary = {"source": str(secondary_path), "status": "invalid_artifact"}
 
     return {
-        "note": (
-            "recall@100 computed with candidate_k=1000 (correct pool size). "
-            "Latency = API serving path at low load. "
-            "LTR lift large (+58%) because MovieLens qrels are dense — "
-            "see integrity_checks for full explanation."
-        ),
+        "status": "measured_artifact",
+        "source": str(metrics_path),
+        "dataset": raw.get("dataset"),
+        "split": raw.get("split"),
+        "k": raw.get("k"),
+        "diagnostics": raw.get("diagnostics", {}),
+        "methods": summarize_methods(raw),
+        "secondary_artifact": secondary,
+        "num_queries": numeric(ltr, "num_queries"),
+        "note": "Offline artifact metrics only; online impact and unsupported slices are not inferred.",
         "ablation": {
-            "bm25_baseline":   MEASURED["bm25"]["ndcg@10"],
-            "dense_baseline":  MEASURED["dense"]["ndcg@10"],
-            "hybrid_baseline": hybrid["ndcg@10"],
-            "ltr_final":       ltr["ndcg@10"],
-            "ltr_abs_lift":    ltr_abs_lift,
-            "ltr_rel_lift_pct":ltr_rel_lift,
+            "bm25_baseline": numeric(bm25, "ndcg@10"),
+            "dense_baseline": numeric(dense, "ndcg@10"),
+            "hybrid_baseline": hybrid_ndcg,
+            "ltr_final": ltr_ndcg,
+            "ltr_abs_lift": lift,
+            "ltr_rel_lift_pct": round(lift / hybrid_ndcg * 100, 4) if lift is not None and hybrid_ndcg else None,
         },
         "retrieval": {
-            "recall@100": ltr["recall@100"],
-            "mrr@10":     ltr["mrr"],
-            "target_recall@100": 0.75,
-            "target_mrr":        0.40,
+            "recall@100": numeric(ltr, "recall@100"),
+            "mrr@10": numeric(ltr, "mrr@10"),
+            "ndcg@10": ltr_ndcg,
         },
-        "latency": {
-            "p50_ms": ltr["p50"],
-            "p95_ms": ltr["p95"],
-            "p99_ms": ltr["p99"],
-            "target_p95_ms": 120.0,
-            "target_p99_ms": 180.0,
-            "note": "Eval pipeline latency (includes disk I/O) was 180/300ms. API serving latency shown here.",
-        },
-        "page_quality": {
-            "diversity":             ltr["diversity"],
-            "cold_start_ndcg":       round(ltr["ndcg@10"] * 0.75, 4),
-            "cold_start_clip_ndcg":  round(ltr["ndcg@10"] * 0.86, 4),
-            "clip_lift_pct":         14.7,
-            "diversity_slate_lift_pct": 22.1,
-            "relevance_loss_pct":    1.8,
-        },
-        "slice_analysis": {
-            "short_query":    round(ltr["ndcg@10"] * 0.95, 4),
-            "long_query":     round(ltr["ndcg@10"] * 1.05, 4),
-            "typo_query":     round(ltr["ndcg@10"] * 0.82, 4),
-            "cold_start":     round(ltr["ndcg@10"] * 0.75, 4),
-            "sparse_user":    round(ltr["ndcg@10"] * 0.78, 4),
-            "heavy_user":     round(ltr["ndcg@10"] * 1.08, 4),
-            "multilingual":   round(ltr["ndcg@10"] * 0.88, 4),
-            "cross_format":   round(ltr["ndcg@10"] * 0.91, 4),
-        },
-        "satisfaction_simulation": {
-            "return_proxy_lift_pct":    5.1,
-            "abandonment_reduction_pct": 8.3,
-            "source": "200 synthetic users, 14-day simulation",
-            "caveat": "Online validation needs real users",
-        },
+        "latency": latency,
+        "page_quality": {"status": "not_measured_in_artifact"},
+        "slice_analysis": {"status": "not_measured_in_artifact"},
+        "satisfaction_simulation": {"status": "not_connected_to_this_artifact"},
         "gates": gates,
         "integrity_checks": {
-            "query_leakage": False,
-            "split": "80/20 by query_id",
-            "overfit_risk": "LOW",
-            "recall_note": (
-                "MovieLens qrels are dense (50-500 relevant docs per user). "
-                "recall@100 = 88 hits / 500 relevant = 0.186 at candidate_k=200. "
-                "At candidate_k=1000: recall@100 = 0.88. "
-                "Target of 0.75 met when using correct pool size."
-            ),
-            "ltr_lift_note": (
-                "LTR lift of +0.277 nDCG@10 is real on this corpus. "
-                "Dense qrels + large candidate pool makes reranking impactful. "
-                "In sparse-qrel settings (BEIR), expect +0.015-0.05."
-            ),
+            "status": "not_independently_verified",
+            "split": raw.get("split"),
+            "candidate_pool": (raw.get("diagnostics") or {}).get("bm25_candidate_k_max"),
         },
     }
 
@@ -2924,13 +3148,14 @@ def log_impression(
     doc_id: str = Query(...),
     position: int = Query(0, ge=0),
     ltr_score: float = Query(0.0),
+    selection_probability: float | None = Query(default=None, gt=0.0, le=1.0),
+    randomized: bool = Query(False),
     page_type: str = Query("feed"),
     title: str = Query(""),
 ) -> dict[str, Any]:
     """
-    Log a recommendation impression with propensity score.
-    Call this for every item shown to a user.
-    Required for real causal inference (IPW uplift estimation).
+    Manual events are never marked serving-verified. Feed exposure callbacks
+    are the source for randomized impression events eligible for diagnostic OPE.
     """
     if not PROP_LOGGER_AVAILABLE or _PROP_LOGGER is None:
         return {"error": "propensity logger not available"}
@@ -2939,16 +3164,21 @@ def log_impression(
         user_id=user_id,
         doc_id=doc_id,
         ltr_score=ltr_score,
-        all_scores=[ltr_score],  # caller should pass all scores for accurate propensity
         position=position,
+        propensity=selection_probability,
+        randomized=randomized,
         page_type=page_type,
         title=title,
     )
     return {
         "event_id": event.event_id,
         "propensity": event.propensity,
+        "ope_eligible": event.ope_eligible,
         "logged": True,
-        "note": "Call /impression/outcome when user watches to complete the causal log",
+        "note": (
+            "Manual events are not OPE-eligible. Feed serving writes verified randomized exposures "
+            "through the client-confirmed /rl/exposure callback."
+        ),
     }
 
 
@@ -2972,7 +3202,7 @@ def record_outcome(
 
 @app.get("/impression/stats")
 def impression_stats() -> dict[str, Any]:
-    """Propensity log statistics — how many impressions and outcomes recorded."""
+    """Impression-log coverage. Event counts alone do not imply OPE readiness."""
     if not PROP_LOGGER_AVAILABLE or _PROP_LOGGER is None:
         return {"error": "propensity logger not available"}
     stats = _PROP_LOGGER.stats()
@@ -2983,12 +3213,10 @@ def impression_stats() -> dict[str, Any]:
     return {
         **stats,
         "avg_propensity": round(avg_propensity, 4),
-        "ready_for_ope": stats["n_outcomes"] >= 100,
-        "note": (
-            "Collect >=100 outcomes before running /uplift/ope for reliable estimates"
-            if stats["n_outcomes"] < 100 else
-            "Sufficient data for OPE — run /uplift/ope"
-        ),
+        "n_ope_eligible_outcomes": len(events),
+        "ope_available": bool(events),
+        "ope_deployment_eligible": False,
+        "note": "Eligible live randomized outcomes can be evaluated diagnostically; this endpoint does not promote policies.",
     }
 
 
@@ -3002,6 +3230,9 @@ def impression_export(n: int = Query(1000, ge=1, le=50000)) -> dict[str, Any]:
         "n_events": len(events),
         "events": events[:100],  # first 100 in response; full set in log file
         "log_path": "reports/propensity_logs/impressions.jsonl",
+        "data_source": "eligible_logged_events_only",
+        "deployable_ope": False,
+        "note": "Live randomized impression outcomes for offline diagnostics; not a deployment approval artifact.",
     }
 
 
@@ -3053,10 +3284,8 @@ def causal_validate(
     impressions_per_user: int = Query(20, ge=5, le=100),
 ) -> dict[str, Any]:
     """
-    Run synthetic causal validation pipeline.
-    Generates realistic user traffic, runs IPW + DR estimators,
-    compares against ground truth, returns pass/fail with bias metrics.
-    Netflix standard: must pass before any causal model ships to production.
+    Run an optional synthetic validation harness. Synthetic pass/fail results
+    are useful for testing estimator plumbing but are not production evidence.
     """
     if not CAUSAL_PIPELINE_AVAILABLE or _CAUSAL_PIPELINE is None:
         return {"error": "causal pipeline not available"}
@@ -3741,9 +3970,22 @@ def cold_start_ranking(
 @app.get("/system/phenomenal_status")
 def phenomenal_status() -> dict[str, Any]:
     """Full honest system status."""
+    scale_path = Path("reports/latest/scale_bench.json")
+    scale_report: dict[str, Any] = {}
+    try:
+        if scale_path.is_file():
+            scale_report = json.loads(scale_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.exception("Could not read saved scale benchmark artifact.")
+    scale_levels = scale_report.get("levels", [])
+    scale_1000 = next(
+        (level for level in scale_levels if isinstance(level, dict) and level.get("concurrency") == 1000),
+        None,
+    )
     return {
         "version": "phenomenal",
-        "total_endpoints": 85,
+        "total_endpoints": sum(1 for route in app.routes if getattr(route, "methods", None)),
+        "component_availability_is_not_quality_evidence": True,
         "real_and_working": {
             "bm25_faiss_hybrid_ltr": True,
             "query_understanding": QU_AVAILABLE,
@@ -3766,7 +4008,11 @@ def phenomenal_status() -> dict[str, Any]:
             "live_event_ranking": LIVE_AVAILABLE,
             "freshness_scoring": FRESHNESS_AVAILABLE,
             "self_healing_agent": AGENTS_AVAILABLE,
-            "scale_1000_concurrent_178ms_p99": True,
+            "scale_benchmark_artifact_available": scale_1000 is not None,
+        },
+        "scale_benchmark": {
+            "source": str(scale_path) if scale_1000 is not None else None,
+            "concurrency_1000": scale_1000,
         },
         "honest_gaps": {
             "real_online_ab": "needs real users",
@@ -3977,11 +4223,11 @@ def architecture_report() -> dict[str, Any]:
             "honest_claim": "Pretrained VL embeddings, not MediaFM",
         },
         "causal": {
-            "uplift_model": "Doubly-robust IPW estimator",
-            "ope": "Clipped importance sampling",
-            "propensity_logging": "Redis + JSONL per impression",
+            "uplift_model": "Clipped self-normalized IPW/Hajek helper; not doubly robust",
+            "ope": "Per-decision SNIPS diagnostic over client-confirmed feed exposures and mature outcomes",
+            "propensity_logging": "Feed-serving action distribution and exact selected-action propensity persisted to JSONL/Redis",
             "policy_comparison": "Synthetic simulation, 200 users, 14-day horizon",
-            "honest_gap": "Online A/B requires real traffic",
+            "honest_gap": "Live exposure/outcome joins and diagnostic OPE are wired; deployment-grade causal lift is not established",
         },
         "infrastructure": {
             "api": "FastAPI + uvicorn, 85 endpoints",
@@ -3992,9 +4238,8 @@ def architecture_report() -> dict[str, Any]:
             "rate_limiting": "Sliding window per profile",
         },
         "scale_benchmark": {
-            "1000_concurrent": "178ms p99, 133 RPS, 12.1% rate-limited",
-            "500_concurrent":  "156ms p99, 67 RPS, 0% errors",
-            "100_concurrent":  "93ms p99, 13 RPS, 0% errors",
+            "status": "artifact_available" if Path("reports/latest/scale_bench.json").is_file() else "unavailable",
+            "source": "reports/latest/scale_bench.json" if Path("reports/latest/scale_bench.json").is_file() else None,
         },
         "honest_gaps": {
             "production_argo": "Airflow shown locally, Argo needs K8s cluster",
@@ -4021,7 +4266,7 @@ def simulated_vs_real_matrix() -> dict[str, Any]:
     return {
         "title": "StreamLens: What Is Real vs Simulated vs Out of Scope",
         "real_and_working": [
-            "BM25 + FAISS + LightGBM LambdaRank (+0.018 nDCG@10 measured lift)",
+            "BM25 + FAISS + LightGBM LambdaRank; retrieval metrics come from saved run artifacts",
             "Query understanding: typo correction, entity extraction, intent classification",
             "Knowledge graph: 9742 nodes, 53070 edges from real MovieLens data",
             "Session-aware personalization with temporal decay",
@@ -4029,9 +4274,9 @@ def simulated_vs_real_matrix() -> dict[str, Any]:
             "Page-level slate optimization (5-objective greedy)",
             "Long-term satisfaction model (8 signal types, 30-day decay)",
             "CLIP ViT-B/32 pretrained multimodal embeddings (512-dim)",
-            "Doubly-robust IPW uplift estimator",
-            "Off-policy evaluation with clipped importance sampling",
-            "Real propensity logging (Redis + JSONL)",
+            "Clipped IPW/Hajek helper with effective-sample and overlap diagnostics",
+            "SNIPS evaluator requiring valid randomized action propensities",
+            "Visible feed exposures and mature outcomes are joined to serving-verified action propensities for diagnostic per-decision OPE",
             "Real TMDB poster images via API",
             "GPT-4o-mini explanations in 44 languages",
             "OpenAI TTS voice in 44 languages",
@@ -4041,16 +4286,16 @@ def simulated_vs_real_matrix() -> dict[str, Any]:
             "Local Airflow orchestration (DAG: validate→train→eval→gate→promote→drift)",
             "MinIO S3-compatible artifact storage",
             "Prometheus metrics + Grafana dashboards",
-            "Load tested: 178ms p99 at 1000 concurrent users",
+            "Scale benchmark values are read from the saved reports/latest/scale_bench.json artifact",
         ],
         "simulated_or_mocked": [
             "Ad serving: second-price auction, pacing, frequency caps — mock infrastructure",
             "Live events: schedule, ranking boosts, WebSocket — no real CDN",
-            "Causal policy comparison: synthetic users (200), 14-day simulation",
-            "Propensity calibration: offline only, not calibrated on real traffic",
+            "Causal policy comparison simulator remains synthetic; /uplift/ope reads eligible live feed logs",
+            "Policy promotion from OPE is disabled; real-user support and experimental validity must be established",
             "Long-term retention: model exists, no real 30-day user cohort",
             "Cross-format ranking: schema and logic exist, no real podcast/game catalog",
-            "A/B experiment: offline OPE only, no live experiment assignment",
+            "No separate randomized controlled test-arm assignment; bandit OPE is diagnostic and not deployment-eligible",
         ],
         "out_of_scope_needs_real_infra": [
             "Real online A/B validation (needs real users)",
@@ -4352,6 +4597,33 @@ def project_summary() -> dict[str, Any]:
     """
     Complete project summary — what is built, what is honest, what is next.
     """
+    eval_path = Path("reports/latest/metrics.json")
+    latency_path = Path("reports/latest/latency.json")
+    scale_path = Path("reports/latest/scale_bench.json")
+    eval_report: dict[str, Any] = {}
+    latency_report: dict[str, Any] = {}
+    scale_report: dict[str, Any] = {}
+    try:
+        if eval_path.exists():
+            eval_report = json.loads(eval_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.exception("Could not load latest evaluation report for project summary.")
+    try:
+        if latency_path.exists():
+            latency_report = json.loads(latency_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.exception("Could not load latest latency report for project summary.")
+    try:
+        if scale_path.exists():
+            scale_report = json.loads(scale_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        log.exception("Could not load latest scale benchmark for project summary.")
+    methods = {
+        method.get("method"): method
+        for method in eval_report.get("methods", [])
+        if isinstance(method, dict) and method.get("method")
+    }
+    ltr_metrics = methods.get("hybrid_ltr", {})
     return {
         "system": "StreamLens — Production-Oriented Search & Recommendation",
         "honest_claim": (
@@ -4362,11 +4634,11 @@ def project_summary() -> dict[str, Any]:
         ),
         "what_is_built": {
             "retrieval": "BM25 + FAISS dense + hybrid merge, 9742 titles",
-            "ranking": "LightGBM LambdaRank, 15 features, nDCG@10=0.75",
-            "personalization": "Temporal decay + epsilon-greedy bandit",
-            "page_optimization": "5-objective slate optimizer, +22% diversity",
+            "ranking": "LightGBM LambdaRank, 15 features; see saved evaluation metrics",
+            "personalization": "Temporal decay + contextual slate Thompson sampling",
+            "page_optimization": "5-objective slate optimizer; measured diversity lift is not declared without a supporting artifact",
             "multimodal": "CLIP ViT-B/32 pretrained, 512-dim poster embeddings",
-            "causal": "IPW/doubly-robust OPE, A/B stats with p-values and MDE",
+            "causal": "Serving-verified feed exposure/outcome logs with per-decision SNIPS diagnostics; item-level causal uplift is not identifiable without controls",
             "shadow_mode": "Dual-model serving with rank correlation tracking",
             "feature_store": "Redis-backed online/offline feature serving",
             "multilingual": "Language detection + query normalization, 44 languages",
@@ -4379,15 +4651,21 @@ def project_summary() -> dict[str, Any]:
             "load_testing": "Locust realistic traffic patterns",
             "endpoints": 91,
         },
-        "all_eval_gates_passing": True,
+        "all_eval_gates_passing": None,
+        "gate_status": "not checked by this summary endpoint",
+        "evaluation_report": str(eval_path) if eval_report else None,
+        "latency_report": str(latency_path) if latency_report else None,
+        "scale_benchmark": {
+            "status": "artifact_available" if scale_report else "unavailable",
+            "source": str(scale_path) if scale_report else None,
+            "artifact": scale_report or None,
+        },
         "key_metrics": {
-            "ndcg_at_10_ltr": 0.7506,
-            "mrr_at_10": 0.8256,
-            "recall_at_100": 0.881,
-            "p95_latency_ms": 98,
-            "p99_latency_ms": 142,
-            "cache_hit_rate": 0.996,
-            "diversity": 0.61,
+            "ndcg_at_10_ltr": ltr_metrics.get("ndcg@10"),
+            "mrr_at_10": ltr_metrics.get("mrr@10"),
+            "recall_at_100": ltr_metrics.get("recall@100"),
+            "p95_latency_ms": latency_report.get("p95_ms"),
+            "p99_latency_ms": latency_report.get("p99_ms"),
         },
         "honest_gaps": [
             "Online A/B requires real users",
@@ -5141,12 +5419,29 @@ def ws_stats() -> dict:
 
 @app.post("/events/interaction")
 async def log_interaction(
+    request: Request,
     user_id: str, doc_id: str, event_type: str = "click",
     watch_pct: float = 0.0, position: int = 0,
     query: str = "", language: str = "English",
+    impression_id: str = "",
 ) -> dict:
+    if RATE_LIMITING_AVAILABLE and _RATE_LIMITERS is not None:
+        _RATE_LIMITERS["global"].require(get_client_ip(request))
+    rl_outcome = None
+    if impression_id and _RL_BANDIT is not None and bool(CFG.get("rl", {}).get("enabled", False)):
+        if event_type in {"watch_start", "watch_complete", "skip", "dislike"}:
+            try:
+                rl_outcome = _RL_BANDIT.record_feedback(
+                    impression_id,
+                    event_type,
+                    watch_pct=watch_pct,
+                    user_id=user_id,
+                    doc_id=doc_id,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not _STREAMING_ENABLED:
-        return {"status": "streaming_disabled"}
+        return {"status": "streaming_disabled", "rl_outcome": rl_outcome}
     import uuid as _uuid
     evt = InteractionEvent(
         event_id=str(_uuid.uuid4()), user_id=user_id, doc_id=doc_id,
@@ -5160,5 +5455,6 @@ async def log_interaction(
         await manager.send_to_user(user_id,
             make_interaction_ack(evt.event_id, evt.doc_id, evt.event_type))
     return {"status": "ok" if ok else "queued",
-            "event_id": evt.event_id, "kafka_mode": get_producer()._mode}
+            "event_id": evt.event_id, "kafka_mode": get_producer()._mode,
+            "rl_outcome": rl_outcome}
 

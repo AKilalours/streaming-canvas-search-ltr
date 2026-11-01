@@ -17,3 +17,13 @@ personalization:
   enabled: true
   boost_weight: 0.15
 
+# Contextual Thompson sampling is limited to personalized feed slates.
+# Search and offline evaluation retain the relevance-only ranking path.
+rl:
+  enabled: true
+  temperature: 0.30
+  relevance_weight: 2.8
+  exploration_scale: 0.35
+  shared_weight: 0.25
+  max_impressions: 250000
+
