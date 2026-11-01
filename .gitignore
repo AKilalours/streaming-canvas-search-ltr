@@ -1,16 +1,14 @@
-# ── Secrets ──────────────────────────────────────────────────────────────────
-docker-compose.yml
+# Local secrets and deployment overrides
 .env
+.env.*
+!.env.example
 *.env
-env.example
+docker-compose.yml
 
-# ── Large artifacts (trained models, datasets, eval outputs) ─────────────────
-artifacts/
+# Generated data and model outputs
 data/
-# Run outputs are large and regenerated, so the tree is ignored ...
+artifacts/
 reports/**
-# ... except the small metric artifacts that DEFINITIVE_NUMBERS.md cites. Every published
-# figure must resolve to a file in this repository, which requires those files to be in it.
 !reports/**/
 !reports/latest/metrics.json
 !reports/latest/latency.json
@@ -23,91 +21,51 @@ reports/**
 !reports/latest_eval/shadow_ab.json
 !reports/opensearch/metrics.json
 !reports/opensearch/lexical_ablation.json
+!reports/pipeline_evidence/**
 metaflow_card_cache/
 deliverables/
 
-# ── Runtime ──────────────────────────────────────────────────────────────────
+# Local service and orchestration state
+.metaflow/
+.minio/
 dump.rdb
 *.rdb
 *.db
 
-# ── Python ───────────────────────────────────────────────────────────────────
+# Python environments, caches, and build outputs
 __pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-.python-version
-
-# ── Build / Lock ─────────────────────────────────────────────────────────────
-uv.lock
-*.egg-info/
-dist/
-build/
-
-# ── OS ───────────────────────────────────────────────────────────────────────
-.DS_Store
-Thumbs.db
-
-# ── IDE ──────────────────────────────────────────────────────────────────────
-.vscode/
-.idea/
-*.swp
-
-# ── Backup files ─────────────────────────────────────────────────────────────
-*.bak
-*.bak.*
-docker-compose.yml.bak*
-src/app/main.py.bak*
-src/app/deps.py.bak*
-.streamlens_env/
-*.dylib
-*.so
-.venv/
-venv/
-# Virtual environments
-.streamlens_env/
+*.py[cod]
 .venv/
 venv/
 env/
+.streamlens_env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Large ML binaries - use git-lfs or exclude
-artifacts/svd/user_embeddings.npy
-data/raw/movielens/ml-latest/
-data/raw/movielens/ml-latest.zip
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
+# Generated binaries and backups
 *.dylib
 *.so
-
-# OS
-.DS_Store
-
-# Garbage that should never be committed
-.bak/
-.minio/
-.Rhistory
-.metaflow/
-.streamlens_env/
-.venv/
-.ruff_cache/
-.pytest_cache/
-metaflow_card_cache/
 *.bkp
+*.bak
+*.bak.*
 *.bin
 xl.meta
-
-# Generated artifacts (large, not code)
 artifacts/posters_hq/
 artifacts/sd_posters/*.png
+data/raw/movielens/ml-latest/
+data/raw/movielens/ml-latest.zip
+artifacts/svd/user_embeddings.npy
 
-# Keep schema and queries (they are code)
-!schema.sql
-!queries.sql
-
-# Promotion pipeline: per-run outputs are regenerated daily and stay local;
-# one curated evidence snapshot is tracked.
-!reports/pipeline_evidence/**
+# Local editor and operating system files
+.DS_Store
+Thumbs.db
+.Rhistory
+.vscode/
+.idea/
+*.swp
