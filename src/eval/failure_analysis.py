@@ -58,7 +58,9 @@ def _count_relevant(qrels: dict[str, int], ranked: list[str], k: int, min_rel: i
     return sum(1 for did in ranked[:k] if int(qrels.get(did, 0)) >= min_rel)
 
 
-def _first_relevant_rank(qrels: dict[str, int], ranked: list[str], k: int, min_rel: int) -> int | None:
+def _first_relevant_rank(
+    qrels: dict[str, int], ranked: list[str], k: int, min_rel: int
+) -> int | None:
     for i, did in enumerate(ranked[:k], start=1):
         if int(qrels.get(did, 0)) >= min_rel:
             return i
@@ -128,7 +130,7 @@ def main() -> None:
     # (delta_ndcg, cand_ndcg, base_ndcg, qid)
     rows: list[tuple[float, float, float, str]] = []
     for qid in queries.keys():
-        qr = (qrels_all.get(qid, {}) or {})
+        qr = qrels_all.get(qid, {}) or {}
         b_list = _as_ranked_list(ranked[base].get(qid, []))
         c_list = _as_ranked_list(ranked[cand].get(qid, []))
 
@@ -152,7 +154,7 @@ def main() -> None:
 
     for delta, c_ndcg, b_ndcg, qid in worst:
         qtext = queries.get(qid, "")
-        qr = (qrels_all.get(qid, {}) or {})
+        qr = qrels_all.get(qid, {}) or {}
         b_list = _as_ranked_list(ranked[base].get(qid, []))
         c_list = _as_ranked_list(ranked[cand].get(qid, []))
 

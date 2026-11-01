@@ -166,8 +166,12 @@ def train(cfg: dict) -> Path:
 
         cand = merged[:feat_k]
         if not cand:
-            log.warning("Skipping qid=%s: zero candidates after hybrid merge (bm25=%d dense=%d)",
-                        qid, len(bm25_hits), len(dense_hits))
+            log.warning(
+                "Skipping qid=%s: zero candidates after hybrid merge (bm25=%d dense=%d)",
+                qid,
+                len(bm25_hits),
+                len(dense_hits),
+            )
             continue
 
         bm25_map = {d: float(s) for d, s in bm25_hits}

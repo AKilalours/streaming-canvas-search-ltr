@@ -11,6 +11,7 @@ Components:
   DiversityReranker        — MMR (Maximal Marginal Relevance) genre-aware reranker.
   MultiObjectiveReranker   — combines Relevance + Diversity + Business signal.
 """
+
 from __future__ import annotations
 
 import random
@@ -18,10 +19,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 _CATALOG_RE = re.compile(r"([A-Za-z ]+):\s*([^|]+)")
+
 
 def _parse_genres(text: str, title: str = "") -> list[str]:
     genres: list[str] = []
@@ -31,17 +32,30 @@ def _parse_genres(text: str, title: str = "") -> list[str]:
         if key in {"genres", "genre", "tags", "tag"}:
             genres.extend([g.strip().lower() for g in re.split(r"[,|]", val) if g.strip()])
     if not genres and title:
-        for kw in ["action", "comedy", "drama", "thriller", "romance", "sci-fi",
-                   "horror", "animation", "documentary", "fantasy", "crime"]:
+        for kw in [
+            "action",
+            "comedy",
+            "drama",
+            "thriller",
+            "romance",
+            "sci-fi",
+            "horror",
+            "animation",
+            "documentary",
+            "fantasy",
+            "crime",
+        ]:
             if kw in title.lower():
                 genres.append(kw)
     return genres or ["unknown"]
+
 
 def _genre_set(text: str, title: str = "") -> set[str]:
     return {g.lower().strip() for g in _parse_genres(text, title) if g.strip()}
 
 
 # ─── Data structures ──────────────────────────────────────────────────────────
+
 
 @dataclass
 class ScoredDoc:
@@ -50,7 +64,7 @@ class ScoredDoc:
     title: str = ""
     text: str = ""
     genres: list[str] = field(default_factory=list)
-    slot_type: str = "exploit"   # "exploit" | "explore"
+    slot_type: str = "exploit"  # "exploit" | "explore"
 
 
 @dataclass
@@ -67,18 +81,23 @@ class SerendipityReport:
 
 # ─── Contextual Bandit ────────────────────────────────────────────────────────
 
+
 class ContextualBandit:
     """
     Epsilon-greedy bandit for feed row slot allocation.
     epsilon=0.15 means 15% of slots are exploration ("explore new genres").
     """
 
-    def __init__(self, epsilon: float = 0.15, exploit_cutoff: int = 5, seed: int | None = None) -> None:
+    def __init__(
+        self, epsilon: float = 0.15, exploit_cutoff: int = 5, seed: int | None = None
+    ) -> None:
         self.epsilon = float(epsilon)
         self.exploit_cutoff = int(exploit_cutoff)
         self._rng = random.Random(seed)
 
-    def select(self, candidates: list[tuple[str, float]], corpus: dict[str, Any], n_slots: int) -> list[ScoredDoc]:
+    def select(
+        self, candidates: list[tuple[str, float]], corpus: dict[str, Any], n_slots: int
+    ) -> list[ScoredDoc]:
         if not candidates:
             return []
         exploit_pool = candidates[: self.exploit_cutoff]
@@ -99,23 +118,35 @@ class ContextualBandit:
             used.add(did)
             row = corpus.get(str(did), {})
             genres = _parse_genres(str(row.get("text", "")), str(row.get("title", "")))
-            selected.append(ScoredDoc(
-                doc_id=did, score=float(score),
-                title=str(row.get("title", "")), text=str(row.get("text", "")),
-                genres=genres, slot_type="explore" if is_explore else "exploit",
-            ))
+            selected.append(
+                ScoredDoc(
+                    doc_id=did,
+                    score=float(score),
+                    title=str(row.get("title", "")),
+                    text=str(row.get("text", "")),
+                    genres=genres,
+                    slot_type="explore" if is_explore else "exploit",
+                )
+            )
         return selected
 
 
 # ─── Serendipity Scorer ───────────────────────────────────────────────────────
+
 
 class SerendipityScorer:
     """Measures Discovery Breadth KPI: distinct_genres / total_results. Target > 0.40."""
 
     def score(self, query: str, docs: list[ScoredDoc]) -> SerendipityReport:
         if not docs:
-            return SerendipityReport(query=query, total_hits=0, distinct_genres=0,
-                                     discovery_breadth=0.0, exploration_slots=0, exploitation_slots=0)
+            return SerendipityReport(
+                query=query,
+                total_hits=0,
+                distinct_genres=0,
+                discovery_breadth=0.0,
+                exploration_slots=0,
+                exploitation_slots=0,
+            )
         genre_dist: dict[str, int] = {}
         all_genres: set[str] = set()
         for doc in docs:
@@ -124,14 +155,18 @@ class SerendipityScorer:
                 all_genres.add(g)
         n = len(docs)
         return SerendipityReport(
-            query=query, total_hits=n, distinct_genres=len(all_genres),
+            query=query,
+            total_hits=n,
+            distinct_genres=len(all_genres),
             discovery_breadth=round(len(all_genres) / n, 4) if n else 0.0,
             exploration_slots=sum(1 for d in docs if d.slot_type == "explore"),
             exploitation_slots=sum(1 for d in docs if d.slot_type == "exploit"),
             genre_distribution=genre_dist,
         )
 
-    def is_in_silo(self, genre_history: list[str], window: int = 10, threshold: float = 0.8) -> bool:
+    def is_in_silo(
+        self, genre_history: list[str], window: int = 10, threshold: float = 0.8
+    ) -> bool:
         if len(genre_history) < window:
             return False
         recent = genre_history[-window:]
@@ -140,6 +175,7 @@ class SerendipityScorer:
 
 
 # ─── MMR Diversity Reranker ───────────────────────────────────────────────────
+
 
 class DiversityReranker:
     """
@@ -150,7 +186,9 @@ class DiversityReranker:
     def __init__(self, lambda_param: float = 0.7) -> None:
         self.lambda_param = float(lambda_param)
 
-    def rerank(self, candidates: list[tuple[str, float]], corpus: dict[str, Any], k: int) -> list[tuple[str, float]]:
+    def rerank(
+        self, candidates: list[tuple[str, float]], corpus: dict[str, Any], k: int
+    ) -> list[tuple[str, float]]:
         if not candidates:
             return []
         doc_genres: dict[str, set[str]] = {}
@@ -194,6 +232,7 @@ class DiversityReranker:
 
 # ─── Multi-Objective Reranker ─────────────────────────────────────────────────
 
+
 class MultiObjectiveReranker:
     """Combines Relevance (0.60) + Diversity (0.25) + Business value (0.15)."""
 
@@ -208,8 +247,10 @@ class MultiObjectiveReranker:
         self.w_rel = relevance_weight / total
         self.w_div = diversity_weight / total
         self.w_bus = business_weight / total
-        self.boost_tags = set(t.lower() for t in (business_boost_tags or [
-            "netflix original", "original", "exclusive", "award"]))
+        self.boost_tags = set(
+            t.lower()
+            for t in (business_boost_tags or ["netflix original", "original", "exclusive", "award"])
+        )
 
     def _business_score(self, text: str, title: str) -> float:
         combined = (text + " " + title).lower()

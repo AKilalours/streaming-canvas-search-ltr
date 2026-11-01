@@ -4,7 +4,6 @@ import hashlib
 import json
 import os
 import threading
-import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,7 +44,7 @@ class CacheClient:
         self._locks_guard = threading.Lock()
 
     @classmethod
-    def from_env(cls) -> "CacheClient":
+    def from_env(cls) -> CacheClient:
         url = os.environ.get("REDIS_URL", "").strip()
         if not url or redis is None:
             return cls(None)

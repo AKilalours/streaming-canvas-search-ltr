@@ -233,7 +233,7 @@ print(f'BM25 built: {{len(corpus)}} docs')
 
         import subprocess
         result = subprocess.run(
-            ["python", "fine_tune_retrieval.py"],
+            ["python", "scripts/experiments/retrieval/fine_tune_retrieval.py"],
             capture_output=True, text=True, timeout=3600
         )
 
@@ -345,7 +345,7 @@ print(f'BM25 built: {{len(corpus)}} docs')
         """
         import subprocess
         result = subprocess.run(
-            ["python", "content_clustering.py"],
+            ["python", "scripts/experiments/ranking/content_clustering.py"],
             capture_output=True, text=True, timeout=1800
         )
 
@@ -367,7 +367,7 @@ print(f'BM25 built: {{len(corpus)}} docs')
         """
         import subprocess
         result = subprocess.run(
-            ["python", "svd_collaborative_filtering.py"],
+            ["python", "scripts/experiments/recommendation/svd_collaborative_filtering.py"],
             capture_output=True, text=True, timeout=1800
         )
 

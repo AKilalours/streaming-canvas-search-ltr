@@ -10,6 +10,7 @@ Env vars (configurable per deployment):
   RATE_LIMIT_ANSWER=10    requests/60s per IP (expensive LLM calls)
   RATE_LIMIT_GLOBAL=1000  requests/60s total (circuit breaker)
 """
+
 from __future__ import annotations
 
 import os
@@ -22,7 +23,9 @@ from fastapi import HTTPException, Request
 class TokenBucketRateLimiter:
     """Sliding-window counter backed by Redis sorted sets."""
 
-    def __init__(self, redis_client: Any | None, limit: int, window_s: int = 60, key_prefix: str = "rl") -> None:
+    def __init__(
+        self, redis_client: Any | None, limit: int, window_s: int = 60, key_prefix: str = "rl"
+    ) -> None:
         self.redis = redis_client
         self.limit = int(limit)
         self.window_s = int(window_s)
@@ -57,9 +60,11 @@ class TokenBucketRateLimiter:
         if not allowed:
             raise HTTPException(
                 status_code=429,
-                detail={"error": "rate_limit_exceeded",
-                        "message": f"Too many requests. Limit: {self.limit} per {self.window_s}s.",
-                        "retry_after_s": self.window_s},
+                detail={
+                    "error": "rate_limit_exceeded",
+                    "message": f"Too many requests. Limit: {self.limit} per {self.window_s}s.",
+                    "retry_after_s": self.window_s,
+                },
                 headers={**headers, "Retry-After": str(self.window_s)},
             )
         return headers
@@ -74,7 +79,22 @@ def get_client_ip(request: Request) -> str:
 
 def build_rate_limiters(redis_client: Any | None) -> dict[str, TokenBucketRateLimiter]:
     return {
-        "search": TokenBucketRateLimiter(redis_client, limit=int(os.environ.get("RATE_LIMIT_SEARCH", "60")), window_s=60, key_prefix="rl:search"),
-        "answer": TokenBucketRateLimiter(redis_client, limit=int(os.environ.get("RATE_LIMIT_ANSWER", "10")), window_s=60, key_prefix="rl:answer"),
-        "global": TokenBucketRateLimiter(redis_client, limit=int(os.environ.get("RATE_LIMIT_GLOBAL", "1000")), window_s=60, key_prefix="rl:global"),
+        "search": TokenBucketRateLimiter(
+            redis_client,
+            limit=int(os.environ.get("RATE_LIMIT_SEARCH", "60")),
+            window_s=60,
+            key_prefix="rl:search",
+        ),
+        "answer": TokenBucketRateLimiter(
+            redis_client,
+            limit=int(os.environ.get("RATE_LIMIT_ANSWER", "10")),
+            window_s=60,
+            key_prefix="rl:answer",
+        ),
+        "global": TokenBucketRateLimiter(
+            redis_client,
+            limit=int(os.environ.get("RATE_LIMIT_GLOBAL", "1000")),
+            window_s=60,
+            key_prefix="rl:global",
+        ),
     }

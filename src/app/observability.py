@@ -3,31 +3,36 @@
 Production-grade observability for StreamLens.
 Exposes all key metrics for Prometheus scraping + Grafana dashboards.
 """
+
 from __future__ import annotations
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
 from fastapi import Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 # ── Request metrics ──────────────────────────────────────────────────────────
-REQ_COUNT = Counter(
-    "api_requests_total", "Total API requests", ["path", "method", "status"]
-)
+REQ_COUNT = Counter("api_requests_total", "Total API requests", ["path", "method", "status"])
 REQ_LAT_MS = Histogram(
-    "api_request_latency_ms", "Request latency ms", ["path", "method"],
-    buckets=[5, 10, 25, 50, 100, 200, 300, 500, 1000, 2000]
+    "api_request_latency_ms",
+    "Request latency ms",
+    ["path", "method"],
+    buckets=[5, 10, 25, 50, 100, 200, 300, 500, 1000, 2000],
 )
 
 # ── Retrieval metrics ────────────────────────────────────────────────────────
 RETRIEVAL_LAT_MS = Histogram(
-    "retrieval_latency_ms", "BM25+FAISS retrieval latency ms", ["method"],
-    buckets=[1, 5, 10, 25, 50, 100, 200]
+    "retrieval_latency_ms",
+    "BM25+FAISS retrieval latency ms",
+    ["method"],
+    buckets=[1, 5, 10, 25, 50, 100, 200],
 )
 RERANKER_LAT_MS = Histogram(
-    "reranker_latency_ms", "LTR reranker latency ms", ["ranker"],
-    buckets=[1, 5, 10, 25, 50, 100]
+    "reranker_latency_ms", "LTR reranker latency ms", ["ranker"], buckets=[1, 5, 10, 25, 50, 100]
 )
 EXPLAIN_LAT_MS = Histogram(
-    "explain_latency_ms", "GPT explanation latency ms", ["type"],
-    buckets=[100, 500, 1000, 2000, 5000, 10000]
+    "explain_latency_ms",
+    "GPT explanation latency ms",
+    ["type"],
+    buckets=[100, 500, 1000, 2000, 5000, 10000],
 )
 
 # ── Cache metrics ────────────────────────────────────────────────────────────

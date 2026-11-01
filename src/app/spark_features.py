@@ -9,7 +9,9 @@ At Netflix scale: these would come from a Redis Cluster or DynamoDB,
 populated by a Flink streaming job reading from the Spark Parquet output.
 Here: loaded from JSON files at startup (batch refresh pattern).
 """
+
 from __future__ import annotations
+
 import json
 import pathlib
 from typing import Any
@@ -39,24 +41,30 @@ def load_spark_features(spark_dir: str = "artifacts/spark") -> bool:
 
 def get_user_features(user_id: str) -> dict[str, float]:
     """Get Spark-computed features for a user. Returns defaults if not found."""
-    return _USER_FEATURES.get(str(user_id), {
-        "watch_count": 0,
-        "avg_rating": 3.5,
-        "high_rating_ratio": 0.5,
-        "taste_breadth": 0.0,
-        "rating_stddev": 0.5,
-    })
+    return _USER_FEATURES.get(
+        str(user_id),
+        {
+            "watch_count": 0,
+            "avg_rating": 3.5,
+            "high_rating_ratio": 0.5,
+            "taste_breadth": 0.0,
+            "rating_stddev": 0.5,
+        },
+    )
 
 
 def get_item_features(movie_id: str) -> dict[str, float]:
     """Get Spark-computed features for an item. Returns defaults if not found."""
-    return _ITEM_FEATURES.get(str(movie_id), {
-        "popularity": 0.0,
-        "avg_rating": 3.5,
-        "sentiment": 0.5,
-        "recency": 0.5,
-        "controversy": 0.5,
-    })
+    return _ITEM_FEATURES.get(
+        str(movie_id),
+        {
+            "popularity": 0.0,
+            "avg_rating": 3.5,
+            "sentiment": 0.5,
+            "recency": 0.5,
+            "controversy": 0.5,
+        },
+    )
 
 
 def spark_feature_status() -> dict[str, Any]:
@@ -65,5 +73,5 @@ def spark_feature_status() -> dict[str, Any]:
         "n_users": len(_USER_FEATURES),
         "n_items": len(_ITEM_FEATURES),
         "source": "artifacts/spark/",
-        "note": "Run: python spark/feature_engineering.py to populate"
+        "note": "Run: python spark/feature_engineering.py to populate",
     }

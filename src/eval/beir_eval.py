@@ -11,10 +11,16 @@ Datasets used:
 
 Run: python src/eval/beir_eval.py --dataset nfcorpus
 """
-from __future__ import annotations
-import json, math, pathlib, urllib.request, zipfile, io
-from typing import Any
 
+from __future__ import annotations
+
+import io
+import json
+import math
+import pathlib
+import urllib.request
+import zipfile
+from typing import Any
 
 BEIR_DATASETS = {
     "nfcorpus": {
@@ -28,6 +34,7 @@ BEIR_DATASETS = {
 def ndcg_at_k(ranked: list[str], qrels: dict[str, int], k: int) -> float:
     def dcg(rels):
         return sum((2**r - 1) / math.log2(i + 2) for i, r in enumerate(rels))
+
     rels = [int(qrels.get(d, 0)) for d in ranked[:k]]
     ideal = sorted(qrels.values(), reverse=True)[:k]
     denom = dcg(ideal)
@@ -110,7 +117,9 @@ def evaluate_bm25_beir(dataset_name: str = "nfcorpus", max_queries: int = 323) -
             "dataset": dataset_name,
             "status": "unavailable",
             "note": data.get("error", "Dataset not available") if data else "Load failed",
-            "reference_bm25_ndcg10": BEIR_DATASETS.get(dataset_name, {}).get("expected_bm25_ndcg10"),
+            "reference_bm25_ndcg10": BEIR_DATASETS.get(dataset_name, {}).get(
+                "expected_bm25_ndcg10"
+            ),
             "honest_note": (
                 "BEIR datasets require download. Reference BM25 scores from "
                 "Thakur et al. 2021 (https://arxiv.org/abs/2104.08663) shown above. "
@@ -123,8 +132,8 @@ def evaluate_bm25_beir(dataset_name: str = "nfcorpus", max_queries: int = 323) -
     qrels = data["qrels"]
 
     # Simple BM25 approximation using TF-IDF
-    from collections import Counter
     import math
+    from collections import Counter
 
     def tokenize(text):
         return text.lower().split()

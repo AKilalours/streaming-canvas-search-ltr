@@ -17,19 +17,16 @@ All ad placements are measured for incremental watch-time impact.
 This is identical in mechanics to a real ad server — the only
 difference is no real money flowing through it.
 """
+
 from __future__ import annotations
 
-import json
-import math
 import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
-
 
 # ── Data structures ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class Advertiser:
@@ -53,20 +50,20 @@ class Advertiser:
         target_spent = self.daily_budget_usd * (hour / 24)
         actual_spent = self.spent_today_usd
         if actual_spent < target_spent * 0.8:
-            return 1.5   # underpacing — spend faster
+            return 1.5  # underpacing — spend faster
         elif actual_spent > target_spent * 1.2:
-            return 0.5   # overpacing — slow down
-        return 1.0        # on pace
+            return 0.5  # overpacing — slow down
+        return 1.0  # on pace
 
 
 @dataclass
 class AdCreative:
     creative_id: str
     advertiser_id: str
-    target_doc_id: str          # content being promoted
+    target_doc_id: str  # content being promoted
     title: str
-    cpm_bid_usd: float          # cost per 1000 impressions bid
-    relevance_tags: list[str]   # genre/mood tags for relevance matching
+    cpm_bid_usd: float  # cost per 1000 impressions bid
+    relevance_tags: list[str]  # genre/mood tags for relevance matching
     click_through_rate: float = 0.02  # estimated CTR
 
     @property
@@ -79,10 +76,10 @@ class AdCreative:
 class AuctionResult:
     won: bool
     creative: AdCreative | None
-    clearing_price_usd: float    # second-price: winner pays second-highest bid
+    clearing_price_usd: float  # second-price: winner pays second-highest bid
     bid_rank: int
     relevance_score: float
-    quality_score: float         # combined bid + relevance
+    quality_score: float  # combined bid + relevance
     all_bids: list[float] = field(default_factory=list)
 
 
@@ -98,7 +95,7 @@ class AdImpression:
     relevance_score: float = 0.0
     timestamp: float = field(default_factory=time.time)
     clicked: bool = False
-    organic_watch_after: bool = False   # did user watch organic content after this ad?
+    organic_watch_after: bool = False  # did user watch organic content after this ad?
 
 
 @dataclass
@@ -110,7 +107,7 @@ class AdServerReport:
     avg_cpm_usd: float
     fill_rate: float
     ctr: float
-    organic_impact: float        # negative = organic engagement hurt by ads
+    organic_impact: float  # negative = organic engagement hurt by ads
     top_advertisers: list[dict]
     timestamp: float = field(default_factory=time.time)
 
@@ -131,6 +128,7 @@ class AdServerReport:
 
 
 # ── Auction Engine ────────────────────────────────────────────────────────────
+
 
 class SecondPriceAuction:
     """
@@ -160,9 +158,14 @@ class SecondPriceAuction:
         context_tags: list[str],
     ) -> AuctionResult:
         if not creatives:
-            return AuctionResult(won=False, creative=None,
-                                 clearing_price_usd=0.0, bid_rank=0,
-                                 relevance_score=0.0, quality_score=0.0)
+            return AuctionResult(
+                won=False,
+                creative=None,
+                clearing_price_usd=0.0,
+                bid_rank=0,
+                relevance_score=0.0,
+                quality_score=0.0,
+            )
 
         scored = []
         for cr in creatives:
@@ -173,9 +176,14 @@ class SecondPriceAuction:
             scored.append((quality, cr.cpm_bid_usd, relevance, cr))
 
         if not scored:
-            return AuctionResult(won=False, creative=None,
-                                 clearing_price_usd=0.0, bid_rank=0,
-                                 relevance_score=0.0, quality_score=0.0)
+            return AuctionResult(
+                won=False,
+                creative=None,
+                clearing_price_usd=0.0,
+                bid_rank=0,
+                relevance_score=0.0,
+                quality_score=0.0,
+            )
 
         scored.sort(key=lambda x: -x[0])
         top_quality, top_bid, top_rel, winner = scored[0]
@@ -211,15 +219,15 @@ class SecondPriceAuction:
         ctx_overlap = len(tag_set & ctx_set) / max(1, len(tag_set | ctx_set))
 
         # User affinity match
-        affinity_score = sum(
-            v for k, v in user_affinities.items()
-            if k.lower() in tag_set
-        ) / max(1, len(tag_set))
+        affinity_score = sum(v for k, v in user_affinities.items() if k.lower() in tag_set) / max(
+            1, len(tag_set)
+        )
 
         return min(1.0, ctx_overlap * 0.5 + min(1.0, affinity_score) * 0.5)
 
 
 # ── Budget Pacer ──────────────────────────────────────────────────────────────
+
 
 class BudgetPacer:
     """
@@ -241,6 +249,7 @@ class BudgetPacer:
         if advertiser.budget_remaining <= 0:
             return False
         import random
+
         return random.random() < advertiser.pacing_rate
 
     def record_spend(self, advertiser: Advertiser, amount_usd: float) -> None:
@@ -249,12 +258,13 @@ class BudgetPacer:
 
 # ── Frequency Capper ──────────────────────────────────────────────────────────
 
+
 class AdFrequencyCapper:
     def __init__(self) -> None:
         self._log: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
     def can_show(self, user_id: str, advertiser_id: str, cap: int) -> bool:
-        now, day_ago = time.time(), time.time() - 86400
+        day_ago = time.time() - 86400
         shows = [t for t in self._log[user_id][advertiser_id] if t > day_ago]
         self._log[user_id][advertiser_id] = shows
         return len(shows) < cap
@@ -264,6 +274,7 @@ class AdFrequencyCapper:
 
 
 # ── Full Ad Server ────────────────────────────────────────────────────────────
+
 
 class AdServer:
     """
@@ -293,15 +304,26 @@ class AdServer:
 
     def _seed_demo_advertisers(self) -> None:
         advertisers = [
-            Advertiser("adv_001", "ActionFlix Studios",   50.0, target_genres=["action","thriller"]),
-            Advertiser("adv_002", "ComedyCentral+",       30.0, target_genres=["comedy","family"]),
-            Advertiser("adv_003", "DocuStream",           20.0, target_genres=["documentary","history"]),
+            Advertiser("adv_001", "ActionFlix Studios", 50.0, target_genres=["action", "thriller"]),
+            Advertiser("adv_002", "ComedyCentral+", 30.0, target_genres=["comedy", "family"]),
+            Advertiser("adv_003", "DocuStream", 20.0, target_genres=["documentary", "history"]),
         ]
         creatives = [
-            AdCreative("cr_001","adv_001","doc_action_1","New Action Release",  8.0,["action","thriller"]),
-            AdCreative("cr_002","adv_001","doc_action_2","Must-See Thriller",   6.5,["thriller","crime"]),
-            AdCreative("cr_003","adv_002","doc_comedy_1","Comedy of the Year", 5.0,["comedy","family"]),
-            AdCreative("cr_004","adv_003","doc_doc_1",   "Award-Winning Doc",  3.0,["documentary"]),
+            AdCreative(
+                "cr_001",
+                "adv_001",
+                "doc_action_1",
+                "New Action Release",
+                8.0,
+                ["action", "thriller"],
+            ),
+            AdCreative(
+                "cr_002", "adv_001", "doc_action_2", "Must-See Thriller", 6.5, ["thriller", "crime"]
+            ),
+            AdCreative(
+                "cr_003", "adv_002", "doc_comedy_1", "Comedy of the Year", 5.0, ["comedy", "family"]
+            ),
+            AdCreative("cr_004", "adv_003", "doc_doc_1", "Award-Winning Doc", 3.0, ["documentary"]),
         ]
         for a in advertisers:
             self.register_advertiser(a)
@@ -375,10 +397,12 @@ class AdServer:
             adv_spend[i.advertiser_id] += i.clearing_price_usd
 
         top_advertisers = [
-            {"advertiser_id": k,
-             "name": self._advertisers.get(k, Advertiser(k,"Unknown",0)).name,
-             "spend_usd": round(v, 4),
-             "impressions": sum(1 for i in imps if i.advertiser_id == k)}
+            {
+                "advertiser_id": k,
+                "name": self._advertisers.get(k, Advertiser(k, "Unknown", 0)).name,
+                "spend_usd": round(v, 4),
+                "impressions": sum(1 for i in imps if i.advertiser_id == k),
+            }
             for k, v in sorted(adv_spend.items(), key=lambda x: -x[1])[:5]
         ]
 
@@ -390,7 +414,7 @@ class AdServer:
             avg_cpm_usd=avg_cpm,
             fill_rate=min(1.0, n_imps / max(1, n_imps + 5)),
             ctr=n_clicks / max(1, n_imps),
-            organic_impact=-0.02,   # estimated -2% organic engagement from ads
+            organic_impact=-0.02,  # estimated -2% organic engagement from ads
             top_advertisers=top_advertisers,
         )
 
@@ -403,8 +427,11 @@ class AdServer:
                 "spent_today": round(a.spent_today_usd, 4),
                 "remaining": round(a.budget_remaining, 4),
                 "pacing": round(a.pacing_rate, 2),
-                "status": "pacing" if 0.8 <= a.pacing_rate <= 1.2 else
-                          "underpacing" if a.pacing_rate > 1.2 else "overpacing",
+                "status": "pacing"
+                if 0.8 <= a.pacing_rate <= 1.2
+                else "underpacing"
+                if a.pacing_rate > 1.2
+                else "overpacing",
             }
             for a in self._advertisers.values()
         ]

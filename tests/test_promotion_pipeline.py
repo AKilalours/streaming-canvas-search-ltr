@@ -7,6 +7,7 @@ The first group pins the defects found in the original Airflow DAG:
   * train_ltr produced nDCG from random.uniform instead of training
   * the gate checked one hard-coded threshold while docs claimed 9 gates
 """
+
 from __future__ import annotations
 
 import ast
@@ -38,8 +39,12 @@ FEATS = ["a", "b", "c"]
 def test_dag_has_no_simulated_or_random_steps():
     src = DAG_FILE.read_text(encoding="utf-8")
     tree = ast.parse(src)
-    imported = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
-    imported |= {(n.module or "").split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
+    imported = {
+        a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names
+    }
+    imported |= {
+        (n.module or "").split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)
+    }
     assert "random" not in imported
     assert "random.uniform" not in src
     assert "simulate" not in src.lower()
@@ -75,15 +80,33 @@ def test_gate_count_matches_documentation():
 
 
 # ── fixtures ────────────────────────────────────────────────────────────────
-def _metrics(ltr: float, *, recall: float = 0.40, map10: float = 0.15, nq: int = 150,
-             ltr_path: str = "cand.pkl", has_ltr: bool = True, first_stage: float = 0.57) -> dict:
+def _metrics(
+    ltr: float,
+    *,
+    recall: float = 0.40,
+    map10: float = 0.15,
+    nq: int = 150,
+    ltr_path: str = "cand.pkl",
+    has_ltr: bool = True,
+    first_stage: float = 0.57,
+) -> dict:
     def m(name, v):
-        return {"method": name, "ndcg@10": v, "recall@100": recall, "map@10": map10, "num_queries": nq}
+        return {
+            "method": name,
+            "ndcg@10": v,
+            "recall@100": recall,
+            "map@10": map10,
+            "num_queries": nq,
+        }
 
     return {
         "diagnostics": {"has_ltr": has_ltr, "ltr_path": ltr_path},
-        "methods": [m("bm25", first_stage), m("dense", first_stage - 0.05),
-                    m("hybrid", first_stage), m("hybrid_ltr", ltr)],
+        "methods": [
+            m("bm25", first_stage),
+            m("dense", first_stage - 0.05),
+            m("hybrid", first_stage),
+            m("hybrid_ltr", ltr),
+        ],
     }
 
 
@@ -103,8 +126,9 @@ def _gates(**kw) -> dict:
     return {g["name"]: g["passed"] for g in s["gates"]} | {"_all": s["all_passed"]}
 
 
-def _write_dataset(root: Path, *, n_docs: int = 20, bad_doc_in_qrels: bool = False,
-                   drop_doc_in: str | None = None) -> Path:
+def _write_dataset(
+    root: Path, *, n_docs: int = 20, bad_doc_in_qrels: bool = False, drop_doc_in: str | None = None
+) -> Path:
     for split in ("train", "val", "test"):
         d = root / split
         d.mkdir(parents=True)
@@ -172,7 +196,9 @@ def test_small_drops_cannot_ratchet_quality_down():
     # each step is within 0.01 of the current champion, but far below the best ever promoted
     g = _gates(challenger=_metrics(0.935), champion=_metrics(0.94), best_promoted_ndcg10=0.95)
     assert g["ndcg10_no_regression"] is False
-    assert _gates(challenger=_metrics(0.945), champion=_metrics(0.94), best_promoted_ndcg10=0.95)["_all"]
+    assert _gates(challenger=_metrics(0.945), champion=_metrics(0.94), best_promoted_ndcg10=0.95)[
+        "_all"
+    ]
 
 
 def test_eval_silently_using_another_model_blocks():
@@ -203,7 +229,10 @@ def test_reranker_must_beat_first_stage():
 
 def test_first_run_without_champion_uses_floor():
     assert _gates(champion=None)["_all"]
-    assert _gates(challenger=_metrics(0.65, first_stage=0.50), champion=None)["ndcg10_above_floor"] is False
+    assert (
+        _gates(challenger=_metrics(0.65, first_stage=0.50), champion=None)["ndcg10_above_floor"]
+        is False
+    )
 
 
 def test_failed_data_validation_blocks():
@@ -216,8 +245,11 @@ def test_failed_data_validation_blocks():
 def cfg(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     Path("configs").mkdir()
-    Path("configs/train.yaml").write_text(yaml.safe_dump(
-        {"artifacts": {"model_name": "m.pkl", "meta_name": "m_meta.json", "ltr_dir": "x"}}))
+    Path("configs/train.yaml").write_text(
+        yaml.safe_dump(
+            {"artifacts": {"model_name": "m.pkl", "meta_name": "m_meta.json", "ltr_dir": "x"}}
+        )
+    )
     return {
         "train_config": "configs/train.yaml",
         "production_model": "artifacts/ltr/m.pkl",
@@ -240,10 +272,22 @@ def _stage_run(cfg, run_id, *, all_passed=True, payload=b"new-model"):
     cand = cd / "m.pkl"
     cand.write_bytes(pickle.dumps(payload))
     (cd / "m_meta.json").write_text("{}")
-    (rd / "train.json").write_text(json.dumps({"model_path": str(cand), "sha256": promotion.sha256_file(cand)}))
-    (rd / "gates.json").write_text(json.dumps({"all_passed": all_passed, "passed": 9 if all_passed else 8, "total": 9}))
-    (rd / "eval_summary.json").write_text(json.dumps({
-        "ndcg@10": {"challenger_val": {"hybrid_ltr": 0.95}, "challenger_test": {"hybrid_ltr": 0.95}}}))
+    (rd / "train.json").write_text(
+        json.dumps({"model_path": str(cand), "sha256": promotion.sha256_file(cand)})
+    )
+    (rd / "gates.json").write_text(
+        json.dumps({"all_passed": all_passed, "passed": 9 if all_passed else 8, "total": 9})
+    )
+    (rd / "eval_summary.json").write_text(
+        json.dumps(
+            {
+                "ndcg@10": {
+                    "challenger_val": {"hybrid_ltr": 0.95},
+                    "challenger_test": {"hybrid_ltr": 0.95},
+                }
+            }
+        )
+    )
     return cand
 
 
@@ -292,9 +336,17 @@ def test_promote_rejects_candidate_modified_after_gating(cfg):
 def _drift_run(cfg, run_id, created, champ_sha, ltr, fp="f1", bm25=0.57):
     rd = promotion.run_dir(cfg, run_id)
     rd.mkdir(parents=True, exist_ok=True)
-    (rd / "eval_summary.json").write_text(json.dumps({
-        "created": created, "champion_sha256": champ_sha,
-        "ndcg@10": {"champion_val": {"bm25": bm25, "dense": 0.51, "hybrid": 0.57, "hybrid_ltr": ltr}}}))
+    (rd / "eval_summary.json").write_text(
+        json.dumps(
+            {
+                "created": created,
+                "champion_sha256": champ_sha,
+                "ndcg@10": {
+                    "champion_val": {"bm25": bm25, "dense": 0.51, "hybrid": 0.57, "hybrid_ltr": ltr}
+                },
+            }
+        )
+    )
     (rd / "data_validation.json").write_text(json.dumps({"fingerprint": fp}))
 
 
@@ -342,7 +394,10 @@ def test_drift_uses_latest_earlier_run(cfg):
 
 
 def test_sanitize_run_id():
-    assert promotion.sanitize_run_id("manual__2026-09-23T22:40:00+00:00") == "manual__2026-09-23T22_40_00_00_00"
+    assert (
+        promotion.sanitize_run_id("manual__2026-09-23T22:40:00+00:00")
+        == "manual__2026-09-23T22_40_00_00_00"
+    )
     with pytest.raises(promotion.PromotionError):
         promotion.sanitize_run_id("///")
 
@@ -350,7 +405,15 @@ def test_sanitize_run_id():
 def test_eval_strict_mode_refuses_missing_model(tmp_path):
     from eval.evaluate import _best_ltr_path
 
-    cfg = {"eval": {"strict_ltr_path": True, "dataset_processed_dir": "data/processed/movielens"},
-           "methods": [{"name": "hybrid_ltr", "type": "hybrid_ltr", "ltr_model_path": str(tmp_path / "nope.pkl")}]}
+    cfg = {
+        "eval": {"strict_ltr_path": True, "dataset_processed_dir": "data/processed/movielens"},
+        "methods": [
+            {
+                "name": "hybrid_ltr",
+                "type": "hybrid_ltr",
+                "ltr_model_path": str(tmp_path / "nope.pkl"),
+            }
+        ],
+    }
     with pytest.raises(FileNotFoundError):
         _best_ltr_path(cfg)

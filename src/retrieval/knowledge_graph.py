@@ -15,10 +15,10 @@ resolving Gap #2: "entity understanding and graph-aware retrieval"
 Builds from: data/processed/movielens/train/corpus.jsonl
              artifacts/faiss/ (for semantic neighbours)
 """
+
 from __future__ import annotations
 
 import json
-import math
 import re
 import time
 from collections import defaultdict
@@ -41,7 +41,7 @@ class GraphEdge:
     source: str
     target: str
     weight: float
-    edge_type: str   # "genre" | "tag" | "semantic" | "rating_co"
+    edge_type: str  # "genre" | "tag" | "semantic" | "rating_co"
 
 
 @dataclass
@@ -49,7 +49,7 @@ class GraphSearchResult:
     doc_id: str
     title: str
     score: float
-    path_length: int       # hops from seed
+    path_length: int  # hops from seed
     edge_types: list[str]  # how we got here
 
 
@@ -72,12 +72,12 @@ class MovieKnowledgeGraph:
         self.edges: dict[str, list[GraphEdge]] = defaultdict(list)
         self._genre_index: dict[str, list[str]] = defaultdict(list)
         self._tag_index: dict[str, list[str]] = defaultdict(list)
-        self._title_index: dict[str, str] = {}   # normalised title → doc_id
+        self._title_index: dict[str, str] = {}  # normalised title → doc_id
         self.built = False
 
     # ── Build ─────────────────────────────────────────────────────────────────
 
-    def build_from_corpus(self, corpus_path: str | Path) -> "MovieKnowledgeGraph":
+    def build_from_corpus(self, corpus_path: str | Path) -> MovieKnowledgeGraph:
         path = Path(corpus_path)
         if not path.exists():
             raise FileNotFoundError(f"Corpus not found: {path}")
@@ -95,13 +95,13 @@ class MovieKnowledgeGraph:
             except Exception:
                 continue
 
-            doc_id = doc.get("doc_id","")
-            title  = doc.get("title","") or ""
-            text   = doc.get("text","") or ""
+            doc_id = doc.get("doc_id", "")
+            title = doc.get("title", "") or ""
+            text = doc.get("text", "") or ""
 
             genres = self._extract_genres(text, title)
-            tags   = self._extract_tags(text)
-            year   = self._extract_year(title, text)
+            tags = self._extract_tags(text)
+            year = self._extract_year(title, text)
 
             node = GraphNode(doc_id=doc_id, title=title, genres=genres, year=year, tags=tags)
             self.nodes[doc_id] = node
@@ -117,15 +117,37 @@ class MovieKnowledgeGraph:
         self._build_tag_edges()
 
         elapsed = time.time() - t0
-        print(f"[KnowledgeGraph] Built: {len(self.nodes)} nodes, "
-              f"{sum(len(v) for v in self.edges.values())} edges in {elapsed:.1f}s")
+        print(
+            f"[KnowledgeGraph] Built: {len(self.nodes)} nodes, "
+            f"{sum(len(v) for v in self.edges.values())} edges in {elapsed:.1f}s"
+        )
         self.built = True
         return self
 
     def _extract_genres(self, text: str, title: str) -> list[str]:
-        GENRES = ["action","adventure","animation","comedy","crime","documentary",
-                  "drama","fantasy","horror","mystery","romance","sci-fi","thriller",
-                  "war","western","biography","history","music","sport","family","noir"]
+        GENRES = [
+            "action",
+            "adventure",
+            "animation",
+            "comedy",
+            "crime",
+            "documentary",
+            "drama",
+            "fantasy",
+            "horror",
+            "mystery",
+            "romance",
+            "sci-fi",
+            "thriller",
+            "war",
+            "western",
+            "biography",
+            "history",
+            "music",
+            "sport",
+            "family",
+            "noir",
+        ]
         combined = (text + " " + title).lower()
         found = [g for g in GENRES if g in combined]
         # Also parse "Genres: Action|Comedy" pattern
@@ -136,9 +158,22 @@ class MovieKnowledgeGraph:
         return list(dict.fromkeys(found))[:6]
 
     def _extract_tags(self, text: str) -> list[str]:
-        TAG_KEYWORDS = ["twist","heist","based on true story","psychological",
-                        "dystopia","time travel","revenge","redemption","ensemble",
-                        "superhero","survival","coming of age","road trip","alien"]
+        TAG_KEYWORDS = [
+            "twist",
+            "heist",
+            "based on true story",
+            "psychological",
+            "dystopia",
+            "time travel",
+            "revenge",
+            "redemption",
+            "ensemble",
+            "superhero",
+            "survival",
+            "coming of age",
+            "road trip",
+            "alien",
+        ]
         t = text.lower()
         return [tag for tag in TAG_KEYWORDS if tag in t]
 
@@ -155,17 +190,17 @@ class MovieKnowledgeGraph:
         return re.sub(r"[^a-z0-9]", "", title.lower())
 
     def _build_genre_edges(self) -> None:
-        for genre, doc_ids in self._genre_index.items():
+        for _genre, doc_ids in self._genre_index.items():
             # Only connect within same genre group (cap at 50 per genre)
             group = doc_ids[:50]
             for i in range(len(group)):
-                for j in range(i+1, len(group)):
+                for j in range(i + 1, len(group)):
                     a, b = group[i], group[j]
                     # Weight = number of shared genres / total genres
                     ga = set(self.nodes[a].genres)
                     gb = set(self.nodes[b].genres)
                     shared = len(ga & gb)
-                    union  = len(ga | gb)
+                    union = len(ga | gb)
                     w = shared / union if union else 0.0
                     if w >= 0.3:
                         edge = GraphEdge(a, b, round(w, 3), "genre")
@@ -173,10 +208,10 @@ class MovieKnowledgeGraph:
                         self.edges[b].append(GraphEdge(b, a, round(w, 3), "genre"))
 
     def _build_tag_edges(self) -> None:
-        for tag, doc_ids in self._tag_index.items():
+        for _tag, doc_ids in self._tag_index.items():
             group = doc_ids[:30]
             for i in range(len(group)):
-                for j in range(i+1, len(group)):
+                for j in range(i + 1, len(group)):
                     a, b = group[i], group[j]
                     existing = {e.target for e in self.edges[a]}
                     if b not in existing:
@@ -189,33 +224,35 @@ class MovieKnowledgeGraph:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "nodes": {k: {"title": v.title, "genres": v.genres,
-                           "year": v.year, "tags": v.tags}
-                      for k, v in self.nodes.items()},
-            "edges": {k: [{"target": e.target, "weight": e.weight,
-                            "type": e.edge_type} for e in edges]
-                      for k, edges in self.edges.items()},
+            "nodes": {
+                k: {"title": v.title, "genres": v.genres, "year": v.year, "tags": v.tags}
+                for k, v in self.nodes.items()
+            },
+            "edges": {
+                k: [{"target": e.target, "weight": e.weight, "type": e.edge_type} for e in edges]
+                for k, edges in self.edges.items()
+            },
         }
         p.write_text(json.dumps(data), encoding="utf-8")
         print(f"[KnowledgeGraph] Saved to {p}")
 
-    def load(self, path: str | Path) -> "MovieKnowledgeGraph":
+    def load(self, path: str | Path) -> MovieKnowledgeGraph:
         p = Path(path)
         if not p.exists():
             return self
         data = json.loads(p.read_text(encoding="utf-8"))
         for doc_id, nd in data["nodes"].items():
             self.nodes[doc_id] = GraphNode(
-                doc_id=doc_id, title=nd["title"],
-                genres=nd["genres"], year=nd.get("year"),
-                tags=nd.get("tags",[]),
+                doc_id=doc_id,
+                title=nd["title"],
+                genres=nd["genres"],
+                year=nd.get("year"),
+                tags=nd.get("tags", []),
             )
             self._title_index[self._normalise(nd["title"])] = doc_id
         for doc_id, edges in data["edges"].items():
             for e in edges:
-                self.edges[doc_id].append(
-                    GraphEdge(doc_id, e["target"], e["weight"], e["type"])
-                )
+                self.edges[doc_id].append(GraphEdge(doc_id, e["target"], e["weight"], e["type"]))
         self.built = True
         print(f"[KnowledgeGraph] Loaded: {len(self.nodes)} nodes")
         return self
@@ -256,12 +293,10 @@ class MovieKnowledgeGraph:
             if hops >= max_hops:
                 continue
 
-            for edge in sorted(self.edges.get(current_id, []),
-                                key=lambda e: -e.weight)[:10]:
+            for edge in sorted(self.edges.get(current_id, []), key=lambda e: -e.weight)[:10]:
                 if edge.target not in visited and edge.weight >= min_weight:
-                    new_score = score * edge.weight * (0.8 ** hops)
-                    queue.append((edge.target, hops+1, new_score,
-                                  path_types + [edge.edge_type]))
+                    new_score = score * edge.weight * (0.8**hops)
+                    queue.append((edge.target, hops + 1, new_score, path_types + [edge.edge_type]))
 
         results = sorted(visited.values(), key=lambda x: -x.score)
         return results[:k]

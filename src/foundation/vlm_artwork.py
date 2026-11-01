@@ -14,6 +14,7 @@ Requirements:
 Without keys: falls back to the rule-based proxy in foundation/multimodal.py
 With keys: real visual analysis of actual movie artwork.
 """
+
 from __future__ import annotations
 
 import base64
@@ -21,17 +22,16 @@ import hashlib
 import json
 import os
 import time
-import urllib.request
 import urllib.error
-from dataclasses import dataclass, field
+import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
-TMDB_BASE      = "https://api.themoviedb.org/3"
-TMDB_IMG_BASE  = "https://image.tmdb.org/t/p/w500"
-OPENAI_BASE    = "https://api.openai.com/v1"
-CACHE_DIR      = Path("artifacts/vlm_cache")
+TMDB_BASE = "https://api.themoviedb.org/3"
+TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w500"
+OPENAI_BASE = "https://api.openai.com/v1"
+CACHE_DIR = Path("artifacts/vlm_cache")
 
 VLM_PROMPT = """Analyse this movie poster/thumbnail and respond ONLY with valid JSON, no markdown.
 
@@ -115,20 +115,27 @@ class GPT4VClient:
 
     def analyse_image_b64(self, image_b64: str, title: str = "") -> dict[str, Any]:
         """Send base64 image to GPT-4V and parse structured response."""
-        payload = json.dumps({
-            "model": self.model,
-            "max_tokens": 500,
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": f"Movie: {title}\n\n{VLM_PROMPT}"},
-                    {"type": "image_url", "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_b64}",
-                        "detail": "low"
-                    }}
-                ]
-            }]
-        }).encode()
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "max_tokens": 500,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": f"Movie: {title}\n\n{VLM_PROMPT}"},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_b64}",
+                                    "detail": "low",
+                                },
+                            },
+                        ],
+                    }
+                ],
+            }
+        ).encode()
 
         req = urllib.request.Request(
             f"{OPENAI_BASE}/chat/completions",
@@ -162,12 +169,12 @@ class RealArtworkAnalyser:
 
     def __init__(self) -> None:
         self.openai_key = os.environ.get("OPENAI_API_KEY", "")
-        self.tmdb_key   = os.environ.get("TMDB_API_KEY", "")
-        self.cache_dir  = CACHE_DIR
+        self.tmdb_key = os.environ.get("TMDB_API_KEY", "")
+        self.cache_dir = CACHE_DIR
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        self.tmdb   = TMDBClient(self.tmdb_key) if self.tmdb_key else None
-        self.gpt4v  = GPT4VClient(self.openai_key) if self.openai_key else None
+        self.tmdb = TMDBClient(self.tmdb_key) if self.tmdb_key else None
+        self.gpt4v = GPT4VClient(self.openai_key) if self.openai_key else None
         self.available = bool(self.openai_key and self.tmdb_key)
 
     def _cache_key(self, doc_id: str) -> Path:
@@ -191,14 +198,27 @@ class RealArtworkAnalyser:
         cached = self._load_cache(doc_id)
         if cached and "mood" in cached:
             return RealArtworkFeatures(
-                doc_id=doc_id, title=title, cached=True,
+                doc_id=doc_id,
+                title=title,
+                cached=True,
                 analysis_source="gpt4v_cached",
-                **{k: cached[k] for k in [
-                    "mood","brightness","contrast","dominant_colors",
-                    "face_count","text_overlay","mood_confidence",
-                    "visual_tags","predicted_audience","atmosphere",
-                ] if k in cached},
-                poster_url=cached.get("poster_url",""),
+                **{
+                    k: cached[k]
+                    for k in [
+                        "mood",
+                        "brightness",
+                        "contrast",
+                        "dominant_colors",
+                        "face_count",
+                        "text_overlay",
+                        "mood_confidence",
+                        "visual_tags",
+                        "predicted_audience",
+                        "atmosphere",
+                    ]
+                    if k in cached
+                },
+                poster_url=cached.get("poster_url", ""),
             )
 
         # Always try TMDB poster first (free, no credits needed)
@@ -233,8 +253,9 @@ class RealArtworkAnalyser:
         self._save_cache(doc_id, result)
 
         return RealArtworkFeatures(
-            doc_id=doc_id, title=title,
-            mood=result.get("mood","unknown"),
+            doc_id=doc_id,
+            title=title,
+            mood=result.get("mood", "unknown"),
             brightness=float(result.get("brightness", 0.5)),
             contrast=float(result.get("contrast", 0.5)),
             dominant_colors=result.get("dominant_colors", []),
@@ -251,9 +272,11 @@ class RealArtworkAnalyser:
     def _fallback(self, doc_id: str, title: str, error: str = "") -> RealArtworkFeatures:
         """Rule-based fallback when API keys not set."""
         from foundation.multimodal import ArtworkAnalyser
+
         proxy = ArtworkAnalyser().analyse(doc_id=doc_id, title=title)
         return RealArtworkFeatures(
-            doc_id=doc_id, title=title,
+            doc_id=doc_id,
+            title=title,
             mood=proxy.mood.value,
             brightness=proxy.brightness,
             contrast=proxy.contrast,
@@ -279,9 +302,9 @@ class RealArtworkAnalyser:
         """
         results = []
         for item in items:
-            doc_id = item.get("doc_id","")
-            title  = item.get("title","")
-            year   = str(item.get("year",""))
+            doc_id = item.get("doc_id", "")
+            title = item.get("title", "")
+            year = str(item.get("year", ""))
             result = self.analyse(doc_id, title, year)
             results.append(result)
             if not result.cached and self.available:

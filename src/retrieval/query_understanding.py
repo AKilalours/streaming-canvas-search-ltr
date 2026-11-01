@@ -13,6 +13,7 @@ Components:
 
 Netflix standard: every query passes through understanding BEFORE retrieval.
 """
+
 from __future__ import annotations
 
 import re
@@ -21,16 +22,16 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ── Query intent taxonomy ─────────────────────────────────────────────────────
 
+
 class QueryIntent(str, Enum):
-    NAVIGATIONAL  = "navigational"   # exact title lookup: "Stranger Things"
-    EXPLORATORY   = "exploratory"    # genre/mood browse: "something funny tonight"
+    NAVIGATIONAL = "navigational"  # exact title lookup: "Stranger Things"
+    EXPLORATORY = "exploratory"  # genre/mood browse: "something funny tonight"
     TRANSACTIONAL = "transactional"  # action intent: "watch action movies"
-    PERSON        = "person"         # actor/director: "movies with Tom Hanks"
-    SIMILARITY    = "similarity"     # "movies like Inception"
-    UNKNOWN       = "unknown"
+    PERSON = "person"  # actor/director: "movies with Tom Hanks"
+    SIMILARITY = "similarity"  # "movies like Inception"
+    UNKNOWN = "unknown"
 
 
 @dataclass
@@ -40,8 +41,10 @@ class ParsedQuery:
     corrected: str
     rewrites: list[str]
     intent: QueryIntent
-    entities: dict[str, list[str]]   # {"title": [...], "person": [...], "genre": [...], "year": [...]}
-    filters: dict[str, Any]          # {"year_min": 2010, "language": "English"}
+    entities: dict[
+        str, list[str]
+    ]  # {"title": [...], "person": [...], "genre": [...], "year": [...]}
+    filters: dict[str, Any]  # {"year_min": 2010, "language": "English"}
     confidence: float
     debug: dict = field(default_factory=dict)
 
@@ -49,23 +52,62 @@ class ParsedQuery:
 # ── Vocabulary for typo correction ────────────────────────────────────────────
 
 GENRE_VOCAB = {
-    "action", "adventure", "animation", "biography", "comedy", "crime",
-    "documentary", "drama", "family", "fantasy", "history", "horror",
-    "music", "mystery", "romance", "sci-fi", "sport", "thriller",
-    "war", "western", "noir", "superhero", "heist",
+    "action",
+    "adventure",
+    "animation",
+    "biography",
+    "comedy",
+    "crime",
+    "documentary",
+    "drama",
+    "family",
+    "fantasy",
+    "history",
+    "horror",
+    "music",
+    "mystery",
+    "romance",
+    "sci-fi",
+    "sport",
+    "thriller",
+    "war",
+    "western",
+    "noir",
+    "superhero",
+    "heist",
 }
 
 MOOD_VOCAB = {
-    "dark", "gritty", "light", "funny", "scary", "heartwarming", "epic",
-    "intense", "relaxing", "uplifting", "thought-provoking", "mind-bending",
-    "feel-good", "disturbing", "inspiring", "suspenseful",
+    "dark",
+    "gritty",
+    "light",
+    "funny",
+    "scary",
+    "heartwarming",
+    "epic",
+    "intense",
+    "relaxing",
+    "uplifting",
+    "thought-provoking",
+    "mind-bending",
+    "feel-good",
+    "disturbing",
+    "inspiring",
+    "suspenseful",
 }
 
 COMMON_TYPOS = {
-    "acton": "action", "commedy": "comedy", "horro": "horror",
-    "romace": "romance", "thriler": "thriller", "documentry": "documentary",
-    "scifi": "sci-fi", "sifi": "sci-fi", "animaton": "animation",
-    "adventur": "adventure", "biograpy": "biography",
+    "acton": "action",
+    "commedy": "comedy",
+    "horro": "horror",
+    "romace": "romance",
+    "thriler": "thriller",
+    "documentry": "documentary",
+    "scifi": "sci-fi",
+    "sifi": "sci-fi",
+    "animaton": "animation",
+    "adventur": "adventure",
+    "biograpy": "biography",
 }
 
 SIMILARITY_TRIGGERS = {"like", "similar", "reminds", "remind", "same as", "type of"}
@@ -90,10 +132,10 @@ def _edit_distance(a: str, b: str) -> int:
         prev = dp[:]
         dp[0] = i
         for j in range(1, n + 1):
-            if a[i-1] == b[j-1]:
-                dp[j] = prev[j-1]
+            if a[i - 1] == b[j - 1]:
+                dp[j] = prev[j - 1]
             else:
-                dp[j] = 1 + min(prev[j], dp[j-1], prev[j-1])
+                dp[j] = 1 + min(prev[j], dp[j - 1], prev[j - 1])
     return dp[n]
 
 
@@ -125,8 +167,12 @@ class EntityRecogniser:
     def recognise(self, query: str) -> dict[str, list[str]]:
         q = query.lower()
         entities: dict[str, list[str]] = {
-            "genre": [], "mood": [], "year": [], "decade": [],
-            "person": [], "title": [],
+            "genre": [],
+            "mood": [],
+            "year": [],
+            "decade": [],
+            "person": [],
+            "title": [],
         }
 
         for g in GENRE_VOCAB:
@@ -145,7 +191,7 @@ class EntityRecogniser:
         for trigger in PERSON_TRIGGERS:
             idx = q.find(trigger)
             if idx >= 0:
-                after = query[idx + len(trigger):].strip()
+                after = query[idx + len(trigger) :].strip()
                 words = after.split()[:3]
                 name = " ".join(w for w in words if w[0:1].isupper())
                 if name:
@@ -224,17 +270,17 @@ class QueryUnderstandingPipeline:
     """
 
     def __init__(self, corpus_vocab: set[str] | None = None) -> None:
-        self.corrector  = SpellingCorrector(extra_vocab=corpus_vocab)
+        self.corrector = SpellingCorrector(extra_vocab=corpus_vocab)
         self.recogniser = EntityRecogniser()
         self.classifier = QueryClassifier()
-        self.rewriter   = QueryRewriter()
+        self.rewriter = QueryRewriter()
 
     def run(self, raw_query: str) -> ParsedQuery:
         normalised = _normalise(raw_query)
-        corrected  = self.corrector.correct(normalised)
-        entities   = self.recogniser.recognise(corrected)
-        intent     = self.classifier.classify(corrected, entities)
-        rewrites   = self.rewriter.rewrite(corrected, entities, intent)
+        corrected = self.corrector.correct(normalised)
+        entities = self.recogniser.recognise(corrected)
+        intent = self.classifier.classify(corrected, entities)
+        rewrites = self.rewriter.rewrite(corrected, entities, intent)
 
         # Build availability filters from entities
         filters: dict[str, Any] = {}
@@ -248,8 +294,13 @@ class QueryUnderstandingPipeline:
         confidence = 0.9 if corrected == normalised else 0.7
 
         return ParsedQuery(
-            raw=raw_query, normalised=normalised, corrected=corrected,
-            rewrites=rewrites, intent=intent, entities=entities,
-            filters=filters, confidence=confidence,
+            raw=raw_query,
+            normalised=normalised,
+            corrected=corrected,
+            rewrites=rewrites,
+            intent=intent,
+            entities=entities,
+            filters=filters,
+            confidence=confidence,
             debug={"spell_changed": corrected != normalised},
         )

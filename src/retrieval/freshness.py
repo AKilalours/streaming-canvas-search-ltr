@@ -13,53 +13,53 @@ Components:
 
 Netflix standard: freshness is a first-class ranking signal, not a post-filter.
 """
+
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
-LAUNCH_WINDOW_HOURS = 72      # "new" titles get boosted for 72h
-LIVE_BOOST = 5.0              # multiplier for live content during event window
+LAUNCH_WINDOW_HOURS = 72  # "new" titles get boosted for 72h
+LIVE_BOOST = 5.0  # multiplier for live content during event window
 FRESHNESS_HALF_LIFE_DAYS = 30  # freshness decays with 30-day half-life
 
 
 class ContentState(str, Enum):
-    LIVE        = "live"         # currently streaming live
-    LAUNCHING   = "launching"    # within launch window
-    RECENT      = "recent"       # < 30 days old
-    CATALOG     = "catalog"      # standard catalog
-    EXPIRING    = "expiring"     # rights expiring soon (urgency signal)
+    LIVE = "live"  # currently streaming live
+    LAUNCHING = "launching"  # within launch window
+    RECENT = "recent"  # < 30 days old
+    CATALOG = "catalog"  # standard catalog
+    EXPIRING = "expiring"  # rights expiring soon (urgency signal)
 
 
 @dataclass
 class ContentMetadata:
     doc_id: str
     title: str
-    release_ts: float | None = None     # unix epoch of release/launch
+    release_ts: float | None = None  # unix epoch of release/launch
     live_start_ts: float | None = None  # unix epoch of live event start
-    live_end_ts: float | None = None    # unix epoch of live event end
+    live_end_ts: float | None = None  # unix epoch of live event end
     available_markets: set[str] = field(default_factory=set)
     maturity_rating: str = "PG-13"
     available_plans: set[str] = field(default_factory=set)  # {"standard", "ads", "premium"}
     rights_expiry_ts: float | None = None
-    content_type: str = "film"          # "film" | "series" | "live" | "podcast" | "game"
+    content_type: str = "film"  # "film" | "series" | "live" | "podcast" | "game"
 
 
 @dataclass
 class FreshnessSignal:
     doc_id: str
     state: ContentState
-    freshness_score: float    # 0-1, higher = fresher
-    live_boost: float         # multiplier if live
-    urgency_boost: float      # multiplier if expiring soon
+    freshness_score: float  # 0-1, higher = fresher
+    live_boost: float  # multiplier if live
+    urgency_boost: float  # multiplier if expiring soon
     hours_since_launch: float | None = None
 
 
 # ── Freshness Scorer ──────────────────────────────────────────────────────────
+
 
 class FreshnessScorer:
     """
@@ -109,9 +109,11 @@ class FreshnessScorer:
                 urgency_boost = 1.0 + (1.0 - days_until_expiry / 14) * 0.5
 
         return FreshnessSignal(
-            doc_id=meta.doc_id, state=state,
+            doc_id=meta.doc_id,
+            state=state,
             freshness_score=round(freshness, 4),
-            live_boost=live_boost, urgency_boost=urgency_boost,
+            live_boost=live_boost,
+            urgency_boost=urgency_boost,
             hours_since_launch=hours_since_launch,
         )
 
@@ -124,6 +126,7 @@ class FreshnessScorer:
 
 # ── Launch Tracker ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class LaunchHealthReport:
     doc_id: str
@@ -132,9 +135,9 @@ class LaunchHealthReport:
     impressions: int
     clicks: int
     ctr: float
-    p25_watches: int          # users who watched >= 25%
+    p25_watches: int  # users who watched >= 25%
     target_ctr: float
-    health_status: str        # "healthy" | "at_risk" | "failing"
+    health_status: str  # "healthy" | "at_risk" | "failing"
     recommendation: str
 
 
@@ -145,8 +148,8 @@ class LaunchTracker:
     If not, surface in more rows and lower the relevance threshold.
     """
 
-    MIN_CTR_24H = 0.02      # 2% CTR minimum at 24h
-    MIN_CTR_72H = 0.05      # 5% CTR minimum at 72h
+    MIN_CTR_24H = 0.02  # 2% CTR minimum at 24h
+    MIN_CTR_72H = 0.05  # 5% CTR minimum at 72h
 
     def __init__(self) -> None:
         self._data: dict[str, dict[str, Any]] = {}
@@ -173,21 +176,27 @@ class LaunchTracker:
             rec = "No action needed."
         elif ctr >= target * 0.5:
             status = "at_risk"
-            rec = f"Increase row placements and lower relevance threshold for 12h."
+            rec = "Increase row placements and lower relevance threshold for 12h."
         else:
             status = "failing"
-            rec = f"Emergency surface: add to hero row, trending row, and reduce K threshold to 50."
+            rec = "Emergency surface: add to hero row, trending row, and reduce K threshold to 50."
 
         return LaunchHealthReport(
-            doc_id=meta.doc_id, title=meta.title,
+            doc_id=meta.doc_id,
+            title=meta.title,
             hours_since_launch=round(hours, 1),
-            impressions=impressions, clicks=clicks,
-            ctr=round(ctr, 4), p25_watches=data["p25"],
-            target_ctr=target, health_status=status, recommendation=rec,
+            impressions=impressions,
+            clicks=clicks,
+            ctr=round(ctr, 4),
+            p25_watches=data["p25"],
+            target_ctr=target,
+            health_status=status,
+            recommendation=rec,
         )
 
 
 # ── Availability Filter ───────────────────────────────────────────────────────
+
 
 class AvailabilityFilter:
     """
@@ -215,7 +224,7 @@ class AvailabilityFilter:
             meta = metadata.get(doc_id)
 
             if meta is None:
-                passed.append(item)   # no metadata = assume available
+                passed.append(item)  # no metadata = assume available
                 continue
 
             # Market check
@@ -242,6 +251,7 @@ class AvailabilityFilter:
 
 # ── Multi-format Content Support ──────────────────────────────────────────────
 
+
 class MultiFormatRanker:
     """
     Resolves Gap #10: "Games, podcasts, and multi-format content are not solved"
@@ -254,11 +264,11 @@ class MultiFormatRanker:
     """
 
     FORMAT_WEIGHTS = {
-        "film":    {"completion": 0.5, "return": 0.3, "social": 0.2},
-        "series":  {"completion": 0.3, "return": 0.5, "social": 0.2},
+        "film": {"completion": 0.5, "return": 0.3, "social": 0.2},
+        "series": {"completion": 0.3, "return": 0.5, "social": 0.2},
         "podcast": {"completion": 0.4, "return": 0.4, "social": 0.2},
-        "game":    {"completion": 0.2, "return": 0.5, "social": 0.3},
-        "live":    {"completion": 0.3, "return": 0.3, "social": 0.4},
+        "game": {"completion": 0.2, "return": 0.5, "social": 0.3},
+        "live": {"completion": 0.3, "return": 0.3, "social": 0.4},
     }
 
     def normalise_engagement(

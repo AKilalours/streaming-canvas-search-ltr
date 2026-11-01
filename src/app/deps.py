@@ -91,7 +91,9 @@ def _resolve_bm25_path(ds: dict[str, Any]) -> Path:
 
     dsid = str(ds.get("id") or "nfcorpus")
     cand = _first_existing([f"artifacts/bm25/{dsid}*.pkl"])
-    return _require(cand, f"Could not find BM25 artifact for dataset='{dsid}' under artifacts/bm25/.")
+    return _require(
+        cand, f"Could not find BM25 artifact for dataset='{dsid}' under artifacts/bm25/."
+    )
 
 
 def _resolve_dense_dir(ds: dict[str, Any]) -> Path | None:
@@ -136,7 +138,9 @@ def _resolve_ltr_path(ds: dict[str, Any]) -> Path | None:
         return pp if pp.exists() else None
 
     dsid = str(ds.get("id") or "nfcorpus")
-    return _first_existing([f"artifacts/ltr/{dsid}*.pkl", "artifacts/ltr/ltr.pkl", "artifacts/ltr/*.pkl"])
+    return _first_existing(
+        [f"artifacts/ltr/{dsid}*.pkl", "artifacts/ltr/ltr.pkl", "artifacts/ltr/*.pkl"]
+    )
 
 
 @dataclass
@@ -192,7 +196,9 @@ def load_state() -> AppState:
     corpus_rows = _load_jsonl(corpus_path)
 
     if corpus_rows and "doc_id" not in corpus_rows[0]:
-        raise KeyError(f"Corpus rows must contain 'doc_id'. First row keys: {list(corpus_rows[0].keys())}")
+        raise KeyError(
+            f"Corpus rows must contain 'doc_id'. First row keys: {list(corpus_rows[0].keys())}"
+        )
 
     st.corpus = {r["doc_id"]: r for r in corpus_rows}
     log.info("Loaded corpus: %s (docs=%d)", corpus_path, len(st.corpus))
@@ -229,10 +235,14 @@ def load_state() -> AppState:
             model_name = str(meta.get("model_name") or meta.get("encoder") or model_name)
 
         model = SentenceTransformer(model_name)
-        st.dense = DenseIndex(model_name=model_name, doc_embs=doc_embs, doc_ids=doc_ids, model=model)
+        st.dense = DenseIndex(
+            model_name=model_name, doc_embs=doc_embs, doc_ids=doc_ids, model=model
+        )
         log.info("Loaded dense artifacts: %s (model=%s)", dense_dir, model_name)
     else:
-        log.info("Dense artifacts not found for dataset=%s; dense/hybrid may be degraded.", st.dataset_id)
+        log.info(
+            "Dense artifacts not found for dataset=%s; dense/hybrid may be degraded.", st.dataset_id
+        )
 
     # ---- LTR (optional) ----
     ltr_path = _resolve_ltr_path(ds)
@@ -240,7 +250,9 @@ def load_state() -> AppState:
         st.ltr_path = ltr_path
         log.info("Found LTR artifact: %s", ltr_path)
     else:
-        log.info("LTR artifact not found for dataset=%s; hybrid_ltr behaves like hybrid.", st.dataset_id)
+        log.info(
+            "LTR artifact not found for dataset=%s; hybrid_ltr behaves like hybrid.", st.dataset_id
+        )
 
     st.ready = True
     return st

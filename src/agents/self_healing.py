@@ -14,6 +14,7 @@ Components:
 
 Netflix 2026 standard: Zero-touch model promotion within 48h of sustained lift.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,27 +24,29 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-
 # ── Enums & config ────────────────────────────────────────────────────────────
 
+
 class PromotionDecision(str, Enum):
-    PROMOTE   = "promote"
-    HOLD      = "hold"
-    ROLLBACK  = "rollback"
-    ESCALATE  = "escalate"   # human needed
+    PROMOTE = "promote"
+    HOLD = "hold"
+    ROLLBACK = "rollback"
+    ESCALATE = "escalate"  # human needed
 
 
-PROMOTION_LIFT_THRESHOLD  = 0.02    # >2% nDCG@10 lift required
-PROMOTION_HOURS_REQUIRED  = 48      # must sustain lift for 48 h
-ROLLBACK_DROP_THRESHOLD   = 0.05    # auto-rollback if live model drops >5%
-MEMORY_SPIKE_THRESHOLD_GB = 1.5     # auto-scale if peak RAM exceeds this
+PROMOTION_LIFT_THRESHOLD = 0.02  # >2% nDCG@10 lift required
+PROMOTION_HOURS_REQUIRED = 48  # must sustain lift for 48 h
+ROLLBACK_DROP_THRESHOLD = 0.05  # auto-rollback if live model drops >5%
+MEMORY_SPIKE_THRESHOLD_GB = 1.5  # auto-scale if peak RAM exceeds this
 
 
 # ── Data structures ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class ShadowObservation:
     """One hourly shadow A/B measurement."""
+
     timestamp: float
     production_ndcg: float
     candidate_ndcg: float
@@ -82,6 +85,7 @@ class PromotionRecord:
 
 # ── Shadow Governor ───────────────────────────────────────────────────────────
 
+
 class ShadowGovernor:
     """
     Continuously ingests ShadowObservations and decides when to promote.
@@ -116,7 +120,8 @@ class ShadowGovernor:
             return PromotionRecord(
                 decision=PromotionDecision.HOLD,
                 reason="No shadow observations yet",
-                lift_pct=0.0, sustained_hours=0.0,
+                lift_pct=0.0,
+                sustained_hours=0.0,
                 candidate_model_path=candidate_model_path,
             )
 
@@ -128,7 +133,8 @@ class ShadowGovernor:
             return PromotionRecord(
                 decision=PromotionDecision.ROLLBACK,
                 reason=f"Production nDCG dropped {prod_drop:.1%} > threshold {self.rollback_drop:.1%}",
-                lift_pct=-prod_drop, sustained_hours=0.0,
+                lift_pct=-prod_drop,
+                sustained_hours=0.0,
                 candidate_model_path=candidate_model_path,
             )
 
@@ -142,7 +148,8 @@ class ShadowGovernor:
             return PromotionRecord(
                 decision=PromotionDecision.PROMOTE,
                 reason=f"Candidate sustained {sustained:.1f}h lift={avg_lift:.1%} > {self.lift_threshold:.1%}, all tests pass",
-                lift_pct=avg_lift, sustained_hours=sustained,
+                lift_pct=avg_lift,
+                sustained_hours=sustained,
                 candidate_model_path=candidate_model_path,
                 pr_url=pr,
             )
@@ -151,7 +158,8 @@ class ShadowGovernor:
             return PromotionRecord(
                 decision=PromotionDecision.HOLD,
                 reason=f"Lift {avg_lift:.1%} is good but unit tests failing — holding",
-                lift_pct=avg_lift, sustained_hours=sustained,
+                lift_pct=avg_lift,
+                sustained_hours=sustained,
                 candidate_model_path=candidate_model_path,
             )
 
@@ -159,14 +167,16 @@ class ShadowGovernor:
             return PromotionRecord(
                 decision=PromotionDecision.HOLD,
                 reason=f"Candidate underperforming production (lift={avg_lift:.1%})",
-                lift_pct=avg_lift, sustained_hours=0.0,
+                lift_pct=avg_lift,
+                sustained_hours=0.0,
                 candidate_model_path=candidate_model_path,
             )
 
         return PromotionRecord(
             decision=PromotionDecision.HOLD,
             reason=f"Lift {avg_lift:.1%} positive but need {self.hours_required}h sustained (have {sustained:.1f}h)",
-            lift_pct=avg_lift, sustained_hours=sustained,
+            lift_pct=avg_lift,
+            sustained_hours=sustained,
             candidate_model_path=candidate_model_path,
         )
 
@@ -174,15 +184,12 @@ class ShadowGovernor:
         if not self._window:
             return 0.0
         # Walk backwards from latest
-        run_start: float | None = None
         prev_ts: float | None = None
         total = 0.0
         for obs in reversed(self._window):
             if obs.lift >= self.lift_threshold and obs.all_unit_tests_pass:
                 if prev_ts is not None:
                     total += (prev_ts - obs.timestamp) / 3600
-                else:
-                    run_start = obs.timestamp
                 prev_ts = obs.timestamp
             else:
                 break
@@ -191,19 +198,20 @@ class ShadowGovernor:
 
 # ── Self-Healing Orchestrator ─────────────────────────────────────────────────
 
+
 class DriftCause(str, Enum):
-    DATA_SHIFT      = "data_shift"
+    DATA_SHIFT = "data_shift"
     MODEL_STALENESS = "model_staleness"
-    FEATURE_SKEW    = "feature_skew"
-    INFRA_ISSUE     = "infra_issue"
-    UNKNOWN         = "unknown"
+    FEATURE_SKEW = "feature_skew"
+    INFRA_ISSUE = "infra_issue"
+    UNKNOWN = "unknown"
 
 
 @dataclass
 class HealingAction:
     cause: DriftCause
     action: str
-    priority: int   # 1=immediate, 2=scheduled, 3=advisory
+    priority: int  # 1=immediate, 2=scheduled, 3=advisory
     metadata: dict = field(default_factory=dict)
 
 
@@ -223,9 +231,9 @@ class SelfHealingOrchestrator:
         metrics: dict[str, Any],
         drift_report: dict[str, Any],
     ) -> HealingAction:
-        ndcg_drop     = float(drift_report.get("ndcg_drop", 0))
+        ndcg_drop = float(drift_report.get("ndcg_drop", 0))
         latency_spike = float(drift_report.get("p95_ms_delta", 0))
-        feature_drift = float(drift_report.get("feature_psi", 0))   # PSI > 0.2 = severe
+        feature_drift = float(drift_report.get("feature_psi", 0))  # PSI > 0.2 = severe
 
         if latency_spike > 100:
             return HealingAction(
@@ -280,6 +288,7 @@ class SelfHealingOrchestrator:
 
 # ── Resource Advisor ──────────────────────────────────────────────────────────
 
+
 class ResourceAdvisor:
     """
     Detects memory spikes during Metaflow training steps and recommends
@@ -312,6 +321,7 @@ class ResourceAdvisor:
 
 # ── PR Promoter ───────────────────────────────────────────────────────────────
 
+
 class PRPromoter:
     """
     Simulates creating a GitHub Pull Request to promote a model.
@@ -337,5 +347,7 @@ class PRPromoter:
         # For now: write to reports/
         pr_log = Path("reports/latest/auto_pr.json")
         pr_log.parent.mkdir(parents=True, exist_ok=True)
-        pr_log.write_text(json.dumps({"title": title, "body": body, "created_at": time.time()}, indent=2))
-        return f"reports/latest/auto_pr.json"
+        pr_log.write_text(
+            json.dumps({"title": title, "body": body, "created_at": time.time()}, indent=2)
+        )
+        return "reports/latest/auto_pr.json"

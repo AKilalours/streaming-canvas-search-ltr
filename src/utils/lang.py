@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 import langid
 
@@ -14,7 +13,7 @@ def _clean_lang_tag(tag: str) -> str:
     return tag
 
 
-def normalize_lang(tag: Optional[str]) -> str:
+def normalize_lang(tag: str | None) -> str:
     """
     Return a BCP-47-ish tag like 'en' or 'es' or 'hi' (we keep region if provided).
     """

@@ -4,6 +4,7 @@ Structural tests for the Airflow DAG. Skipped when Airflow is not installed
 
     AIRFLOW_HOME=$(mktemp -d) <airflow-venv>/bin/python -m pytest tests/test_airflow_dag.py
 """
+
 from __future__ import annotations
 
 import importlib
@@ -35,8 +36,16 @@ def test_dag_structure(dagbag):
     assert dag.max_active_runs == 1
     assert not dag.catchup
     t = dag.task_dict
-    assert set(t) == {"validate_data", "train_candidate", "evaluate", "run_gates", "decide",
-                      "promote_model", "block_promotion", "drift_check"}
+    assert set(t) == {
+        "validate_data",
+        "train_candidate",
+        "evaluate",
+        "run_gates",
+        "decide",
+        "promote_model",
+        "block_promotion",
+        "drift_check",
+    }
     assert t["validate_data"].downstream_task_ids == {"train_candidate"}
     assert t["train_candidate"].downstream_task_ids == {"evaluate"}
     assert t["evaluate"].downstream_task_ids == {"run_gates", "drift_check"}
@@ -54,13 +63,18 @@ def _dag_module(monkeypatch, home: Path):
 
 def _repo_with_gates(tmp_path: Path, all_passed: bool) -> Path:
     (tmp_path / "configs").mkdir()
-    (tmp_path / "configs" / "promotion.yaml").write_text((ROOT / "configs" / "promotion.yaml").read_text())
+    (tmp_path / "configs" / "promotion.yaml").write_text(
+        (ROOT / "configs" / "promotion.yaml").read_text()
+    )
     (tmp_path / "src").symlink_to(ROOT / "src")
     rd = tmp_path / "reports" / "runs" / "manual__x"
     rd.mkdir(parents=True)
     gates = [{"name": "ndcg10_no_regression", "passed": all_passed, "detail": "d"}]
-    (rd / "gates.json").write_text(json.dumps(
-        {"all_passed": all_passed, "passed": int(all_passed), "total": 1, "gates": gates}))
+    (rd / "gates.json").write_text(
+        json.dumps(
+            {"all_passed": all_passed, "passed": int(all_passed), "total": 1, "gates": gates}
+        )
+    )
     return tmp_path
 
 

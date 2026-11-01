@@ -17,24 +17,25 @@ Components:
 Netflix standard: live content gets a 5x ranking boost during event window,
 with 30-second refresh cycles pushed via WebSocket to all connected clients.
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 import time
-from dataclasses import dataclass, field
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, AsyncGenerator
-
+from typing import Any
 
 # ── Live event state machine ──────────────────────────────────────────────────
 
+
 class LiveEventState(str, Enum):
-    SCHEDULED   = "scheduled"    # > 24h away
-    COUNTDOWN   = "countdown"    # < 24h, not started
-    LIVE        = "live"         # currently streaming
-    REPLAY      = "replay"       # ended, replay available
-    EXPIRED     = "expired"      # no longer available
+    SCHEDULED = "scheduled"  # > 24h away
+    COUNTDOWN = "countdown"  # < 24h, not started
+    LIVE = "live"  # currently streaming
+    REPLAY = "replay"  # ended, replay available
+    EXPIRED = "expired"  # no longer available
 
 
 @dataclass
@@ -44,11 +45,11 @@ class LiveEvent:
     doc_id: str
     start_ts: float
     end_ts: float
-    category: str = "live"       # "sport" | "concert" | "news" | "talk"
+    category: str = "live"  # "sport" | "concert" | "news" | "talk"
     peak_viewers: int = 0
     replay_available: bool = True
-    ranking_boost: float = 5.0   # multiplier during live window
-    countdown_boost: float = 2.0 # multiplier in 24h pre-window
+    ranking_boost: float = 5.0  # multiplier during live window
+    countdown_boost: float = 2.0  # multiplier in 24h pre-window
 
     @property
     def state(self) -> LiveEventState:
@@ -92,10 +93,11 @@ class LiveRankSignal:
     live_boost: float
     final_score: float
     state: LiveEventState
-    urgency: float    # 0-1, higher = more urgent to surface
+    urgency: float  # 0-1, higher = more urgent to surface
 
 
 # ── Live Event Scheduler ──────────────────────────────────────────────────────
+
 
 class LiveEventScheduler:
     """
@@ -116,7 +118,7 @@ class LiveEventScheduler:
                 event_id="live_001",
                 title="StreamLens Awards Show 2026",
                 doc_id="live_doc_001",
-                start_ts=now + 3600,    # starts in 1 hour
+                start_ts=now + 3600,  # starts in 1 hour
                 end_ts=now + 7200,
                 category="talk",
                 ranking_boost=5.0,
@@ -125,7 +127,7 @@ class LiveEventScheduler:
                 event_id="live_002",
                 title="Championship Finals — Live",
                 doc_id="live_doc_002",
-                start_ts=now - 900,     # started 15 min ago (currently LIVE)
+                start_ts=now - 900,  # started 15 min ago (currently LIVE)
                 end_ts=now + 5400,
                 category="sport",
                 ranking_boost=8.0,
@@ -135,7 +137,7 @@ class LiveEventScheduler:
                 event_id="live_003",
                 title="Breaking News Coverage",
                 doc_id="live_doc_003",
-                start_ts=now + 86400,   # tomorrow
+                start_ts=now + 86400,  # tomorrow
                 end_ts=now + 90000,
                 category="news",
                 ranking_boost=3.0,
@@ -159,8 +161,11 @@ class LiveEventScheduler:
         return self._events.get(eid) if eid else None
 
     def all_active(self) -> list[LiveEvent]:
-        return [e for e in self._events.values()
-                if e.state in (LiveEventState.LIVE, LiveEventState.COUNTDOWN)]
+        return [
+            e
+            for e in self._events.values()
+            if e.state in (LiveEventState.LIVE, LiveEventState.COUNTDOWN)
+        ]
 
     def status(self) -> dict[str, Any]:
         return {
@@ -172,6 +177,7 @@ class LiveEventScheduler:
 
 
 # ── Live Score Booster ────────────────────────────────────────────────────────
+
 
 class LiveScoreBooster:
     """
@@ -192,9 +198,12 @@ class LiveScoreBooster:
 
         if event is None:
             return LiveRankSignal(
-                doc_id=doc_id, base_score=base_score,
-                live_boost=1.0, final_score=base_score,
-                state=LiveEventState.EXPIRED, urgency=0.0,
+                doc_id=doc_id,
+                base_score=base_score,
+                live_boost=1.0,
+                final_score=base_score,
+                state=LiveEventState.EXPIRED,
+                urgency=0.0,
             )
 
         state = event.state
@@ -223,14 +232,15 @@ class LiveScoreBooster:
             boost, urgency, final = 1.0, 0.0, base_score
 
         return LiveRankSignal(
-            doc_id=doc_id, base_score=round(base_score, 4),
-            live_boost=round(boost, 3), final_score=round(final, 4),
-            state=state, urgency=round(urgency, 3),
+            doc_id=doc_id,
+            base_score=round(base_score, 4),
+            live_boost=round(boost, 3),
+            final_score=round(final, 4),
+            state=state,
+            urgency=round(urgency, 3),
         )
 
-    def boost_batch(
-        self, hits: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def boost_batch(self, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Apply live boosts to a list of search hits in-place."""
         for hit in hits:
             doc_id = hit.get("doc_id", "")
@@ -245,6 +255,7 @@ class LiveScoreBooster:
 
 
 # ── Live Feed Composer ────────────────────────────────────────────────────────
+
 
 class LiveFeedComposer:
     """
@@ -266,53 +277,56 @@ class LiveFeedComposer:
         # Live now row
         live_events = self.scheduler.get_live_now()
         if live_events:
-            rows.append({
-                "title": "Live Now",
-                "refresh_interval_s": 30,
-                "items": [
-                    {
-                        "doc_id": e.doc_id,
-                        "title": e.title,
-                        "score": e.ranking_boost,
-                        "live_state": "live",
-                        "viewers": e.peak_viewers,
-                        "seconds_remaining": round(e.seconds_remaining),
-                        "category": e.category,
-                    }
-                    for e in sorted(live_events, key=lambda e: -e.ranking_boost)
-                ],
-            })
+            rows.append(
+                {
+                    "title": "Live Now",
+                    "refresh_interval_s": 30,
+                    "items": [
+                        {
+                            "doc_id": e.doc_id,
+                            "title": e.title,
+                            "score": e.ranking_boost,
+                            "live_state": "live",
+                            "viewers": e.peak_viewers,
+                            "seconds_remaining": round(e.seconds_remaining),
+                            "category": e.category,
+                        }
+                        for e in sorted(live_events, key=lambda e: -e.ranking_boost)
+                    ],
+                }
+            )
 
         # Starting soon row
         countdown = self.scheduler.get_countdown()
         if countdown:
-            rows.append({
-                "title": "Starting Soon",
-                "refresh_interval_s": 60,
-                "items": [
-                    {
-                        "doc_id": e.doc_id,
-                        "title": e.title,
-                        "score": e.countdown_boost,
-                        "live_state": "countdown",
-                        "seconds_until_start": round(e.seconds_until_start),
-                        "category": e.category,
-                    }
-                    for e in sorted(countdown, key=lambda e: e.seconds_until_start)
-                ],
-            })
+            rows.append(
+                {
+                    "title": "Starting Soon",
+                    "refresh_interval_s": 60,
+                    "items": [
+                        {
+                            "doc_id": e.doc_id,
+                            "title": e.title,
+                            "score": e.countdown_boost,
+                            "live_state": "countdown",
+                            "seconds_until_start": round(e.seconds_until_start),
+                            "category": e.category,
+                        }
+                        for e in sorted(countdown, key=lambda e: e.seconds_until_start)
+                    ],
+                }
+            )
 
         return rows
 
-    def inject_into_feed(
-        self, feed_rows: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def inject_into_feed(self, feed_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Inject live rows at top of existing feed."""
         live_rows = self.compose_live_rows()
         return live_rows + feed_rows
 
 
 # ── WebSocket Event Stream ────────────────────────────────────────────────────
+
 
 class LiveRankingUpdateStream:
     """
@@ -337,7 +351,7 @@ class LiveRankingUpdateStream:
 
     def _build_update_payload(self) -> dict[str, Any]:
         live_events = self.scheduler.get_live_now()
-        countdown   = self.scheduler.get_countdown()
+        countdown = self.scheduler.get_countdown()
         return {
             "type": "live_ranking_update",
             "timestamp": time.time(),

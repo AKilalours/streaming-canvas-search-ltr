@@ -1,26 +1,29 @@
 # src/causal/propensity_logger.py
 """
-Real Propensity Logger — records every impression for causal inference
-======================================================================
-This is a REAL implementation, not a simulation.
+Propensity/event logger
+======================
 
-Records EVERY recommendation impression with:
+Records recommendation impressions with:
   - which item was shown (treatment)
   - which position it appeared in
   - the policy that generated it (logging policy)
-  - the propensity score P(shown | context) under that policy
+  - an exact propensity score supplied by the serving randomizer, if available
   - whether the user watched (outcome, recorded on playback event)
 
 This is the foundational data required for:
-  - Doubly-robust IPW uplift estimation
-  - Off-policy evaluation
-  - Counterfactual learning
+  - diagnostic per-decision SNIPS when exact randomized propensities exist
+
+This logger does not infer action probabilities or random assignment. The feed
+serving layer supplies the exact action distribution and marks verified events;
+the joined log supports diagnostic OPE, not policy promotion.
 
 Storage: Redis (live) + JSONL file (persistent)
 """
+
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 import uuid
@@ -28,22 +31,22 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 LOG_DIR = Path("reports/propensity_logs")
 
 
 @dataclass
 class ImpressionEvent:
     """One recommendation impression — the atomic unit of causal logging."""
+
     event_id: str = field(default_factory=lambda: str(uuid.uuid4())[:16])
     timestamp: float = field(default_factory=time.time)
 
     # Context
     user_id: str = ""
     session_id: str = ""
-    page_type: str = ""           # "feed" | "search" | "detail_row"
+    page_type: str = ""  # "feed" | "search" | "detail_row"
     row_title: str = ""
-    position: int = 0             # 0-indexed position in feed
+    position: int = 0  # 0-indexed position in feed
 
     # Item
     doc_id: str = ""
@@ -52,11 +55,15 @@ class ImpressionEvent:
     # Policy
     policy_name: str = "hybrid_ltr"
     ltr_score: float = 0.0
-    propensity: float = 0.0       # P(shown | context, policy) — CRITICAL for IPW
+    propensity: float | None = None  # exact P(action | context, logging policy)
+    randomized: bool = False
+    serving_verified: bool = False
+    ope_eligible: bool = False
+    context: dict[str, Any] = field(default_factory=dict)
 
     # Outcome (filled in later on watch event)
     clicked: bool = False
-    watch_pct: float = 0.0        # 0.0 = not watched, 1.0 = completed
+    watch_pct: float = 0.0  # 0.0 = not watched, 1.0 = completed
     outcome_recorded: bool = False
     outcome_ts: float = 0.0
 
@@ -74,75 +81,27 @@ class WatchEvent:
 
 
 class PropensityCalculator:
-    """
-    Computes propensity scores P(item shown | context, policy).
+    """Validate probabilities supplied by the actual serving policy.
 
-    For a softmax ranking policy:
-      P(item_i shown at position k) = softmax(score_i) * P(position k shown)
-
-    Position exposure model: position 0 = 1.0, decays with position.
+    A deterministic score or an assumed position exposure curve is not an
+    action propensity. This class intentionally does not infer probabilities.
     """
 
-    POSITION_EXPOSURE = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4, 0.35, 0.3]
-
-    def compute(
-        self,
-        item_score: float,
-        all_scores: list[float],
-        position: int,
-        temperature: float = 1.0,
-    ) -> float:
-        """
-        Propensity = P(item selected) * P(position exposed)
-
-        P(item selected) via softmax:
-          softmax_i = exp(score_i / T) / sum(exp(score_j / T))
-        """
-        import math
-        if not all_scores:
-            return 0.1
-
-        # Numerically stable softmax
-        max_s = max(all_scores)
-        exps = [math.exp((s - max_s) / max(temperature, 0.01)) for s in all_scores]
-        total = sum(exps)
-
-        item_idx = None
-        for i, s in enumerate(all_scores):
-            if abs(s - item_score) < 1e-6:
-                item_idx = i
-                break
-        if item_idx is None:
-            item_idx = 0
-
-        p_selected = exps[item_idx] / total if total > 0 else 0.1
-        p_exposed  = self.POSITION_EXPOSURE[min(position, len(self.POSITION_EXPOSURE)-1)]
-        propensity = p_selected * p_exposed
-
-        # Clip to avoid extreme weights in IPW
-        return round(max(0.01, min(0.99, propensity)), 6)
+    @staticmethod
+    def validate(selection_probability: float | None) -> float | None:
+        if selection_probability is None:
+            return None
+        probability = float(selection_probability)
+        if not 0 < probability <= 1:
+            raise ValueError("selection_probability must be in (0, 1]")
+        return probability
 
 
 class PropensityLogger:
     """
-    Real propensity logger. Writes every impression to:
-      1. Redis (for real-time OPE and uplift scoring)
-      2. JSONL file (for offline training data)
-
-    Usage in main.py feed/search endpoints:
-        logger = PropensityLogger()
-        for pos, hit in enumerate(hits):
-            event = logger.log_impression(
-                user_id=user_id,
-                doc_id=hit.doc_id,
-                ltr_score=hit.score,
-                all_scores=[h.score for h in hits],
-                position=pos,
-                policy_name="hybrid_ltr",
-            )
-
-        # Later, when user watches:
-        logger.record_outcome(event_id, watch_pct=0.85)
+    Stores every impression in JSONL and, when available, Redis. Only events
+    with exact supplied propensity, explicit randomized assignment, and a
+    recorded outcome are included in ``load_events_for_ope``.
     """
 
     def __init__(self) -> None:
@@ -157,9 +116,11 @@ class PropensityLogger:
     def _connect_redis(self):
         try:
             import redis
+
             r = redis.Redis.from_url(
                 os.environ.get("REDIS_URL", "redis://redis:6379/0"),
-                decode_responses=True, socket_timeout=1,
+                decode_responses=True,
+                socket_timeout=1,
             )
             r.ping()
             return r
@@ -171,18 +132,34 @@ class PropensityLogger:
         user_id: str,
         doc_id: str,
         ltr_score: float,
-        all_scores: list[float],
-        position: int,
+        all_scores: list[float] | None = None,
+        position: int = 0,
+        propensity: float | None = None,
+        randomized: bool = False,
+        serving_verified: bool = False,
         policy_name: str = "hybrid_ltr",
         session_id: str = "",
         page_type: str = "feed",
         row_title: str = "",
         title: str = "",
+        event_id: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> ImpressionEvent:
-        propensity = self._calculator.compute(ltr_score, all_scores, position)
+        if not user_id or not doc_id or len(user_id) > 128 or len(doc_id) > 128:
+            raise ValueError("user_id and doc_id are required and must be at most 128 characters")
+        if position < 0 or not math.isfinite(float(ltr_score)):
+            raise ValueError("position must be non-negative and ltr_score finite")
+        propensity = self._calculator.validate(propensity)
+        if context is not None:
+            try:
+                if len(json.dumps(context, allow_nan=False)) > 100_000:
+                    raise ValueError("context must be at most 100 KB")
+            except (TypeError, ValueError) as exc:
+                raise ValueError("context must be JSON-serializable and finite") from exc
         event = ImpressionEvent(
+            event_id=event_id or str(uuid.uuid4())[:16],
             user_id=user_id,
-            session_id=session_id or f"sess_{user_id}_{int(time.time()//300)}",
+            session_id=session_id or f"sess_{user_id}_{int(time.time() // 300)}",
             page_type=page_type,
             row_title=row_title,
             position=position,
@@ -191,6 +168,10 @@ class PropensityLogger:
             policy_name=policy_name,
             ltr_score=round(ltr_score, 6),
             propensity=propensity,
+            randomized=bool(randomized),
+            serving_verified=bool(serving_verified),
+            ope_eligible=bool(randomized and serving_verified and propensity is not None),
+            context=context or {},
         )
 
         self._write(event)
@@ -202,6 +183,9 @@ class PropensityLogger:
         watch_pct: float,
         clicked: bool = True,
     ) -> None:
+        watch_pct = float(watch_pct)
+        if not math.isfinite(watch_pct) or not 0.0 <= watch_pct <= 1.0:
+            raise ValueError("watch_pct must be in [0, 1]")
         outcome = {
             "event_id": event_id,
             "watch_pct": round(watch_pct, 4),
@@ -261,20 +245,55 @@ class PropensityLogger:
         for line in lines[-n:]:
             try:
                 ev = json.loads(line)
-                if ev.get("propensity", 0) < min_propensity:
+                propensity = ev.get("propensity")
+                if (
+                    not ev.get("ope_eligible")
+                    or propensity is None
+                    or not ev.get("serving_verified")
+                    or not ev.get("randomized")
+                    or propensity < min_propensity
+                    or not 0 < propensity <= 1
+                ):
                     continue
                 outcome = outcomes.get(ev["event_id"], {})
-                events.append({
-                    "doc_id": ev["doc_id"],
-                    "user_id": ev["user_id"],
-                    "shown": True,
-                    "watched": outcome.get("watch_pct", 0) >= 0.25,
-                    "watch_pct": outcome.get("watch_pct", 0.0),
-                    "propensity": ev["propensity"],
-                    "position": ev["position"],
-                    "policy_name": ev["policy_name"],
-                    "timestamp": ev["timestamp"],
-                })
+                if not outcome:
+                    continue
+                context = ev.get("context", {})
+                behavior = (
+                    context.get("behavior_probabilities", {}) if isinstance(context, dict) else {}
+                )
+                target_scores = (
+                    context.get("target_scores", {}) if isinstance(context, dict) else {}
+                )
+                selected_probability = (
+                    behavior.get(ev.get("doc_id")) if isinstance(behavior, dict) else None
+                )
+                if (
+                    not isinstance(selected_probability, (int, float))
+                    or not isinstance(target_scores, dict)
+                    or ev.get("doc_id") not in target_scores
+                    or not math.isclose(
+                        float(selected_probability), float(propensity), rel_tol=1e-8
+                    )
+                    or not math.isclose(sum(map(float, behavior.values())), 1.0, rel_tol=1e-6)
+                ):
+                    continue
+                events.append(
+                    {
+                        "event_id": ev["event_id"],
+                        "doc_id": ev["doc_id"],
+                        "user_id": ev["user_id"],
+                        "shown": True,
+                        "watched": float(outcome.get("watch_pct", 0.0)),
+                        "clicked": bool(outcome.get("clicked", False)),
+                        "watch_pct": outcome.get("watch_pct", 0.0),
+                        "propensity": propensity,
+                        "position": ev["position"],
+                        "policy_name": ev["policy_name"],
+                        "timestamp": ev["timestamp"],
+                        "context": context,
+                    }
+                )
             except Exception:
                 pass
 
@@ -283,13 +302,22 @@ class PropensityLogger:
     def stats(self) -> dict[str, Any]:
         n_impressions = 0
         n_outcomes = 0
+        n_ope_eligible = 0
         if self._log_path.exists():
-            n_impressions = sum(1 for _ in self._log_path.open())
+            lines = self._log_path.read_text(encoding="utf-8").splitlines()
+            n_impressions = len(lines)
+            for line in lines:
+                try:
+                    event = json.loads(line)
+                    n_ope_eligible += int(bool(event.get("ope_eligible")))
+                except (json.JSONDecodeError, TypeError):
+                    continue
         if self._outcome_path.exists():
-            n_outcomes = sum(1 for _ in self._outcome_path.open())
+            n_outcomes = sum(1 for _ in self._outcome_path.open(encoding="utf-8"))
         return {
             "n_impressions": n_impressions,
             "n_outcomes": n_outcomes,
+            "n_ope_eligible_impressions": n_ope_eligible,
             "outcome_rate": round(n_outcomes / max(1, n_impressions), 4),
             "log_path": str(self._log_path),
             "redis_connected": self._redis is not None,

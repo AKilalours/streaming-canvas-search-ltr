@@ -3,14 +3,17 @@
 Redis-backed Feature Store
 ============================
 Serves pre-computed user and item features for online serving.
-Separates offline feature computation from online serving — 
+Separates offline feature computation from online serving —
 the same pattern used by Netflix, Uber, and Airbnb ML platforms.
 
 Offline: features computed by Metaflow/Airflow pipeline, stored in Redis
 Online: API reads features at serving time with <1ms lookup
 """
+
 from __future__ import annotations
-import json, time
+
+import json
+import time
 from typing import Any
 
 
@@ -25,8 +28,8 @@ class FeatureStore:
         self.redis = redis_client
         self.user_prefix = "fs:user:"
         self.item_prefix = "fs:item:"
-        self.ttl_user = 86400      # 24h — user features refresh daily
-        self.ttl_item = 604800     # 7d  — item features refresh weekly
+        self.ttl_user = 86400  # 24h — user features refresh daily
+        self.ttl_item = 604800  # 7d  — item features refresh weekly
 
     def put_user_features(self, user_id: str, features: dict) -> bool:
         if not self.redis:

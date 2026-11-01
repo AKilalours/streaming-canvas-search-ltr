@@ -27,6 +27,7 @@ log = get_logger("eval.evaluate")
 def _infer_embed_model_name_from_emb_dir(emb_dir: Path) -> str:
     """Infer model name from meta.json first, then directory name."""
     import json as _json
+
     meta = emb_dir / "meta.json"
     if meta.exists():
         try:
@@ -51,7 +52,9 @@ def _dense_topk(
     doc_ids: list[str],
     k: int,
 ) -> list[tuple[str, float]]:
-    q = model.encode([query], normalize_embeddings=True, convert_to_numpy=True).astype(np.float32)[0]
+    q = model.encode([query], normalize_embeddings=True, convert_to_numpy=True).astype(np.float32)[
+        0
+    ]
     scores = doc_embs @ q
     k = min(k, scores.shape[0])
     idx = np.argpartition(-scores, kth=k - 1)[:k]
@@ -90,7 +93,7 @@ def _bm25_query(bm25: Any, qtext: str, k: int) -> list[tuple[str, float]]:
 
 
 def _find_method(cfg: dict[str, Any], name: str) -> dict[str, Any] | None:
-    for m in (cfg.get("methods") or []):
+    for m in cfg.get("methods") or []:
         if isinstance(m, dict) and m.get("name") == name:
             return m
     return None
@@ -139,7 +142,9 @@ def _best_ltr_path(cfg: dict[str, Any]) -> Path | None:
 # ---------------------------------------------------------------------
 # Load inputs from your current YAML layout
 # ---------------------------------------------------------------------
-def load_eval_inputs_from_cfg(cfg: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, Any]]:
+def load_eval_inputs_from_cfg(
+    cfg: dict[str, Any],
+) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, Any]]:
     eval_cfg = cfg.get("eval", {}) or {}
     processed_dir = Path(str(eval_cfg.get("dataset_processed_dir", "data/processed/nfcorpus")))
     split = str(eval_cfg.get("split", "test"))
@@ -247,7 +252,12 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
     dense_k_hyltr = _int(hyltr_m, "dense_candidate_k", dense_k_max)
 
     # Ranked lists output
-    ranked: dict[str, dict[str, list[str]]] = {"bm25": {}, "dense": {}, "hybrid": {}, "hybrid_ltr": {}}
+    ranked: dict[str, dict[str, list[str]]] = {
+        "bm25": {},
+        "dense": {},
+        "hybrid": {},
+        "hybrid_ltr": {},
+    }
     # Keep enough of each ranked list to score recall@recall_k correctly.
     # Truncating to k here made recall@100 mathematically equal to recall@10.
     keep_k = max(k, recall_k)
@@ -274,13 +284,17 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
         oracle["dense"].append(_oracle_ndcg_at_k(qr, dense_ids_full[:dense_k_max], oracle_k))
 
         # hybrid (use method-specific candidate sizes)
-        hy_hits = hybrid_merge(bm25_hits_full[:bm25_k_hy], dense_hits_full[:dense_k_hy], alpha=alpha_hybrid)
+        hy_hits = hybrid_merge(
+            bm25_hits_full[:bm25_k_hy], dense_hits_full[:dense_k_hy], alpha=alpha_hybrid
+        )
         hy_ids = [d for d, _ in hy_hits]
         ranked["hybrid"][qid] = hy_ids[:keep_k]
         oracle["hybrid"].append(_oracle_ndcg_at_k(qr, hy_ids[: len(hy_ids)], oracle_k))
 
         # hybrid_ltr
-        hy2_hits = hybrid_merge(bm25_hits_full[:bm25_k_hyltr], dense_hits_full[:dense_k_hyltr], alpha=alpha_hyltr)
+        hy2_hits = hybrid_merge(
+            bm25_hits_full[:bm25_k_hyltr], dense_hits_full[:dense_k_hyltr], alpha=alpha_hyltr
+        )
         hy2_ids = [d for d, _ in hy2_hits]
 
         if reranker is None:
@@ -316,7 +330,9 @@ def run_eval(cfg: dict[str, Any]) -> dict[str, Any]:
             {
                 "method": method_name,
                 **agg,
-                "oracle_ndcg@10": float(sum(oracle[method_name]) / max(1, len(oracle[method_name]))),
+                "oracle_ndcg@10": float(
+                    sum(oracle[method_name]) / max(1, len(oracle[method_name]))
+                ),
             }
         )
 

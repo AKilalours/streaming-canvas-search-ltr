@@ -11,8 +11,12 @@ Pattern:
   - Differences logged to Redis for offline analysis
   - Promotion decision based on shadow metrics
 """
+
 from __future__ import annotations
-import json, time, hashlib
+
+import hashlib
+import json
+import time
 from typing import Any
 
 
@@ -39,7 +43,7 @@ class ShadowRunner:
         User always gets primary results.
         """
         primary_ids = [r.get("doc_id", "") for r in primary_results[:10]]
-        shadow_ids  = [r.get("doc_id", "") for r in shadow_results[:10]]
+        shadow_ids = [r.get("doc_id", "") for r in shadow_results[:10]]
 
         # Rank overlap — how similar are the two lists?
         overlap_10 = len(set(primary_ids[:10]) & set(shadow_ids[:10]))
@@ -61,7 +65,9 @@ class ShadowRunner:
             "avg_position_diff": round(sum(pos_diffs) / len(pos_diffs), 2) if pos_diffs else 0,
             "primary_top3": primary_ids[:3],
             "shadow_top3": shadow_ids[:3],
-            "top1_agreement": primary_ids[0] == shadow_ids[0] if primary_ids and shadow_ids else False,
+            "top1_agreement": primary_ids[0] == shadow_ids[0]
+            if primary_ids and shadow_ids
+            else False,
             "timestamp": time.time(),
         }
 

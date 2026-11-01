@@ -359,33 +359,34 @@ body::before {
     <div class="logo">Stream<span>Lens</span></div>
     <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">SQL Explorer</div>
     <div class="header-right">
-      <div class="badge badge-green">PostgreSQL 14+</div>
-      <div class="badge badge-blue">8 Tables</div>
-      <div class="badge badge-orange">10 Queries</div>
+      <div class="badge badge-green">SQL schema example</div>
+      <div class="badge badge-blue">8 example tables</div>
+      <div class="badge badge-orange">10 sample queries</div>
     </div>
   </div>
 
   <!-- Title -->
-  <div class="page-title">SQL Data Explorer</div>
-  <div class="page-sub">-- StreamLens production schema · SELECT, JOIN, GROUP BY, window functions, IPW causal inference</div>
+  <div class="page-title">SQL Query Preview</div>
+  <div class="page-sub">-- Query examples with precomputed illustrative rows; no database connection is made</div>
+  <div style="margin:-16px 0 24px;padding:12px 14px;border:1px solid rgba(249,115,22,.35);border-radius:6px;background:rgba(249,115,22,.07);color:#fdba74;font:12px var(--mono)">Sample data only — displayed result rows, counts, timestamps, causal estimates, and runtimes are fixtures, not live database or production measurements.</div>
 
   <!-- Stats bar -->
   <div class="stats-bar">
     <div class="stat-card">
-      <div class="stat-val">33.8M</div>
-      <div class="stat-lbl">ratings rows</div>
+      <div class="stat-val">Sample</div>
+      <div class="stat-lbl">ratings data</div>
     </div>
     <div class="stat-card">
-      <div class="stat-val" style="color:var(--cyan)">1.29M</div>
+      <div class="stat-val" style="color:var(--cyan)">Sample</div>
       <div class="stat-lbl">co_watch_pairs</div>
     </div>
     <div class="stat-card">
       <div class="stat-val" style="color:var(--purple)">8</div>
-      <div class="stat-lbl">tables + indexes</div>
+      <div class="stat-lbl">example tables + indexes</div>
     </div>
     <div class="stat-card">
       <div class="stat-val" style="color:var(--orange)">10</div>
-      <div class="stat-lbl">production queries</div>
+      <div class="stat-lbl">sample queries</div>
     </div>
   </div>
 
@@ -393,8 +394,8 @@ body::before {
   <div class="schema-bar" id="schemaPills">
     <div class="table-pill" onclick="showSchema('users')">users</div>
     <div class="table-pill" onclick="showSchema('items')">items</div>
-    <div class="table-pill" onclick="showSchema('ratings')">ratings (33.8M)</div>
-    <div class="table-pill" onclick="showSchema('co_watch_pairs')">co_watch_pairs (1.29M)</div>
+    <div class="table-pill" onclick="showSchema('ratings')">ratings (example)</div>
+    <div class="table-pill" onclick="showSchema('co_watch_pairs')">co_watch_pairs (example)</div>
     <div class="table-pill" onclick="showSchema('recommendations')">recommendations</div>
     <div class="table-pill" onclick="showSchema('events')">events</div>
     <div class="table-pill" onclick="showSchema('explanations')">explanations</div>
@@ -416,7 +417,7 @@ body::before {
           <div class="sql-toolbar-title">query.sql</div>
           <button class="run-btn" onclick="runQuery()">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            Run Query
+            Show Sample Rows
           </button>
         </div>
         <div class="sql-code" id="sqlCode" contenteditable="true" spellcheck="false"></div>
@@ -431,7 +432,7 @@ body::before {
         <div class="results-table-wrap" id="resultsBody">
           <div class="empty-state">
             <div class="icon">⬆</div>
-            Select a query and click Run Query
+            Select a query to preview sample rows
           </div>
         </div>
       </div>
@@ -460,7 +461,7 @@ const SCHEMAS = {
     ['genres', 'TEXT', 'comma-separated: Crime,Drama'],
     ['tags', 'TEXT', 'comma-separated: cult film,twist'],
     ['item_popularity', 'FLOAT', 'normalised co-watch popularity'],
-    ['avg_rating', 'FLOAT', 'from 33.8M ratings'],
+    ['avg_rating', 'FLOAT', 'example schema field'],
     ['rating_count', 'INTEGER', 'NOT NULL'],
   ],
   ratings: [
@@ -518,7 +519,7 @@ const SCHEMAS = {
     ['artifact_type', 'VARCHAR(32)', 'bm25|dense|ltr|calibration'],
     ['ndcg_at_10', 'FLOAT', 'measured on held-out set'],
     ['all_gates_pass', 'BOOLEAN', '9 quality gates must pass'],
-    ['is_active', 'BOOLEAN', 'currently serving production'],
+    ['is_active', 'BOOLEAN', 'active artifact flag in the example schema'],
     ['s3_path', 'TEXT', 'MinIO S3 artifact path'],
   ],
 };
@@ -936,24 +937,16 @@ function selectQuery(i) {
   const code = document.getElementById('sqlCode');
   code.innerHTML = highlightSQL(QUERIES[i].sql);
   document.getElementById('resultsBody').innerHTML =
-    '<div class="empty-state"><div class="icon">▶</div>Click Run Query to execute</div>';
+    '<div class="empty-state"><div class="icon">▶</div>Click Show Sample Rows to preview fixtures</div>';
   document.getElementById('resultsTitle').textContent = `${QUERIES[i].num} — ${QUERIES[i].name}`;
   document.getElementById('resultsCount').textContent = '';
   document.getElementById('resultsTime').textContent = '';
 }
 
-// ── Run query (shows precomputed results) ────────────────────────────
+// ── Show illustrative precomputed rows (no SQL is sent to a database) ─
 function runQuery() {
   const q = QUERIES[activeQuery];
-  const t0 = performance.now();
-  // Simulate query execution with slight delay for realism
-  setTimeout(() => {
-    const elapsed = Math.round(performance.now() - t0 + Math.random()*8 + 2);
-    renderResults(q.results, elapsed, q);
-  }, 120 + Math.random()*80);
-  // Show loading
-  document.getElementById('resultsBody').innerHTML =
-    '<div class="empty-state"><div class="icon">⏳</div>Executing query...</div>';
+  renderResults(q.results, null, q);
 }
 
 // ── Render results ───────────────────────────────────────────────────
@@ -974,7 +967,7 @@ function renderResults(data, ms, q) {
   document.getElementById('resultsBody').innerHTML =
     `<table class="results-table">${thead}${tbody}</table>`;
   document.getElementById('resultsCount').textContent = `${data.rows.length} rows`;
-  document.getElementById('resultsTime').textContent = `${ms}ms`;
+  document.getElementById('resultsTime').textContent = 'illustrative fixture';
 }
 
 // ── Simple SQL syntax highlighter ────────────────────────────────────

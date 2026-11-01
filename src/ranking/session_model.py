@@ -14,6 +14,7 @@ Closes:
 
 Netflix 2026 standard: user state = f(history, recency, negatives, session_context)
 """
+
 from __future__ import annotations
 
 import math
@@ -22,20 +23,19 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-
-HALF_LIFE_DAYS   = 14.0   # interaction weight halves every 14 days
-MIN_CONFIDENCE   = 0.1    # cold-start confidence floor
-COLD_START_N     = 5      # fewer than N interactions = cold start
-NEG_WEIGHT       = -2.0   # negative feedback weight multiplier
-SKIP_WEIGHT      = -0.5   # skip (< 10% watched) weight
+HALF_LIFE_DAYS = 14.0  # interaction weight halves every 14 days
+MIN_CONFIDENCE = 0.1  # cold-start confidence floor
+COLD_START_N = 5  # fewer than N interactions = cold start
+NEG_WEIGHT = -2.0  # negative feedback weight multiplier
+SKIP_WEIGHT = -0.5  # skip (< 10% watched) weight
 
 
 @dataclass
 class Interaction:
     doc_id: str
-    timestamp: float           # unix epoch
-    watch_pct: float           # 0.0 - 1.0
-    explicit_rating: int | None = None   # 1-5 or None
+    timestamp: float  # unix epoch
+    watch_pct: float  # 0.0 - 1.0
+    explicit_rating: int | None = None  # 1-5 or None
     skipped: bool = False
     genres: list[str] = field(default_factory=list)
     language: str = ""
@@ -44,16 +44,16 @@ class Interaction:
 @dataclass
 class UserState:
     user_id: str
-    genre_affinities: dict[str, float]     # genre -> weighted score
+    genre_affinities: dict[str, float]  # genre -> weighted score
     language_affinities: dict[str, float]
-    recent_doc_ids: list[str]              # last 20, newest first
+    recent_doc_ids: list[str]  # last 20, newest first
     interaction_count: int
-    negative_doc_ids: set[str]             # explicitly disliked
+    negative_doc_ids: set[str]  # explicitly disliked
     cold_start: bool
-    confidence: float                      # 0-1, how reliable the profile is
+    confidence: float  # 0-1, how reliable the profile is
     last_updated: float
-    dominant_genres: list[str]             # top-3 genres
-    session_intent_drift: float            # 0=stable, 1=drifting
+    dominant_genres: list[str]  # top-3 genres
+    session_intent_drift: float  # 0=stable, 1=drifting
 
 
 @dataclass
@@ -63,7 +63,7 @@ class SessionContext:
     queries: list[str] = field(default_factory=list)
     viewed_doc_ids: list[str] = field(default_factory=list)
     intent_sequence: list[str] = field(default_factory=list)
-    pivot_detected: bool = False   # user switched topic mid-session
+    pivot_detected: bool = False  # user switched topic mid-session
 
 
 class TemporalUserStateModel:
@@ -81,9 +81,9 @@ class TemporalUserStateModel:
     def record(self, user_id: str, interaction: Interaction) -> None:
         # Detect negative signal
         is_negative = (
-            interaction.skipped or
-            interaction.watch_pct < 0.1 or
-            (interaction.explicit_rating is not None and interaction.explicit_rating <= 2)
+            interaction.skipped
+            or interaction.watch_pct < 0.1
+            or (interaction.explicit_rating is not None and interaction.explicit_rating <= 2)
         )
         if is_negative:
             self._negatives[user_id].add(interaction.doc_id)
@@ -138,7 +138,7 @@ class TemporalUserStateModel:
         drift = 0.0
         if n >= 10:
             early = set(g for ix in interactions[:5] for g in ix.genres)
-            late  = set(g for ix in interactions[-5:] for g in ix.genres)
+            late = set(g for ix in interactions[-5:] for g in ix.genres)
             overlap = len(early & late) / max(1, len(early | late))
             drift = 1.0 - overlap
 
@@ -165,7 +165,7 @@ class TemporalUserStateModel:
         doc_id = doc.get("doc_id", "")
 
         if doc_id in state.negative_doc_ids:
-            return -10.0   # hard filter
+            return -10.0  # hard filter
 
         text = (doc.get("text", "") + " " + doc.get("title", "")).lower()
         score = 0.0
@@ -179,7 +179,7 @@ class TemporalUserStateModel:
             score += state.language_affinities[lang] * 0.05
 
         if doc_id in state.recent_doc_ids:
-            score -= 2.0   # penalise rewatch unless rewatch intent
+            score -= 2.0  # penalise rewatch unless rewatch intent
 
         return round(score * state.confidence, 4)
 
@@ -206,7 +206,7 @@ class SessionEncoder:
         ctx.intent_sequence.append(intent)
         if len(ctx.intent_sequence) >= 3:
             recent = ctx.intent_sequence[-3:]
-            if len(set(recent)) == 3:   # 3 different intents = pivot
+            if len(set(recent)) == 3:  # 3 different intents = pivot
                 ctx.pivot_detected = True
 
     def get_session(self, user_id: str) -> SessionContext | None:
