@@ -13,7 +13,7 @@ Run commands from the repository root unless a command says otherwise. Use the p
 
 ## Experiments
 
-Exploratory or one-off scripts live under `experiments/`, grouped by modality or purpose. The media group includes `media/build_readme_reel.py`, which captures a real local `/search` response into the README MP4/GIF assets. They are not production entry points and may require optional services, datasets, or credentials. Read the script before running it; some experiments provision or alter external resources.
+Exploratory or one-off scripts live under `experiments/`, grouped by modality or purpose. The media group includes `media/build_readme_reel.py`, which captures a real local `/search` response into the README MP4/GIF assets, and `media/build_ui_tour.py`, which assembles the checked-in UI screenshots into MP4/GIF walkthrough assets. They are not production entry points and may require optional services, datasets, or credentials. Read the script before running it; some experiments provision or alter external resources.
 
 ## Paths
 
