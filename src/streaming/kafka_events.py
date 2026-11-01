@@ -3,9 +3,13 @@ StreamLens — Kafka Event Streaming
 Real-time user interaction events published to Kafka topics.
 Falls back to Redis Streams if Kafka unavailable.
 """
+
 from __future__ import annotations
-import json, time, os
-from dataclasses import dataclass, asdict
+
+import json
+import os
+import time
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -14,7 +18,7 @@ class InteractionEvent:
     user_id: str
     doc_id: str
     title: str
-    event_type: str      # click | watch_start | watch_complete | skip | thumbs_up
+    event_type: str  # click | watch_start | watch_complete | skip | thumbs_up
     watch_pct: float = 0.0
     position: int = 0
     query: str = ""
@@ -26,7 +30,9 @@ class InteractionEvent:
         if not self.timestamp:
             self.timestamp = time.time()
         if not self.event_id:
-            import uuid; self.event_id = str(uuid.uuid4())
+            import uuid
+
+            self.event_id = str(uuid.uuid4())
 
 
 @dataclass
@@ -61,9 +67,9 @@ class ModelUpdateEvent:
 
 class StreamLensProducer:
     TOPICS = {
-        "interactions":  "streamlens.interactions",
-        "impressions":   "streamlens.impressions",
-        "feedback":      "streamlens.feedback",
+        "interactions": "streamlens.interactions",
+        "impressions": "streamlens.impressions",
+        "feedback": "streamlens.feedback",
         "model_updates": "streamlens.model_updates",
     }
 
@@ -74,11 +80,14 @@ class StreamLensProducer:
 
         try:
             from kafka import KafkaProducer
+
             self._kafka = KafkaProducer(
                 bootstrap_servers=bootstrap_servers,
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 key_serializer=lambda k: k.encode("utf-8") if k else None,
-                acks="all", retries=3, max_block_ms=1000,
+                acks="all",
+                retries=3,
+                max_block_ms=1000,
             )
             self._mode = "kafka"
             print(f"[Kafka] Connected to {bootstrap_servers}")
@@ -88,14 +97,15 @@ class StreamLensProducer:
         if self._mode == "noop" and redis_fallback:
             try:
                 import redis
+
                 self._redis = redis.Redis.from_url(
-                    os.environ.get("REDIS_URL", "redis://localhost:6379"),
-                    decode_responses=True)
+                    os.environ.get("REDIS_URL", "redis://localhost:6379"), decode_responses=True
+                )
                 self._redis.ping()
                 self._mode = "redis_streams"
                 print("[Kafka] Using Redis Streams fallback")
-            except Exception as e:
-                print(f"[Kafka] Redis also unavailable — events dropped")
+            except Exception:
+                print("[Kafka] Redis also unavailable — events dropped")
 
     def publish_interaction(self, event: InteractionEvent) -> bool:
         return self._publish("interactions", event.user_id, asdict(event))
@@ -113,31 +123,39 @@ class StreamLensProducer:
                 self._kafka.send(topic, key=key, value=payload).get(timeout=1.0)
                 return True
             except Exception as e:
-                print(f"[Kafka] Publish failed: {e}"); return False
+                print(f"[Kafka] Publish failed: {e}")
+                return False
         elif self._mode == "redis_streams":
             try:
-                self._redis.xadd(f"streamlens:{topic_key}",
-                    {"key": key, "payload": json.dumps(payload)}, maxlen=10000)
+                self._redis.xadd(
+                    f"streamlens:{topic_key}",
+                    {"key": key, "payload": json.dumps(payload)},
+                    maxlen=10000,
+                )
                 return True
             except Exception as e:
-                print(f"[Redis Streams] Publish failed: {e}"); return False
+                print(f"[Redis Streams] Publish failed: {e}")
+                return False
         return False
 
     def close(self):
         if self._kafka:
-            self._kafka.flush(); self._kafka.close()
+            self._kafka.flush()
+            self._kafka.close()
 
 
 class StreamLensConsumer:
     def __init__(self, redis_url="redis://localhost:6379"):
         try:
             import redis
+
             self._redis = redis.Redis.from_url(redis_url, decode_responses=True)
         except Exception:
             self._redis = None
 
     def process_interaction(self, event: dict) -> None:
-        if not self._redis: return
+        if not self._redis:
+            return
         doc_id = event.get("doc_id", "")
         user_id = event.get("user_id", "")
         evt_type = event.get("event_type", "")
@@ -158,22 +176,29 @@ class StreamLensConsumer:
         self._redis.incr("rt:interaction_count")
 
     def get_realtime_popularity(self, doc_id: str) -> int:
-        if not self._redis: return 0
-        try: return int(self._redis.get(f"rt:popularity:{doc_id}") or 0)
-        except Exception: return 0
+        if not self._redis:
+            return 0
+        try:
+            return int(self._redis.get(f"rt:popularity:{doc_id}") or 0)
+        except Exception:
+            return 0
 
     def should_retrain(self, threshold=10000) -> bool:
-        if not self._redis: return False
-        try: return int(self._redis.get("rt:interaction_count") or 0) >= threshold
-        except Exception: return False
+        if not self._redis:
+            return False
+        try:
+            return int(self._redis.get("rt:interaction_count") or 0) >= threshold
+        except Exception:
+            return False
 
 
 _PRODUCER = None
+
 
 def get_producer() -> StreamLensProducer:
     global _PRODUCER
     if _PRODUCER is None:
         _PRODUCER = StreamLensProducer(
-            bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP", "kafka:9092"),
-            redis_fallback=True)
+            bootstrap_servers=os.environ.get("KAFKA_BOOTSTRAP", "kafka:9092"), redis_fallback=True
+        )
     return _PRODUCER

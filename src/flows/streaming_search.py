@@ -38,14 +38,21 @@ def _start_uvicorn(host: str, port: int) -> subprocess.Popen | None:
     env["PYTHONPATH"] = "src" + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
 
     cmd = [
-        sys.executable, "-m", "uvicorn",
+        sys.executable,
+        "-m",
+        "uvicorn",
         "app.main:app",
-        "--host", host,
-        "--port", str(port),
-        "--log-level", "warning",
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--log-level",
+        "warning",
     ]
     print(f"[latency] starting uvicorn: {' '.join(cmd)}", flush=True)
-    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
 
     for _ in range(60):
         if _health_ok(base + "/health"):
@@ -89,7 +96,9 @@ def _dump_yaml(obj: dict[str, Any], path: Path) -> None:
 class StreamingSearchLTRFlow(FlowSpec):
     dataset = Parameter("dataset", default="nfcorpus")
     split = Parameter("split", default="test")
-    model = Parameter("model", default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+    model = Parameter(
+        "model", default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
     batch_size = Parameter("batch_size", default=32, type=int)
 
     @step
@@ -121,7 +130,16 @@ class StreamingSearchLTRFlow(FlowSpec):
         if self.bm25_artifact.exists():
             print(f"[SKIP] BM25 exists: {self.bm25_artifact}", flush=True)
         else:
-            _run([sys.executable, "scripts/build_bm25.py", "--corpus", str(self.processed_corpus), "--out", str(self.bm25_artifact)])
+            _run(
+                [
+                    sys.executable,
+                    "scripts/build_bm25.py",
+                    "--corpus",
+                    str(self.processed_corpus),
+                    "--out",
+                    str(self.bm25_artifact),
+                ]
+            )
         self.next(self.build_embeddings)
 
     @step
@@ -131,13 +149,20 @@ class StreamingSearchLTRFlow(FlowSpec):
         if emb_file.exists():
             print(f"[SKIP] embeddings exist: {emb_file}", flush=True)
         else:
-            _run([
-                sys.executable, "scripts/build_embeddings.py",
-                "--corpus", str(self.processed_corpus),
-                "--out_dir", str(self.emb_dir),
-                "--model", self.model,
-                "--batch_size", str(int(self.batch_size)),
-            ])
+            _run(
+                [
+                    sys.executable,
+                    "scripts/build_embeddings.py",
+                    "--corpus",
+                    str(self.processed_corpus),
+                    "--out_dir",
+                    str(self.emb_dir),
+                    "--model",
+                    self.model,
+                    "--batch_size",
+                    str(int(self.batch_size)),
+                ]
+            )
         self.next(self.train_ltr)
 
     @step
@@ -241,7 +266,11 @@ class StreamingSearchLTRFlow(FlowSpec):
             self.bm25_artifact,
         ]:
             if p.exists():
-                (run_dir / p.name).write_text(p.read_text(encoding="utf-8"), encoding="utf-8") if p.suffix in {".json", ".yaml", ".txt"} else (run_dir / p.name).write_bytes(p.read_bytes())
+                (run_dir / p.name).write_text(
+                    p.read_text(encoding="utf-8"), encoding="utf-8"
+                ) if p.suffix in {".json", ".yaml", ".txt"} else (run_dir / p.name).write_bytes(
+                    p.read_bytes()
+                )
 
         # Record status
         (run_dir / "run_meta.json").write_text(
@@ -283,15 +312,19 @@ class StreamingSearchLTRFlow(FlowSpec):
             current.card.append(Markdown("## metrics.json\n**MISSING**"))
 
         if latency_path.exists():
-            l = json.loads(latency_path.read_text(encoding="utf-8"))
+            latency_report = json.loads(latency_path.read_text(encoding="utf-8"))
             current.card.append(Markdown("## latency.json"))
-            current.card.append(Markdown("```json\n" + json.dumps(l, indent=2) + "\n```"))
+            current.card.append(
+                Markdown("```json\n" + json.dumps(latency_report, indent=2) + "\n```")
+            )
         else:
             current.card.append(Markdown("## latency.json\n**MISSING**"))
 
         if latency_txt.exists():
             current.card.append(Markdown("## latency_bench.txt (head)"))
-            current.card.append(Markdown("```text\n" + latency_txt.read_text(encoding="utf-8")[:8000] + "\n```"))
+            current.card.append(
+                Markdown("```text\n" + latency_txt.read_text(encoding="utf-8")[:8000] + "\n```")
+            )
 
         current.card.append(Markdown(f"## Run artifacts\nSaved to: `reports/runs/{self.run_id}/`"))
 

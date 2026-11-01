@@ -8,61 +8,72 @@ Unified content schema and ranking across:
 Honest claim: "cross-format ranking support exists;
 production delivery for those formats is out of scope."
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
 
 class ContentFormat(str, Enum):
-    FILM        = "film"
-    SERIES      = "series"
-    LIVE_EVENT  = "live_event"
-    PODCAST     = "podcast"
-    GAME        = "game"
+    FILM = "film"
+    SERIES = "series"
+    LIVE_EVENT = "live_event"
+    PODCAST = "podcast"
+    GAME = "game"
 
 
 # Format-specific reward weights
 FORMAT_REWARD_WEIGHTS = {
-    ContentFormat.FILM:       {"completion": 1.5, "rewatch": 1.2, "share": 0.8},
-    ContentFormat.SERIES:     {"completion": 2.0, "binge_next": 2.5, "return_7d": 2.0},
+    ContentFormat.FILM: {"completion": 1.5, "rewatch": 1.2, "share": 0.8},
+    ContentFormat.SERIES: {"completion": 2.0, "binge_next": 2.5, "return_7d": 2.0},
     ContentFormat.LIVE_EVENT: {"concurrent_viewers": 3.0, "chat_activity": 1.5},
-    ContentFormat.PODCAST:    {"listen_pct": 1.0, "subscribe": 2.0, "share": 1.5},
-    ContentFormat.GAME:       {"session_length": 1.8, "return_daily": 2.2},
+    ContentFormat.PODCAST: {"listen_pct": 1.0, "subscribe": 2.0, "share": 1.5},
+    ContentFormat.GAME: {"session_length": 1.8, "return_daily": 2.2},
 }
 
 # Surface-aware ranking: what goes on which row
 SURFACE_FORMAT_MIX = {
-    "home":        {ContentFormat.FILM: 0.5, ContentFormat.SERIES: 0.35,
-                    ContentFormat.LIVE_EVENT: 0.1, ContentFormat.PODCAST: 0.05},
-    "new_popular": {ContentFormat.FILM: 0.4, ContentFormat.SERIES: 0.4,
-                    ContentFormat.LIVE_EVENT: 0.15, ContentFormat.PODCAST: 0.05},
-    "live":        {ContentFormat.LIVE_EVENT: 0.8, ContentFormat.FILM: 0.2},
-    "games":       {ContentFormat.GAME: 0.9, ContentFormat.FILM: 0.1},
+    "home": {
+        ContentFormat.FILM: 0.5,
+        ContentFormat.SERIES: 0.35,
+        ContentFormat.LIVE_EVENT: 0.1,
+        ContentFormat.PODCAST: 0.05,
+    },
+    "new_popular": {
+        ContentFormat.FILM: 0.4,
+        ContentFormat.SERIES: 0.4,
+        ContentFormat.LIVE_EVENT: 0.15,
+        ContentFormat.PODCAST: 0.05,
+    },
+    "live": {ContentFormat.LIVE_EVENT: 0.8, ContentFormat.FILM: 0.2},
+    "games": {ContentFormat.GAME: 0.9, ContentFormat.FILM: 0.1},
 }
 
 # Intent-format affinity
 INTENT_FORMAT_BOOST = {
-    "background_noise":   {ContentFormat.SERIES: 1.3, ContentFormat.PODCAST: 1.2},
-    "dedicated_viewing":  {ContentFormat.FILM: 1.4, ContentFormat.SERIES: 1.1},
-    "social_watching":    {ContentFormat.LIVE_EVENT: 1.8, ContentFormat.FILM: 1.2},
-    "discovery_mode":     {ContentFormat.PODCAST: 1.3, ContentFormat.GAME: 1.2},
+    "background_noise": {ContentFormat.SERIES: 1.3, ContentFormat.PODCAST: 1.2},
+    "dedicated_viewing": {ContentFormat.FILM: 1.4, ContentFormat.SERIES: 1.1},
+    "social_watching": {ContentFormat.LIVE_EVENT: 1.8, ContentFormat.FILM: 1.2},
+    "discovery_mode": {ContentFormat.PODCAST: 1.3, ContentFormat.GAME: 1.2},
 }
 
 
 @dataclass
 class UnifiedContent:
     """Unified content item across all formats."""
+
     doc_id: str
     title: str
     format: ContentFormat
     genres: list[str] = field(default_factory=list)
     score: float = 0.0
     # Format-specific fields
-    episode_count: int | None = None      # series
+    episode_count: int | None = None  # series
     live_start_time: float | None = None  # live_event
     episode_duration_min: int | None = None  # podcast
-    game_platform: str | None = None      # game
+    game_platform: str | None = None  # game
 
 
 class CrossFormatRanker:

@@ -18,6 +18,7 @@ Exit codes: 0 = step succeeded. `gate` exits 0 whether or not the gates pass
 (blocking promotion is a valid outcome); the decision is in gates.json.
 `promote` refuses to run unless gates.json says all gates passed.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -120,8 +121,10 @@ def step_validate(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
         print(f"[DATA WARN] {w}")
     if not rep["passed"]:
         raise PromotionError("data validation failed: " + "; ".join(rep["errors"]))
-    print(f"[DATA OK] {sum(rep['checks'].values())}/{len(rep['checks'])} checks passed, "
-          f"fingerprint={rep['fingerprint'][:12]}")
+    print(
+        f"[DATA OK] {sum(rep['checks'].values())}/{len(rep['checks'])} checks passed, "
+        f"fingerprint={rep['fingerprint'][:12]}"
+    )
     return rep
 
 
@@ -226,7 +229,11 @@ def step_gate(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     best_promoted = None
     reg = Path(cfg["registry"])
     if reg.exists():
-        vals = [json.loads(x).get(f"{gs}_ndcg@10") for x in reg.read_text(encoding="utf-8").splitlines() if x.strip()]
+        vals = [
+            json.loads(x).get(f"{gs}_ndcg@10")
+            for x in reg.read_text(encoding="utf-8").splitlines()
+            if x.strip()
+        ]
         vals = [float(v) for v in vals if v is not None]
         best_promoted = max(vals) if vals else None
     cand_path = Path(train_info["model_path"])
@@ -247,8 +254,10 @@ def step_gate(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
 
     for g in summary["gates"]:
         print(f"  [{'PASS' if g['passed'] else 'FAIL'}] {g['name']}: {g['detail']}")
-    print(f"[GATES] {summary['passed']}/{summary['total']} passed -> "
-          f"{'PROMOTE' if summary['all_passed'] else 'BLOCK'}")
+    print(
+        f"[GATES] {summary['passed']}/{summary['total']} passed -> "
+        f"{'PROMOTE' if summary['all_passed'] else 'BLOCK'}"
+    )
     return summary
 
 
@@ -256,7 +265,9 @@ def step_promote(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     rd = run_dir(cfg, run_id)
     gates = _read_json(rd / "gates.json")
     if not gates.get("all_passed"):
-        raise PromotionError(f"refusing to promote: gates {gates.get('passed')}/{gates.get('total')}")
+        raise PromotionError(
+            f"refusing to promote: gates {gates.get('passed')}/{gates.get('total')}"
+        )
 
     train_info = _read_json(rd / "train.json")
     cand = Path(train_info["model_path"])
@@ -280,8 +291,13 @@ def step_promote(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     if prod.exists():
         previous_sha = sha256_file(prod)
         if previous_sha == cand_sha:
-            entry = {"run_id": run_id, "promoted_at": _now(), "model_sha256": cand_sha,
-                     "previous_sha256": previous_sha, "status": "unchanged"}
+            entry = {
+                "run_id": run_id,
+                "promoted_at": _now(),
+                "model_sha256": cand_sha,
+                "previous_sha256": previous_sha,
+                "status": "unchanged",
+            }
             _write_json(rd / "promotion.json", entry)
             print(f"[PROMOTE] candidate is byte-identical to production ({cand_sha[:12]}); no swap")
             return entry
@@ -320,7 +336,9 @@ def step_promote(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     with registry.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
     _write_json(rd / "promotion.json", entry)
-    print(f"[PROMOTE OK] {prod} <- {cand} (sha256 {cand_sha[:12]}, previous {str(previous_sha)[:12]})")
+    print(
+        f"[PROMOTE OK] {prod} <- {cand} (sha256 {cand_sha[:12]}, previous {str(previous_sha)[:12]})"
+    )
     return entry
 
 
@@ -337,7 +355,11 @@ def step_drift(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     """
     rd = run_dir(cfg, run_id)
     gs = cfg["gate_split"]
-    key = f"champion_{gs}" if f"champion_{gs}" in _read_json(rd / "eval_summary.json")["ndcg@10"] else f"challenger_{gs}"
+    key = (
+        f"champion_{gs}"
+        if f"champion_{gs}" in _read_json(rd / "eval_summary.json")["ndcg@10"]
+        else f"challenger_{gs}"
+    )
     cur = _read_json(rd / "eval_summary.json")
     cur_dq = _read_json(rd / "data_validation.json")
     limit = float(cfg["drift"]["max_champion_ndcg10_change"])
@@ -366,11 +388,24 @@ def step_drift(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
         for m in ("bm25", "dense", "hybrid"):
             a, b = _score(s, m), _score(cur, m)
             if a is not None and b is not None:
-                comparisons.append({"what": f"{m} (first stage)", "baseline_run": d.name,
-                                    "baseline": a, "current": b, "change": round(b - a, 4)})
+                comparisons.append(
+                    {
+                        "what": f"{m} (first stage)",
+                        "baseline_run": d.name,
+                        "baseline": a,
+                        "current": b,
+                        "change": round(b - a, 4),
+                    }
+                )
         prev_dq_p = d / "data_validation.json"
-        fp_changed = (json.loads(prev_dq_p.read_text(encoding="utf-8")).get("fingerprint")
-                      != cur_dq.get("fingerprint")) if prev_dq_p.exists() else None
+        fp_changed = (
+            (
+                json.loads(prev_dq_p.read_text(encoding="utf-8")).get("fingerprint")
+                != cur_dq.get("fingerprint")
+            )
+            if prev_dq_p.exists()
+            else None
+        )
     else:
         fp_changed = None
 
@@ -380,8 +415,15 @@ def step_drift(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
         d, s = same_model[-1]
         a = float(s["ndcg@10"][f"champion_{gs}"]["hybrid_ltr"])
         b = float(cur["ndcg@10"][key]["hybrid_ltr"])
-        comparisons.append({"what": f"hybrid_ltr (same model {champ_sha[:12]})", "baseline_run": d.name,
-                            "baseline": a, "current": b, "change": round(b - a, 4)})
+        comparisons.append(
+            {
+                "what": f"hybrid_ltr (same model {champ_sha[:12]})",
+                "baseline_run": d.name,
+                "baseline": a,
+                "current": b,
+                "change": round(b - a, 4),
+            }
+        )
 
     drifted = [c for c in comparisons if abs(c["change"]) > limit]
     result = {
@@ -395,11 +437,15 @@ def step_drift(cfg: dict[str, Any], run_id: str) -> dict[str, Any]:
     }
     _write_json(rd / "drift.json", result)
     for c in comparisons:
-        print(f"  {c['what']}: {c['baseline']:.4f} -> {c['current']:.4f} ({c['change']:+.4f}) vs {c['baseline_run']}")
+        print(
+            f"  {c['what']}: {c['baseline']:.4f} -> {c['current']:.4f} ({c['change']:+.4f}) vs {c['baseline_run']}"
+        )
     print(f"[DRIFT] {result['status']} (limit {limit}, data fingerprint changed: {fp_changed})")
     if drifted:
-        raise PromotionError("scores moved without a model change: "
-                             + "; ".join(f"{c['what']} {c['change']:+.4f}" for c in drifted))
+        raise PromotionError(
+            "scores moved without a model change: "
+            + "; ".join(f"{c['what']} {c['change']:+.4f}" for c in drifted)
+        )
     return result
 
 
@@ -414,7 +460,9 @@ STEPS = {
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("step", choices=[*STEPS, "all"])
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--config", default=DEFAULT_CONFIG)

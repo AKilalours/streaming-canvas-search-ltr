@@ -15,6 +15,7 @@ But we can build a serious counterfactual simulation harness:
 Honest claim: "offline causal evaluation infrastructure is built;
 online validation needs real traffic."
 """
+
 from __future__ import annotations
 
 import random
@@ -24,12 +25,12 @@ from typing import Any
 # ── Synthetic user cohorts ────────────────────────────────────────────────────
 
 COHORT_PROFILES = {
-    "action_lovers":   {"genres": ["action","thriller","crime"],     "weight": 0.25},
-    "romance_fans":    {"genres": ["romance","comedy","drama"],       "weight": 0.20},
-    "sci_fi_buffs":    {"genres": ["sci-fi","fantasy","adventure"],   "weight": 0.15},
-    "family_viewers":  {"genres": ["family","animation","children"],  "weight": 0.20},
-    "arthouse_crowd":  {"genres": ["drama","documentary","foreign"],  "weight": 0.10},
-    "casual_watchers": {"genres": ["comedy","animation","romance"],   "weight": 0.10},
+    "action_lovers": {"genres": ["action", "thriller", "crime"], "weight": 0.25},
+    "romance_fans": {"genres": ["romance", "comedy", "drama"], "weight": 0.20},
+    "sci_fi_buffs": {"genres": ["sci-fi", "fantasy", "adventure"], "weight": 0.15},
+    "family_viewers": {"genres": ["family", "animation", "children"], "weight": 0.20},
+    "arthouse_crowd": {"genres": ["drama", "documentary", "foreign"], "weight": 0.10},
+    "casual_watchers": {"genres": ["comedy", "animation", "romance"], "weight": 0.10},
 }
 
 
@@ -38,24 +39,24 @@ class SyntheticUser:
     user_id: str
     cohort: str
     preferred_genres: list[str]
-    session_length: float = 1.5      # avg hours per session
+    session_length: float = 1.5  # avg hours per session
     sessions_per_week: float = 3.0
-    completion_rate: float = 0.72    # % of started titles finished
-    exploration_rate: float = 0.15   # % of clicks on unknown genres
+    completion_rate: float = 0.72  # % of started titles finished
+    exploration_rate: float = 0.15  # % of clicks on unknown genres
 
 
-@dataclass 
+@dataclass
 class SimulatedEvent:
     user_id: str
     doc_id: str
     title: str
-    policy: str                    # "relevance_only" | "satisfaction_aware"
+    policy: str  # "relevance_only" | "satisfaction_aware"
     clicked: bool
     completed: bool
     watch_pct: float
     session_day: int
     genres: list[str] = field(default_factory=list)
-    reward: float = 0.0            # long-term reward signal
+    reward: float = 0.0  # long-term reward signal
 
 
 class TrafficSimulator:
@@ -77,15 +78,17 @@ class TrafficSimulator:
         weights = [v["weight"] for _, v in cohorts]
         for i in range(n):
             cohort_name, cohort_data = self._rng.choices(cohorts, weights=weights, k=1)[0]
-            users.append(SyntheticUser(
-                user_id=f"sim_user_{i:04d}",
-                cohort=cohort_name,
-                preferred_genres=cohort_data["genres"],
-                session_length=max(0.1, self._rng.gauss(1.5, 0.5)),
-                sessions_per_week=max(0.0, self._rng.gauss(3, 1)),
-                completion_rate=min(1.0, max(0.0, self._rng.gauss(0.72, 0.1))),
-                exploration_rate=min(1.0, max(0.0, self._rng.gauss(0.15, 0.05))),
-            ))
+            users.append(
+                SyntheticUser(
+                    user_id=f"sim_user_{i:04d}",
+                    cohort=cohort_name,
+                    preferred_genres=cohort_data["genres"],
+                    session_length=max(0.1, self._rng.gauss(1.5, 0.5)),
+                    sessions_per_week=max(0.0, self._rng.gauss(3, 1)),
+                    completion_rate=min(1.0, max(0.0, self._rng.gauss(0.72, 0.1))),
+                    exploration_rate=min(1.0, max(0.0, self._rng.gauss(0.15, 0.05))),
+                )
+            )
         return users
 
     def _genre_relevance(self, user: SyntheticUser, genres: list[str]) -> float:
@@ -111,8 +114,8 @@ class TrafficSimulator:
                 user = self._rng.choice(self.users)
                 # Each session: user sees top-K items from policy
                 session_items = items[:12]
-                for item in session_items[:self._rng.randint(3, 8)]:
-                    genres = [g.strip() for g in item.get("genres","").split(",") if g.strip()]
+                for item in session_items[: self._rng.randint(3, 8)]:
+                    genres = [g.strip() for g in item.get("genres", "").split(",") if g.strip()]
                     rel = self._genre_relevance(user, genres)
 
                     # Click probability: relevance + exploration noise
@@ -130,18 +133,20 @@ class TrafficSimulator:
                     # Long-term reward: completion signal decayed by position
                     reward = watch_pct * rel if clicked else -0.05
 
-                    events.append(SimulatedEvent(
-                        user_id=user.user_id,
-                        doc_id=str(item.get("doc_id", "")),
-                        title=str(item.get("title", "")),
-                        policy=policy_name,
-                        clicked=clicked,
-                        completed=completed,
-                        watch_pct=watch_pct,
-                        session_day=day,
-                        genres=genres,
-                        reward=reward,
-                    ))
+                    events.append(
+                        SimulatedEvent(
+                            user_id=user.user_id,
+                            doc_id=str(item.get("doc_id", "")),
+                            title=str(item.get("title", "")),
+                            policy=policy_name,
+                            clicked=clicked,
+                            completed=completed,
+                            watch_pct=watch_pct,
+                            session_day=day,
+                            genres=genres,
+                            reward=reward,
+                        )
+                    )
         return events
 
     def compare_policies(
@@ -210,6 +215,7 @@ class TrafficSimulator:
 
 # ── IPW / SNIPS diagnostic ───────────────────────────────────────────────────
 
+
 def ipw_estimate(
     logged_events: list[dict[str, Any]],
     new_policy_scores: dict[str, float],
@@ -232,14 +238,16 @@ def ipw_estimate(
         if "propensity" not in event:
             raise ValueError("each logged event must include an exact action propensity")
         reward = event.get("watched", event.get("reward", 0))
-        events.append(LoggedEvent(
-            doc_id=str(event.get("doc_id", "")),
-            shown=bool(event.get("shown", True)),
-            watched=bool(reward),
-            propensity=float(event["propensity"]),
-            user_id=str(event.get("user_id", "")),
-            context=dict(event.get("context") or {}),
-        ))
+        events.append(
+            LoggedEvent(
+                doc_id=str(event.get("doc_id", "")),
+                shown=bool(event.get("shown", True)),
+                watched=bool(reward),
+                propensity=float(event["propensity"]),
+                user_id=str(event.get("user_id", "")),
+                context=dict(event.get("context") or {}),
+            )
+        )
     result = OffPolicyEvaluator(
         min_lift=0.0,
         clip_weight=float(clip_threshold),

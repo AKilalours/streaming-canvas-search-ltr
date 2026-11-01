@@ -10,12 +10,12 @@ Replaces keyword_overlap_score() with:
   3. HouseholdProfileMerger     — merges multi-profile feeds (anti-silo).
   4. explain_personalization()  — structured why-was-this-boosted payload.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -27,7 +27,7 @@ class PersonalizationSignal:
     base_score: float
     personalization_boost: float
     final_score: float
-    method: str        # "embedding" | "keyword" | "household" | "none"
+    method: str  # "embedding" | "keyword" | "household" | "none"
     reason: str
     confidence: float  # 0.0 – 1.0
 
@@ -36,7 +36,7 @@ class PersonalizationSignal:
 class FeedbackEvent:
     user_id: str
     doc_id: str
-    event_type: str    # "click" | "watch_start" | "watch_complete" | "skip" | "dislike"
+    event_type: str  # "click" | "watch_start" | "watch_complete" | "skip" | "dislike"
     timestamp: float
     query: str = ""
     rank: int = -1
@@ -50,15 +50,19 @@ class UserEmbeddingPersonalizer:
 
     LABEL_MAP = {"watch_complete": 3, "watch_start": 2, "click": 1, "skip": 0, "dislike": -1}
 
-    def __init__(self, boost_weight: float = 0.15, history_window: int = 20, min_history: int = 3) -> None:
+    def __init__(
+        self, boost_weight: float = 0.15, history_window: int = 20, min_history: int = 3
+    ) -> None:
         self.boost_weight = float(boost_weight)
         self.history_window = int(history_window)
         self.min_history = int(min_history)
 
-    def _user_embedding(self, user_data: dict[str, Any], doc_embeddings: dict[str, np.ndarray] | None) -> np.ndarray | None:
+    def _user_embedding(
+        self, user_data: dict[str, Any], doc_embeddings: dict[str, np.ndarray] | None
+    ) -> np.ndarray | None:
         if doc_embeddings is None:
             return None
-        history = user_data.get("watch_history", [])[-self.history_window:]
+        history = user_data.get("watch_history", [])[-self.history_window :]
         if len(history) < self.min_history:
             return None
         vecs = [doc_embeddings[did] for did in history if did in doc_embeddings]
@@ -77,10 +81,18 @@ class UserEmbeddingPersonalizer:
         doc_embeddings: dict[str, np.ndarray] | None = None,
     ) -> tuple[list[tuple[str, float]], list[PersonalizationSignal]]:
         if not user_id or user_id not in users:
-            signals = [PersonalizationSignal(
-                doc_id=did, base_score=s, personalization_boost=0.0,
-                final_score=s, method="none", reason="No user profile", confidence=0.0
-            ) for did, s in ranked]
+            signals = [
+                PersonalizationSignal(
+                    doc_id=did,
+                    base_score=s,
+                    personalization_boost=0.0,
+                    final_score=s,
+                    method="none",
+                    reason="No user profile",
+                    confidence=0.0,
+                )
+                for did, s in ranked
+            ]
             return ranked, signals
 
         user_data = users[user_id]
@@ -104,14 +116,25 @@ class UserEmbeddingPersonalizer:
                 if kws:
                     overlap = hits / len(kws)
                     boost = self.boost_weight * overlap
-                    method, reason, confidence = "keyword", f"Overlap={overlap:.2f} ({hits}/{len(kws)})", overlap
+                    method, reason, confidence = (
+                        "keyword",
+                        f"Overlap={overlap:.2f} ({hits}/{len(kws)})",
+                        overlap,
+                    )
 
             final_s = base_s + boost
             rescored.append((did, final_s))
-            signals.append(PersonalizationSignal(
-                doc_id=did, base_score=float(base_s), personalization_boost=float(boost),
-                final_score=float(final_s), method=method, reason=reason, confidence=float(confidence),
-            ))
+            signals.append(
+                PersonalizationSignal(
+                    doc_id=did,
+                    base_score=float(base_s),
+                    personalization_boost=float(boost),
+                    final_score=float(final_s),
+                    method=method,
+                    reason=reason,
+                    confidence=float(confidence),
+                )
+            )
 
         rescored.sort(key=lambda x: x[1], reverse=True)
         return rescored, signals
@@ -132,12 +155,17 @@ class ImplicitFeedbackCollector:
         if self.redis is None:
             return False
         try:
-            payload = json.dumps({
-                "user_id": event.user_id, "doc_id": event.doc_id,
-                "event_type": event.event_type,
-                "label": self.LABEL_MAP.get(event.event_type, 0),
-                "timestamp": event.timestamp, "query": event.query, "rank": event.rank,
-            })
+            payload = json.dumps(
+                {
+                    "user_id": event.user_id,
+                    "doc_id": event.doc_id,
+                    "event_type": event.event_type,
+                    "label": self.LABEL_MAP.get(event.event_type, 0),
+                    "timestamp": event.timestamp,
+                    "query": event.query,
+                    "rank": event.rank,
+                }
+            )
             key = f"feedback:{event.user_id}:{event.doc_id}"
             self.redis.setex(key, 86400 * 30, payload)
             self.redis.lpush("feedback:stream", payload)
@@ -146,7 +174,9 @@ class ImplicitFeedbackCollector:
         except Exception:
             return False
 
-    def export_qrels(self, user_id: str | None = None, min_label: int = 1) -> dict[str, dict[str, int]]:
+    def export_qrels(
+        self, user_id: str | None = None, min_label: int = 1
+    ) -> dict[str, dict[str, int]]:
         if self.redis is None:
             return {}
         try:
@@ -197,7 +227,9 @@ class HouseholdProfileMerger:
             balance = {p: 1.0 / len(profiles) for p in profiles}
         total_w = sum(balance.values())
         norm_balance = {p: w / total_w for p, w in balance.items()}
-        slots_per_profile = {p: max(1, round(norm_balance.get(p, 0) * total_slots)) for p in profiles}
+        slots_per_profile = {
+            p: max(1, round(norm_balance.get(p, 0) * total_slots)) for p in profiles
+        }
         merged: list[tuple[str, float, str]] = []
         used_ids: set[str] = set()
         iterators = {p: iter(profile_feeds[p]) for p in profiles}
@@ -224,14 +256,20 @@ def explain_personalization(
 ) -> dict[str, Any]:
     title = str(corpus_row.get("title", "Unknown"))
     return {
-        "user_id": user_id, "doc_id": signal.doc_id, "title": title,
+        "user_id": user_id,
+        "doc_id": signal.doc_id,
+        "title": title,
         "personalization": {
-            "method": signal.method, "boost": round(signal.personalization_boost, 4),
-            "confidence": round(signal.confidence, 3), "reason": signal.reason,
+            "method": signal.method,
+            "boost": round(signal.personalization_boost, 4),
+            "confidence": round(signal.confidence, 3),
+            "reason": signal.reason,
         },
         "scores": {
             "base": round(signal.base_score, 4),
             "personalized": round(signal.final_score, 4),
-            "lift_pct": round(100 * signal.personalization_boost / max(abs(signal.base_score), 1e-9), 2),
+            "lift_pct": round(
+                100 * signal.personalization_boost / max(abs(signal.base_score), 1e-9), 2
+            ),
         },
     }

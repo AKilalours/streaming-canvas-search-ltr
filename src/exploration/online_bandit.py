@@ -11,6 +11,7 @@ model and avoids amplifying low-probability, noisy observations. The logged
 probability is conditional on a sampled Thompson parameter and is not, by
 itself, a marginal propensity suitable for off-policy evaluation.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -28,16 +29,31 @@ from typing import Any
 import numpy as np
 
 GENRES = (
-    "action", "adventure", "animation", "children", "comedy", "crime",
-    "documentary", "drama", "fantasy", "horror", "mystery", "romance",
-    "sci-fi", "thriller", "war", "western",
+    "action",
+    "adventure",
+    "animation",
+    "children",
+    "comedy",
+    "crime",
+    "documentary",
+    "drama",
+    "fantasy",
+    "horror",
+    "mystery",
+    "romance",
+    "sci-fi",
+    "thriller",
+    "war",
+    "western",
 )
 LEGACY_FEATURE_COUNT = 2 + len(GENRES)
 DECADES = tuple(range(1920, 2030, 10))
 TAG_BUCKETS = 32
 PREVIOUS_FEATURE_COUNT = LEGACY_FEATURE_COUNT + len(DECADES) + TAG_BUCKETS
 FEATURE_NAMES = (
-    "bias", "relevance", *GENRES,
+    "bias",
+    "relevance",
+    *GENRES,
     *(f"year_{decade}s" for decade in DECADES),
     *(f"tag_hash_{bucket:02d}" for bucket in range(TAG_BUCKETS)),
     "position",
@@ -138,10 +154,7 @@ class ContextualSlateBandit:
             )
             # Additive migrations keep local journals created by earlier demo
             # versions readable without resetting learned model state.
-            columns = {
-                row["name"]
-                for row in conn.execute("PRAGMA table_info(bandit_impressions)")
-            }
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(bandit_impressions)")}
             for name, declaration in (
                 ("slate_id", "TEXT NOT NULL DEFAULT ''"),
                 ("position", "INTEGER NOT NULL DEFAULT 0"),
@@ -153,9 +166,7 @@ class ContextualSlateBandit:
                 ("causal_logged", "INTEGER NOT NULL DEFAULT 0"),
             ):
                 if name not in columns:
-                    conn.execute(
-                        f"ALTER TABLE bandit_impressions ADD COLUMN {name} {declaration}"
-                    )
+                    conn.execute(f"ALTER TABLE bandit_impressions ADD COLUMN {name} {declaration}")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS bandit_impressions_user_time "
                 "ON bandit_impressions(user_id, created_at)"
@@ -217,8 +228,10 @@ class ContextualSlateBandit:
         precision = np.asarray(json.loads(row["precision"]), dtype=np.float64)
         response = np.asarray(json.loads(row["response"]), dtype=np.float64)
         stored_size = response.shape[0] if response.ndim == 1 else -1
-        if (stored_size in {LEGACY_FEATURE_COUNT, PREVIOUS_FEATURE_COUNT}
-                and precision.shape == (stored_size, stored_size)):
+        if stored_size in {LEGACY_FEATURE_COUNT, PREVIOUS_FEATURE_COUNT} and precision.shape == (
+            stored_size,
+            stored_size,
+        ):
             expanded_precision = self.prior_precision * np.eye(N_FEATURES)
             expanded_precision[:stored_size, :stored_size] = precision
             expanded_response = np.zeros(N_FEATURES, dtype=np.float64)
@@ -228,7 +241,9 @@ class ContextualSlateBandit:
             raise ValueError("Stored bandit model has an incompatible feature schema")
         return precision, response, int(row["observations"])
 
-    def _posterior(self, conn: sqlite3.Connection, user_id: str) -> tuple[np.ndarray, np.ndarray, int]:
+    def _posterior(
+        self, conn: sqlite3.Connection, user_id: str
+    ) -> tuple[np.ndarray, np.ndarray, int]:
         user_a, user_b, user_n = self._model(conn, user_id)
         global_a, global_b, global_n = self._model(conn, "__global__")
         prior = self.prior_precision * np.eye(N_FEATURES)
@@ -297,20 +312,22 @@ class ContextualSlateBandit:
             slate_id = secrets.token_urlsafe(18)
             slate_size = min(k, len(unique))
             for _position in range(min(k, len(remaining))):
-                logits = np.asarray([
-                    self.relevance_weight * norm_scores[i]
-                    + float(np.clip(features[i] @ theta, -1.0, 1.0))
-                    for i in remaining
-                ]) / self.temperature
+                logits = (
+                    np.asarray(
+                        [
+                            self.relevance_weight * norm_scores[i]
+                            + float(np.clip(features[i] @ theta, -1.0, 1.0))
+                            for i in remaining
+                        ]
+                    )
+                    / self.temperature
+                )
                 probs = self._softmax(logits)
                 selected_offset = int(self._rng.choice(len(remaining), p=probs))
                 candidate_context = {
-                    "candidate_scores": {
-                        unique[i][0]: float(unique[i][1]) for i in remaining
-                    },
+                    "candidate_scores": {unique[i][0]: float(unique[i][1]) for i in remaining},
                     "behavior_probabilities": {
-                        unique[i][0]: float(probs[offset])
-                        for offset, i in enumerate(remaining)
+                        unique[i][0]: float(probs[offset]) for offset, i in enumerate(remaining)
                     },
                     "policy": "contextual_thompson_sampling_v1",
                     "slate_id": slate_id,
@@ -323,8 +340,8 @@ class ContextualSlateBandit:
                 propensity = float(probs[selected_offset])
                 impression_id = secrets.token_urlsafe(18)
                 logged_features = features[selected_index].copy()
-                logged_features[FEATURE_NAMES.index("position")] = (
-                    _position / max(slate_size - 1, 1)
+                logged_features[FEATURE_NAMES.index("position")] = _position / max(
+                    slate_size - 1, 1
                 )
                 conn.execute(
                     """INSERT INTO bandit_impressions
@@ -332,28 +349,40 @@ class ContextualSlateBandit:
                         slate_id, position, candidate_count, baseline_rank, base_score,
                         candidate_context)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (impression_id, user_id, doc_id,
-                     json.dumps(logged_features.tolist()), propensity, now,
-                     slate_id, _position + 1, len(unique), selected_index + 1,
-                     original_score, json.dumps(candidate_context)),
+                    (
+                        impression_id,
+                        user_id,
+                        doc_id,
+                        json.dumps(logged_features.tolist()),
+                        propensity,
+                        now,
+                        slate_id,
+                        _position + 1,
+                        len(unique),
+                        selected_index + 1,
+                        original_score,
+                        json.dumps(candidate_context),
+                    ),
                 )
-                output.append({
-                    "doc_id": doc_id,
-                    "score": original_score,
-                    "impression_id": impression_id,
-                    "propensity": propensity,
-                    "slate_id": slate_id,
-                    "position": _position + 1,
-                    "candidate_count": len(unique),
-                    "baseline_rank": selected_index + 1,
-                    "policy": "contextual_thompson_sampling_v1",
-                    "candidate_context": candidate_context,
-                })
+                output.append(
+                    {
+                        "doc_id": doc_id,
+                        "score": original_score,
+                        "impression_id": impression_id,
+                        "propensity": propensity,
+                        "slate_id": slate_id,
+                        "position": _position + 1,
+                        "candidate_count": len(unique),
+                        "baseline_rank": selected_index + 1,
+                        "policy": "contextual_thompson_sampling_v1",
+                        "candidate_context": candidate_context,
+                    }
+                )
             # Bound the journal while retaining enough data for delayed feedback.
             conn.execute("DELETE FROM bandit_impressions WHERE created_at < ?", (now - 90 * 86400,))
-            exposure_count = int(conn.execute(
-                "SELECT COUNT(*) FROM bandit_impressions"
-            ).fetchone()[0])
+            exposure_count = int(
+                conn.execute("SELECT COUNT(*) FROM bandit_impressions").fetchone()[0]
+            )
             if exposure_count > self.max_impressions:
                 conn.execute(
                     """DELETE FROM bandit_impressions WHERE impression_id IN (
@@ -440,11 +469,13 @@ class ContextualSlateBandit:
                 "SELECT * FROM bandit_impressions WHERE impression_id = ?",
                 (impression_id,),
             ).fetchone()
-            if (impression is None
-                    or not user_id
-                    or impression["user_id"] != user_id
-                    or not doc_id
-                    or impression["doc_id"] != doc_id):
+            if (
+                impression is None
+                or not user_id
+                or impression["user_id"] != user_id
+                or not doc_id
+                or impression["doc_id"] != doc_id
+            ):
                 conn.rollback()
                 return {"accepted": False, "reason": "unknown_impression"}
             if require_exposure and impression["exposed_at"] is None:
@@ -486,8 +517,13 @@ class ContextualSlateBandit:
                          response=excluded.response,
                          observations=excluded.observations,
                          reward_sum=bandit_models.reward_sum + excluded.reward_sum""",
-                    (target_user, json.dumps(matrix.tolist()), json.dumps(vector.tolist()),
-                     count, reward_delta),
+                    (
+                        target_user,
+                        json.dumps(matrix.tolist()),
+                        json.dumps(vector.tolist()),
+                        count,
+                        reward_delta,
+                    ),
                 )
             conn.execute(
                 "UPDATE bandit_impressions SET event_type=?, reward=?, updated_at=? WHERE impression_id=?",
@@ -497,23 +533,33 @@ class ContextualSlateBandit:
         return {
             "accepted": True,
             "reward": round(reward, 4),
-            "previous_reward": round(float(previous_reward), 4) if previous_reward is not None else None,
+            "previous_reward": round(float(previous_reward), 4)
+            if previous_reward is not None
+            else None,
             "propensity": round(propensity, 6),
         }
 
     def status(self) -> dict[str, Any]:
         now = time.time()
         with closing(self._connect()) as conn:
-            recommendations = int(conn.execute("SELECT COUNT(*) FROM bandit_impressions").fetchone()[0])
-            exposures = int(conn.execute(
-                "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL"
-            ).fetchone()[0])
-            labeled = int(conn.execute(
-                "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL AND reward IS NOT NULL"
-            ).fetchone()[0])
-            users = int(conn.execute(
-                "SELECT COUNT(*) FROM bandit_models WHERE user_id != '__global__'"
-            ).fetchone()[0])
+            recommendations = int(
+                conn.execute("SELECT COUNT(*) FROM bandit_impressions").fetchone()[0]
+            )
+            exposures = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL"
+                ).fetchone()[0]
+            )
+            labeled = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL AND reward IS NOT NULL"
+                ).fetchone()[0]
+            )
+            users = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM bandit_models WHERE user_id != '__global__'"
+                ).fetchone()[0]
+            )
             model = conn.execute(
                 "SELECT observations, reward_sum FROM bandit_models WHERE user_id='__global__'"
             ).fetchone()
@@ -528,9 +574,11 @@ class ContextualSlateBandit:
                    FROM bandit_impressions WHERE created_at >= ? AND exposed_at IS NOT NULL""",
                 (now - 7 * 86400,),
             ).fetchone()
-            pending = int(conn.execute(
-                "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL AND reward IS NULL"
-            ).fetchone()[0])
+            pending = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM bandit_impressions WHERE exposed_at IS NOT NULL AND reward IS NULL"
+                ).fetchone()[0]
+            )
             outcome_counts = {
                 str(row["event_type"]): int(row["count"])
                 for row in conn.execute(
@@ -567,13 +615,17 @@ class ContextualSlateBandit:
                 ),
                 "outcome_counts": outcome_counts,
                 "mean_reward": round(float(recent["mean_reward"]), 4)
-                    if recent["mean_reward"] is not None else None,
+                if recent["mean_reward"] is not None
+                else None,
                 "mean_propensity": round(float(recent["mean_propensity"]), 6)
-                    if recent["mean_propensity"] is not None else None,
+                if recent["mean_propensity"] is not None
+                else None,
                 "min_propensity": round(float(recent["min_propensity"]), 6)
-                    if recent["min_propensity"] is not None else None,
+                if recent["min_propensity"] is not None
+                else None,
                 "mean_position": round(float(recent["mean_position"]), 2)
-                    if recent["mean_position"] is not None else None,
+                if recent["mean_position"] is not None
+                else None,
             },
         }
 

@@ -1,10 +1,13 @@
-
 from __future__ import annotations
 
+# Optional integrations are intentionally imported after their feature guards.
+# FastAPI request marker defaults are also conventional in this module.
+# ruff: noqa: E402, B008
+# ── Kafka + WebSocket ─────────────────────────────────────────────────────────
+import asyncio as _asyncio
 import json
 import math
 import os
-import numpy as np
 import sqlite3
 import time
 import zlib
@@ -14,18 +17,18 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from app.cache import CacheClient
 
-# ── Kafka + WebSocket ─────────────────────────────────────────────────────────
-import asyncio as _asyncio
-import time as _time_mod
 try:
-    from streaming.kafka_events import get_producer, InteractionEvent
-    from streaming.websocket_feed import get_manager, make_interaction_ack
     from fastapi import WebSocket, WebSocketDisconnect
+
+    from streaming.kafka_events import InteractionEvent, get_producer
+    from streaming.websocket_feed import get_manager, make_interaction_ack
+
     _STREAMING_ENABLED = True
 except Exception:
     _STREAMING_ENABLED = False
@@ -37,9 +40,12 @@ from exploration.online_bandit import ContextualSlateBandit
 # ── Phase 3: Serendipity & Diversity ──────────────────────────────────────────
 try:
     from exploration.bandit import (
-        ContextualBandit, DiversityReranker, MultiObjectiveReranker,
-        SerendipityScorer, ScoredDoc,
+        ContextualBandit,
+        DiversityReranker,
+        MultiObjectiveReranker,
+        SerendipityScorer,
     )
+
     EXPLORATION_AVAILABLE = True
 except Exception:
     EXPLORATION_AVAILABLE = False
@@ -47,10 +53,13 @@ except Exception:
 # ── Phase 5: Advanced Personalization ─────────────────────────────────────────
 try:
     from app.personalization_v2 import (
-        UserEmbeddingPersonalizer, ImplicitFeedbackCollector,
-        HouseholdProfileMerger, FeedbackEvent, explain_personalization,
-        PersonalizationSignal,
+        FeedbackEvent,
+        HouseholdProfileMerger,
+        ImplicitFeedbackCollector,
+        UserEmbeddingPersonalizer,
+        explain_personalization,
     )
+
     PERSONALIZATION_V2 = True
 except Exception:
     PERSONALIZATION_V2 = False
@@ -58,6 +67,7 @@ except Exception:
 # ── Phase 6: Rate Limiting ─────────────────────────────────────────────────────
 try:
     from app.rate_limiter import TokenBucketRateLimiter, build_rate_limiters, get_client_ip
+
     RATE_LIMITING_AVAILABLE = True
 except Exception:
     RATE_LIMITING_AVAILABLE = False
@@ -65,6 +75,7 @@ except Exception:
 # ── New ML Integrations ─────────────────────────────────────────────────────
 try:
     from retrieval.cross_encoder import rerank_cross_encoder as _ce_rerank
+
     _CE_AVAILABLE = True
 except Exception:
     _ce_rerank = None
@@ -72,9 +83,12 @@ except Exception:
 
 try:
     from retrieval.ner_query_understanding import (
-        extract_entities as _ner_extract,
         entity_boost_scores as _ner_boost,
     )
+    from retrieval.ner_query_understanding import (
+        extract_entities as _ner_extract,
+    )
+
     _NER_AVAILABLE = True
 except Exception:
     _ner_extract = None
@@ -83,6 +97,7 @@ except Exception:
 
 try:
     from ranking.calibration import calibrate as _calibrate
+
     _CALIB_AVAILABLE = True
 except Exception:
     _calibrate = None
@@ -90,6 +105,7 @@ except Exception:
 
 try:
     from retrieval.query_expansion import expand_query as _expand_query
+
     _QE_AVAILABLE = True
 except Exception:
     _expand_query = None
@@ -97,16 +113,21 @@ except Exception:
 
 try:
     from app.bandit import thompson_sample as _thompson_sample
+
     _THOMPSON_AVAILABLE = True
 except Exception:
     _thompson_sample = None
     _THOMPSON_AVAILABLE = False
 
+
 def _build_entity_indexes() -> tuple:
     genres_idx: dict = {}
     actors_idx: dict = {}
     try:
-        import re as _re, json as _j, os as _os
+        import json as _j
+        import os as _os
+        import re as _re
+
         cp = "data/processed/movielens/test/corpus.jsonl"
         if _os.path.exists(cp):
             with open(cp) as _f:
@@ -114,11 +135,11 @@ def _build_entity_indexes() -> tuple:
                     _doc = _j.loads(_line)
                     _did = _doc["doc_id"]
                     _text = _doc.get("text", "")
-                    _gm = _re.search(r'Genres?:\s*([^|]+)', _text)
+                    _gm = _re.search(r"Genres?:\s*([^|]+)", _text)
                     if _gm:
                         for _g in _gm.group(1).split(","):
                             genres_idx.setdefault(_g.strip().lower(), []).append(_did)
-                    _tm = _re.search(r'Tags?:\s*([^|]+)', _text)
+                    _tm = _re.search(r"Tags?:\s*([^|]+)", _text)
                     if _tm:
                         for _t in _tm.group(1).split(","):
                             if _t.strip():
@@ -126,6 +147,7 @@ def _build_entity_indexes() -> tuple:
     except Exception:
         pass
     return genres_idx, actors_idx
+
 
 _GENRES_IDX, _ACTORS_IDX = _build_entity_indexes()
 # ────────────────────────────────────────────────────────────────────────────
@@ -162,18 +184,18 @@ USERS: dict[str, Any] = {}
 _RL_BANDIT: ContextualSlateBandit | None = None
 
 # ── Phase 3 globals ────────────────────────────────────────────────────────────
-_BANDIT: "ContextualBandit | None" = None
-_DIVERSITY_RERANKER: "DiversityReranker | None" = None
-_SERENDIPITY_SCORER: "SerendipityScorer | None" = None
-_MULTI_OBJ_RERANKER: "MultiObjectiveReranker | None" = None
+_BANDIT: ContextualBandit | None = None
+_DIVERSITY_RERANKER: DiversityReranker | None = None
+_SERENDIPITY_SCORER: SerendipityScorer | None = None
+_MULTI_OBJ_RERANKER: MultiObjectiveReranker | None = None
 
 # ── Phase 5 globals ────────────────────────────────────────────────────────────
-_PERSONALIZER_V2: "UserEmbeddingPersonalizer | None" = None
-_FEEDBACK_COLLECTOR: "ImplicitFeedbackCollector | None" = None
-_HOUSEHOLD_MERGER: "HouseholdProfileMerger | None" = None
+_PERSONALIZER_V2: UserEmbeddingPersonalizer | None = None
+_FEEDBACK_COLLECTOR: ImplicitFeedbackCollector | None = None
+_HOUSEHOLD_MERGER: HouseholdProfileMerger | None = None
 
 # ── Phase 6 globals ────────────────────────────────────────────────────────────
-_RATE_LIMITERS: "dict[str, TokenBucketRateLimiter] | None" = None
+_RATE_LIMITERS: dict[str, TokenBucketRateLimiter] | None = None
 
 # Optional deps (do NOT crash server if missing)
 try:
@@ -184,8 +206,10 @@ except Exception:
 PROM_AVAILABLE = False
 try:
     # Import from observability module to avoid duplicate registration errors
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest  # type: ignore
+
     from app.observability import REQ_COUNT, REQ_LAT_MS  # type: ignore
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST  # type: ignore
+
     PROM_AVAILABLE = True
 except Exception:
     PROM_AVAILABLE = False
@@ -195,16 +219,54 @@ except Exception:
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"  # type: ignore
 
 NETFLIX_LANGUAGES = [
-    "Arabic","Basque","Bengali","Cantonese","Catalan","Croatian","Czech","Danish","Dutch","English",
-    "Filipino","Finnish","French (including Canadian)","Galician","German","Greek","Hebrew","Hindi",
-    "Hungarian","Icelandic","Indonesian","Italian","Japanese","Korean","Malay","Malayalam","Mandarin",
-    "Marathi","Norwegian (Bokmål)","Polish","Portuguese (including Brazilian)","Romanian","Russian",
-    "Spanish (including Latin American and Castilian)","Swahili","Swedish","Tamil","Telugu","Thai",
-    "Turkish","Ukrainian","Vietnamese",
+    "Arabic",
+    "Basque",
+    "Bengali",
+    "Cantonese",
+    "Catalan",
+    "Croatian",
+    "Czech",
+    "Danish",
+    "Dutch",
+    "English",
+    "Filipino",
+    "Finnish",
+    "French (including Canadian)",
+    "Galician",
+    "German",
+    "Greek",
+    "Hebrew",
+    "Hindi",
+    "Hungarian",
+    "Icelandic",
+    "Indonesian",
+    "Italian",
+    "Japanese",
+    "Korean",
+    "Malay",
+    "Malayalam",
+    "Mandarin",
+    "Marathi",
+    "Norwegian (Bokmål)",
+    "Polish",
+    "Portuguese (including Brazilian)",
+    "Romanian",
+    "Russian",
+    "Spanish (including Latin American and Castilian)",
+    "Swahili",
+    "Swedish",
+    "Tamil",
+    "Telugu",
+    "Thai",
+    "Turkish",
+    "Ukrainian",
+    "Vietnamese",
 ]
+
 
 def _now_ms() -> float:
     return time.perf_counter() * 1000.0
+
 
 def _snippet(txt: str | None, n: int = 280) -> str | None:
     if not txt:
@@ -212,10 +274,12 @@ def _snippet(txt: str | None, n: int = 280) -> str | None:
     t = " ".join(str(txt).split())
     return t[:n] + ("…" if len(t) > n else "")
 
+
 def _ensure_ready() -> AppState:
     if not STATE or not getattr(STATE, "ready", False):
         raise HTTPException(status_code=503, detail="Server not ready. Check startup logs.")
     return STATE
+
 
 def _ensure_cache() -> CacheClient:
     global CACHE
@@ -223,7 +287,8 @@ def _ensure_cache() -> CacheClient:
         CACHE = CacheClient.from_env()
     return CACHE
 
-def _cache_incr_redis(c: "CacheClient", kind: str, op: str) -> None:
+
+def _cache_incr_redis(c: CacheClient, kind: str, op: str) -> None:
     """Safely increment in-memory cache stats. Never raises."""
     try:
         stats = getattr(c, f"stats_{kind}", None)
@@ -234,7 +299,7 @@ def _cache_incr_redis(c: "CacheClient", kind: str, op: str) -> None:
         pass
 
 
-def _cache_stats_redis(c: "CacheClient") -> dict:
+def _cache_stats_redis(c: CacheClient) -> dict:
     """Return redis-level stats if connected, else empty dict."""
     if not c.ok():
         return {"redis": "disconnected"}
@@ -249,25 +314,38 @@ def _cache_stats_redis(c: "CacheClient") -> dict:
         return {"redis": "error"}
 
 
-
 def _lang_for_doc_id(doc_id: str) -> str:
     h = zlib.adler32(str(doc_id).encode("utf-8"))
     return NETFLIX_LANGUAGES[h % len(NETFLIX_LANGUAGES)]
 
+
 def _infer_lang_from_query(q: str) -> str | None:
     x = (q or "").lower()
     mapping = {
-        "tamil": "Tamil","telugu":"Telugu","malayalam":"Malayalam","hindi":"Hindi","japanese":"Japanese",
-        "korean":"Korean","russian":"Russian","mandarin":"Mandarin","cantonese":"Cantonese","arabic":"Arabic",
-        "thai":"Thai","turkish":"Turkish","vietnamese":"Vietnamese",
-        "spanish":"Spanish (including Latin American and Castilian)",
-        "french":"French (including Canadian)","german":"German","italian":"Italian",
-        "portuguese":"Portuguese (including Brazilian)",
+        "tamil": "Tamil",
+        "telugu": "Telugu",
+        "malayalam": "Malayalam",
+        "hindi": "Hindi",
+        "japanese": "Japanese",
+        "korean": "Korean",
+        "russian": "Russian",
+        "mandarin": "Mandarin",
+        "cantonese": "Cantonese",
+        "arabic": "Arabic",
+        "thai": "Thai",
+        "turkish": "Turkish",
+        "vietnamese": "Vietnamese",
+        "spanish": "Spanish (including Latin American and Castilian)",
+        "french": "French (including Canadian)",
+        "german": "German",
+        "italian": "Italian",
+        "portuguese": "Portuguese (including Brazilian)",
     }
     for k, v in mapping.items():
         if k in x:
             return v
     return None
+
 
 def _ensure_ollama() -> OllamaClient:
     global _OLLAMA
@@ -279,6 +357,7 @@ def _ensure_ollama() -> OllamaClient:
     _OLLAMA = OllamaClient(cfg)
     log.info("Ollama configured: url=%s model=%s", base_url, model)
     return _OLLAMA
+
 
 def _ollama_json(
     ollama: OllamaClient,
@@ -307,6 +386,7 @@ def _ollama_json(
     except AttributeError as err:
         raise RuntimeError("OllamaClient has no generate_json() or chat_json().") from err
 
+
 def _maybe_dataset_card(query: str) -> Source | None:
     q = query.lower()
     triggers = ("what is", "used for", "dataset", "benchmark", "movielens")
@@ -323,6 +403,7 @@ def _maybe_dataset_card(query: str) -> Source | None:
             score_breakdown=None,
         )
     return None
+
 
 def _as_hit_dicts(hits: Iterable[Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
@@ -343,6 +424,7 @@ def _as_hit_dicts(hits: Iterable[Any]) -> list[dict[str, Any]]:
             )
     return out
 
+
 def _context_and_sources(query: str, hits: list[Any], context_k: int) -> tuple[str, list[Source]]:
     hit_dicts = _as_hit_dicts(hits)
     card_src = _maybe_dataset_card(query)
@@ -360,7 +442,10 @@ def _context_and_sources(query: str, hits: list[Any], context_k: int) -> tuple[s
         blocks.append(f"[{i}] doc_id={s.doc_id}\nTITLE: {title}\nTEXT: {snippet}\n")
     return "\n".join(blocks), srcs
 
-def _validate_llm_output(llm_out: dict[str, Any], *, num_sources: int) -> tuple[str, list[int], str | None]:
+
+def _validate_llm_output(
+    llm_out: dict[str, Any], *, num_sources: int
+) -> tuple[str, list[int], str | None]:
     answer = str(llm_out.get("answer", "")).strip()
     warning = llm_out.get("warning")
     citations_raw = llm_out.get("citations", [])
@@ -377,14 +462,20 @@ def _validate_llm_output(llm_out: dict[str, Any], *, num_sources: int) -> tuple[
         return answer, [], warning or "Model returned no citations for a factual answer."
     bad = [c for c in citations if c < 1 or c > num_sources]
     if bad:
-        return answer, [], warning or f"Model returned out-of-range citations: {bad} (sources={num_sources})."
+        return (
+            answer,
+            [],
+            warning or f"Model returned out-of-range citations: {bad} (sources={num_sources}).",
+        )
     return answer, citations, warning
+
 
 def _choose_ui_language(x_language: str | None, query_text: str) -> str:
     if x_language and x_language.strip():
         return x_language.strip()
     inferred = _infer_lang_from_query(query_text)
     return inferred or "English"
+
 
 def _maybe_translate_query(ollama: OllamaClient, query: str) -> tuple[str, dict[str, Any]]:
     src = normalize_lang(detect_lang(query))
@@ -404,7 +495,10 @@ def _maybe_translate_query(ollama: OllamaClient, query: str) -> tuple[str, dict[
             pass
     return query, meta
 
-def _maybe_translate_answer(ollama: OllamaClient, answer: str, target_language: str) -> tuple[str, bool]:
+
+def _maybe_translate_answer(
+    ollama: OllamaClient, answer: str, target_language: str
+) -> tuple[str, bool]:
     if not answer.strip():
         return answer, False
     if target_language.strip() == "English":
@@ -417,12 +511,14 @@ def _maybe_translate_answer(ollama: OllamaClient, answer: str, target_language: 
         pass
     return answer, False
 
+
 def _filter_lang(items: list[tuple[str, float]], lang: str | None) -> list[tuple[str, float]]:
     if not lang:
         return items
     want = lang.strip()
     out = [(d, s) for (d, s) in items if _lang_for_doc_id(d) == want]
     return out if len(out) >= 5 else items
+
 
 def _apply_context_bias(
     ranked: list[tuple[str, float]],
@@ -455,6 +551,7 @@ def _apply_context_bias(
     out.sort(key=lambda x: x[1], reverse=True)
     return out
 
+
 def _keyword_overlap_score(user_id: str | None, text: str) -> float:
     if not user_id:
         return 0.0
@@ -467,6 +564,7 @@ def _keyword_overlap_score(user_id: str | None, text: str) -> float:
     t = (text or "").lower()
     hits = sum(1 for kw in kws if str(kw).lower() in t)
     return hits / max(1, len(kws))
+
 
 def _apply_personalization(
     ranked: list[tuple[str, float]],
@@ -484,10 +582,7 @@ def _apply_personalization(
         if STATE and getattr(STATE, "dense", None) is not None:
             dense = STATE.dense
             try:
-                doc_embs = {
-                    str(did): dense.doc_embs[i]
-                    for i, did in enumerate(dense.doc_ids)
-                }
+                doc_embs = {str(did): dense.doc_embs[i] for i, did in enumerate(dense.doc_ids)}
             except Exception:
                 doc_embs = None
 
@@ -511,10 +606,12 @@ def _apply_personalization(
     rescored.sort(key=lambda x: x[1], reverse=True)
     return rescored, overlaps
 
+
 @lru_cache(maxsize=4096)
 def _bm25_cached(query: str, k: int) -> tuple[tuple[str, float], ...]:
     st = _ensure_ready()
     return tuple(st.bm25_query(query, k=k))
+
 
 @lru_cache(maxsize=2048)
 def _dense_cached(query: str, k: int) -> tuple[tuple[str, float], ...]:
@@ -522,6 +619,7 @@ def _dense_cached(query: str, k: int) -> tuple[tuple[str, float], ...]:
     if st.dense is None:
         return tuple()
     return tuple(st.dense.search(query, k=k))
+
 
 def _search_core(
     *,
@@ -541,7 +639,9 @@ def _search_core(
 
     method = method.strip().lower()
     if method not in {"bm25", "dense", "hybrid", "hybrid_ltr"}:
-        raise HTTPException(status_code=400, detail="method must be one of: bm25, dense, hybrid, hybrid_ltr")
+        raise HTTPException(
+            status_code=400, detail="method must be one of: bm25, dense, hybrid, hybrid_ltr"
+        )
 
     language = language or _infer_lang_from_query(query)
 
@@ -570,7 +670,9 @@ def _search_core(
 
     if method in {"dense", "hybrid", "hybrid_ltr"}:
         if st.dense is None:
-            raise HTTPException(status_code=503, detail="Dense artifacts not loaded. Build embeddings first.")
+            raise HTTPException(
+                status_code=503, detail="Dense artifacts not loaded. Build embeddings first."
+            )
         a = _now_ms()
         dense_hits = list(_dense_cached(query, int(candidate_k)))
         timings["dense_ms"] = _now_ms() - a
@@ -587,9 +689,7 @@ def _search_core(
     # ── NER Entity Boost ─────────────────────────────────────────────────────
     if _NER_AVAILABLE and _ner_extract is not None and merged:
         try:
-            _entities = _ner_extract(
-                _original_query if "_original_query" in dir() else query
-            )
+            _entities = _ner_extract(_original_query if "_original_query" in dir() else query)
             if _entities.has_entities():
                 _md = [{"doc_id": d, "score": s} for d, s in merged]
                 _md = _ner_boost(_entities, _md, _GENRES_IDX, _ACTORS_IDX)
@@ -639,19 +739,23 @@ def _search_core(
             _a = _now_ms()
             _ce_items = [
                 {
-                    "doc_id": d, "score": s,
+                    "doc_id": d,
+                    "score": s,
                     "title": st.corpus.get(str(d), {}).get("title", ""),
-                    "text":  st.corpus.get(str(d), {}).get("text", "")[:300],
+                    "text": st.corpus.get(str(d), {}).get("text", "")[:300],
                 }
                 for d, s in final
             ]
             _ce_out = _ce_rerank(
                 query=_original_query if "_original_query" in dir() else query,
-                items=_ce_items, top_k=min(20, len(_ce_items)), enabled=True,
+                items=_ce_items,
+                top_k=min(20, len(_ce_items)),
+                enabled=True,
             )
             if _ce_out:
-                final = [(r["doc_id"], r.get("combined_score", r.get("score", 0.0)))
-                         for r in _ce_out]
+                final = [
+                    (r["doc_id"], r.get("combined_score", r.get("score", 0.0))) for r in _ce_out
+                ]
                 timings["ce_ms"] = round(_now_ms() - _a, 1)
         except Exception:
             pass  # fail open
@@ -670,8 +774,9 @@ def _search_core(
             _ts_items = [{"doc_id": d, "score": s} for d, s in final]
             _ts_out = _thompson_sample(user_id, _ts_items)
             if _ts_out:
-                final = [(r["doc_id"], r.get("combined_score", r.get("score", 0.0)))
-                         for r in _ts_out]
+                final = [
+                    (r["doc_id"], r.get("combined_score", r.get("score", 0.0))) for r in _ts_out
+                ]
         except Exception:
             pass
     # ─────────────────────────────────────────────────────────────────────────
@@ -682,7 +787,9 @@ def _search_core(
     if diversity_enabled and EXPLORATION_AVAILABLE and _DIVERSITY_RERANKER is not None:
         use_multi_obj = bool(_exploration_cfg.get("multi_objective", False))
         if use_multi_obj and _MULTI_OBJ_RERANKER is not None:
-            final = _MULTI_OBJ_RERANKER.rerank(final, st.corpus, k=k, diversity_reranker=_DIVERSITY_RERANKER)
+            final = _MULTI_OBJ_RERANKER.rerank(
+                final, st.corpus, k=k, diversity_reranker=_DIVERSITY_RERANKER
+            )
         else:
             final = _DIVERSITY_RERANKER.rerank(final, st.corpus, k=k)
         timings["diversity_ms"] = _now_ms() - (t0 + timings.get("total_ms", 0))
@@ -718,7 +825,10 @@ def _search_core(
                 score_breakdown=breakdown,
             )
         )
-    return SearchResponse(query=query, method=method, k=k, hits=hits, timings_ms=timings if debug else None)
+    return SearchResponse(
+        query=query, method=method, k=k, hits=hits, timings_ms=timings if debug else None
+    )
+
 
 def _deep_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     out = dict(a)
@@ -728,6 +838,7 @@ def _deep_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
         else:
             out[k] = v
     return out
+
 
 def _load_config() -> dict[str, Any]:
     base = {
@@ -776,6 +887,7 @@ def _load_users() -> dict[str, Any]:
         log.exception("Failed to load data/users/users.json")
         return {}
 
+
 async def prom_middleware(request: Request, call_next):
     if not PROM_AVAILABLE:
         return await call_next(request)
@@ -792,11 +904,15 @@ async def prom_middleware(request: Request, call_next):
         REQ_COUNT.labels(path=path, method=method, status=str(status)).inc()  # type: ignore[union-attr]
         REQ_LAT_MS.labels(path=path, method=method).observe(dt)  # type: ignore[union-attr]
 
+
 def metrics_response() -> Response:
     if not PROM_AVAILABLE:
-        return Response(status_code=503, content="prometheus_client not installed", media_type="text/plain")
+        return Response(
+            status_code=503, content="prometheus_client not installed", media_type="text/plain"
+        )
     data = generate_latest()  # type: ignore[misc]
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)  # type: ignore[arg-type]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -807,6 +923,7 @@ async def lifespan(app: FastAPI):
     try:
         try:
             import torch  # type: ignore
+
             torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "1")))
             torch.set_num_interop_threads(int(os.environ.get("TORCH_NUM_INTEROP_THREADS", "1")))
         except Exception:
@@ -882,7 +999,11 @@ async def lifespan(app: FastAPI):
             _RATE_LIMITERS = build_rate_limiters(redis_client)
             log.info("Phase 6 rate limiters initialized")
 
-        log.info("Startup complete. ready=%s redis=%s", bool(STATE and STATE.ready), bool(CACHE and CACHE.ok()))
+        log.info(
+            "Startup complete. ready=%s redis=%s",
+            bool(STATE and STATE.ready),
+            bool(CACHE and CACHE.ok()),
+        )
         yield
     finally:
         _OLLAMA = None
@@ -903,25 +1024,31 @@ app = FastAPI(title="streaming-canvas-search-ltr", lifespan=lifespan)
 app.middleware("http")(prom_middleware)
 mount_demo(app)
 
+
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
     return Response(status_code=204)
+
 
 @app.get("/apple-touch-icon.png", include_in_schema=False)
 def apple_touch_icon() -> Response:
     return Response(status_code=204)
 
+
 @app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
 def apple_touch_icon_precomposed() -> Response:
     return Response(status_code=204)
+
 
 @app.get("/", include_in_schema=False)
 def root() -> RedirectResponse:
     return RedirectResponse(url="/demo", status_code=307)
 
+
 @app.get("/metrics")
 def metrics() -> Response:
     return metrics_response()
+
 
 @app.get("/languages")
 def languages() -> dict[str, Any]:
@@ -945,6 +1072,7 @@ def reload_config() -> dict[str, Any]:
     log.info("Config reloaded from disk: %s", CFG)
     return {"ok": True, "config": CFG}
 
+
 @app.get("/cache/stats")
 def cache_stats() -> dict[str, Any]:
     c = _ensure_cache()
@@ -955,9 +1083,12 @@ def cache_stats() -> dict[str, Any]:
 
 # Stable Diffusion poster static files
 import os as _os
+
 if _os.path.exists("artifacts/sd_posters"):
     from fastapi.staticfiles import StaticFiles as _SF
+
     app.mount("/static/sd_posters", _SF(directory="artifacts/sd_posters"), name="sd_posters")
+
 
 @app.get("/health")
 def health() -> dict[str, Any]:
@@ -981,45 +1112,71 @@ def health() -> dict[str, Any]:
         "users_loaded": list(USERS.keys())[:20],
     }
 
+
 @app.get("/metrics/latest")
 def metrics_latest() -> JSONResponse:
     p = Path("reports/latest/metrics.json")
     if not p.exists():
-        return JSONResponse({"ok": False, "error": "reports/latest/metrics.json not found"}, status_code=404)
+        return JSONResponse(
+            {"ok": False, "error": "reports/latest/metrics.json not found"}, status_code=404
+        )
     return JSONResponse(json.loads(p.read_text(encoding="utf-8")))
+
 
 @app.get("/metrics/lift")
 def metrics_lift() -> JSONResponse:
     p = Path("reports/latest/metrics.json")
     if not p.exists():
-        return JSONResponse({"ok": False, "error": "reports/latest/metrics.json not found"}, status_code=404)
+        return JSONResponse(
+            {"ok": False, "error": "reports/latest/metrics.json not found"}, status_code=404
+        )
     m = json.loads(p.read_text(encoding="utf-8"))
     methods = {row.get("method"): row for row in m.get("methods", []) if isinstance(row, dict)}
     if "hybrid" not in methods or "hybrid_ltr" not in methods:
-        return JSONResponse({"ok": False, "error": "hybrid/hybrid_ltr missing in metrics"}, status_code=400)
+        return JSONResponse(
+            {"ok": False, "error": "hybrid/hybrid_ltr missing in metrics"}, status_code=400
+        )
     lift = float(methods["hybrid_ltr"]["ndcg@10"]) - float(methods["hybrid"]["ndcg@10"])
-    return JSONResponse({"ok": True, "metric": "ndcg@10", "baseline": "hybrid", "candidate": "hybrid_ltr", "lift": lift})
+    return JSONResponse(
+        {
+            "ok": True,
+            "metric": "ndcg@10",
+            "baseline": "hybrid",
+            "candidate": "hybrid_ltr",
+            "lift": lift,
+        }
+    )
+
 
 @app.get("/reports/latency")
 def reports_latency() -> JSONResponse:
     p = Path("reports/latest/latency.json")
     if not p.exists():
-        return JSONResponse({"ok": False, "error": "reports/latest/latency.json not found"}, status_code=404)
+        return JSONResponse(
+            {"ok": False, "error": "reports/latest/latency.json not found"}, status_code=404
+        )
     return JSONResponse(json.loads(p.read_text(encoding="utf-8")))
+
 
 @app.get("/reports/drift")
 def reports_drift() -> JSONResponse:
     p = Path("reports/latest/drift_report.json")
     if not p.exists():
-        return JSONResponse({"ok": False, "error": "reports/latest/drift_report.json not found"}, status_code=404)
+        return JSONResponse(
+            {"ok": False, "error": "reports/latest/drift_report.json not found"}, status_code=404
+        )
     return JSONResponse(json.loads(p.read_text(encoding="utf-8")))
+
 
 @app.get("/reports/shadow_ab")
 def reports_shadow_ab() -> JSONResponse:
     p = Path("reports/latest_eval/shadow_ab.json")
     if not p.exists():
-        return JSONResponse({"ok": False, "error": "reports/latest_eval/shadow_ab.json not found"}, status_code=404)
+        return JSONResponse(
+            {"ok": False, "error": "reports/latest_eval/shadow_ab.json not found"}, status_code=404
+        )
     return JSONResponse(json.loads(p.read_text(encoding="utf-8")))
+
 
 @app.get("/suggest")
 def suggest(
@@ -1039,10 +1196,23 @@ def suggest(
                     break
         return {"q": q, "profile": profile, "suggestions": out}
     base = {
-        "chrisen": ["gritty action", "mind-bending sci-fi", "crime thriller", "dark comedy", "space adventure"],
-        "gilbert": ["feel good romance", "romantic comedy", "family animation", "coming of age drama", "light comedy"],
+        "chrisen": [
+            "gritty action",
+            "mind-bending sci-fi",
+            "crime thriller",
+            "dark comedy",
+            "space adventure",
+        ],
+        "gilbert": [
+            "feel good romance",
+            "romantic comedy",
+            "family animation",
+            "coming of age drama",
+            "light comedy",
+        ],
     }.get(profile.lower(), ["action", "comedy", "romance", "thriller"])
     return {"q": q, "profile": profile, "suggestions": base[:n]}
+
 
 @app.get("/search", response_model=SearchResponse, operation_id="search_get")
 def search_get(
@@ -1066,12 +1236,21 @@ def search_get(
         _RATE_LIMITERS["search"].require(ip)
     c = _ensure_cache()
     cacheable = not debug
-    key = c.make_key("search", {
-        "q": q, "method": method, "k": k, "candidate_k": candidate_k,
-        "rerank_k": rerank_k, "alpha": alpha, "lang": x_language,
-        "device": x_device_type, "net": x_network_speed,
-        "user_id": user_id,
-    })
+    key = c.make_key(
+        "search",
+        {
+            "q": q,
+            "method": method,
+            "k": k,
+            "candidate_k": candidate_k,
+            "rerank_k": rerank_k,
+            "alpha": alpha,
+            "lang": x_language,
+            "device": x_device_type,
+            "net": x_network_speed,
+            "user_id": user_id,
+        },
+    )
     if cacheable:
         hit = c.get_json(key, kind="search")
         if hit is not None:
@@ -1082,15 +1261,21 @@ def search_get(
                 pass
             return SearchResponse(**hit)
 
-
     if cacheable and hit is None:
         _cache_incr_redis(c, "search", "misses")
 
     def compute():
         res = _search_core(
-            query=q, method=method, k=k, candidate_k=candidate_k, rerank_k=rerank_k,
-            alpha=alpha, debug=bool(debug), language=x_language,
-            device_type=x_device_type, network_speed=x_network_speed,
+            query=q,
+            method=method,
+            k=k,
+            candidate_k=candidate_k,
+            rerank_k=rerank_k,
+            alpha=alpha,
+            debug=bool(debug),
+            language=x_language,
+            device_type=x_device_type,
+            network_speed=x_network_speed,
             user_id=user_id,
         )
         try:
@@ -1099,13 +1284,19 @@ def search_get(
             pass
         if cacheable:
             try:
-                c.set_json(key, res.model_dump(), ttl_s=int(os.environ.get("SEARCH_CACHE_TTL", "600")), kind="search")
+                c.set_json(
+                    key,
+                    res.model_dump(),
+                    ttl_s=int(os.environ.get("SEARCH_CACHE_TTL", "600")),
+                    kind="search",
+                )
                 _cache_incr_redis(c, "search", "sets")
             except Exception:
                 _cache_incr_redis(c, "search", "errors")
         return res
 
     return c.singleflight(key, compute) if cacheable else compute()
+
 
 @app.post("/search", response_model=SearchResponse, operation_id="search_post")
 def search_post(
@@ -1123,12 +1314,21 @@ def search_post(
         _RATE_LIMITERS["search"].require(ip)
     c = _ensure_cache()
     cacheable = not req.debug
-    key = c.make_key("search", {
-        "q": req.query, "method": req.method, "k": req.k, "candidate_k": req.candidate_k,
-        "rerank_k": req.rerank_k, "alpha": req.alpha, "lang": x_language,
-        "device": x_device_type, "net": x_network_speed,
-        "user_id": user_id,
-    })
+    key = c.make_key(
+        "search",
+        {
+            "q": req.query,
+            "method": req.method,
+            "k": req.k,
+            "candidate_k": req.candidate_k,
+            "rerank_k": req.rerank_k,
+            "alpha": req.alpha,
+            "lang": x_language,
+            "device": x_device_type,
+            "net": x_network_speed,
+            "user_id": user_id,
+        },
+    )
     if cacheable:
         hit = c.get_json(key, kind="search")
         if hit is not None:
@@ -1139,15 +1339,21 @@ def search_post(
                 pass
             return SearchResponse(**hit)
 
-
     if cacheable and hit is None:
         _cache_incr_redis(c, "search", "misses")
 
     def compute():
         res = _search_core(
-            query=req.query, method=req.method, k=req.k, candidate_k=req.candidate_k,
-            rerank_k=req.rerank_k, alpha=req.alpha, debug=bool(req.debug),
-            language=x_language, device_type=x_device_type, network_speed=x_network_speed,
+            query=req.query,
+            method=req.method,
+            k=req.k,
+            candidate_k=req.candidate_k,
+            rerank_k=req.rerank_k,
+            alpha=req.alpha,
+            debug=bool(req.debug),
+            language=x_language,
+            device_type=x_device_type,
+            network_speed=x_network_speed,
             user_id=user_id,
         )
         try:
@@ -1156,13 +1362,19 @@ def search_post(
             pass
         if cacheable:
             try:
-                c.set_json(key, res.model_dump(), ttl_s=int(os.environ.get("SEARCH_CACHE_TTL", "600")), kind="search")
+                c.set_json(
+                    key,
+                    res.model_dump(),
+                    ttl_s=int(os.environ.get("SEARCH_CACHE_TTL", "600")),
+                    kind="search",
+                )
                 _cache_incr_redis(c, "search", "sets")
             except Exception:
                 _cache_incr_redis(c, "search", "errors")
         return res
 
     return c.singleflight(key, compute) if cacheable else compute()
+
 
 @app.get("/explain_rank")
 def explain_rank(
@@ -1179,9 +1391,16 @@ def explain_rank(
     x_network_speed: str | None = Header(default=None, alias="X-Network-Speed"),
 ) -> dict[str, Any]:
     res = _search_core(
-        query=q, method=method, k=k, candidate_k=candidate_k, rerank_k=rerank_k,
-        alpha=alpha, debug=True, language=x_language,
-        device_type=x_device_type, network_speed=x_network_speed,
+        query=q,
+        method=method,
+        k=k,
+        candidate_k=candidate_k,
+        rerank_k=rerank_k,
+        alpha=alpha,
+        debug=True,
+        language=x_language,
+        device_type=x_device_type,
+        network_speed=x_network_speed,
         user_id=user_id,
     )
     for i, h in enumerate(res.hits, start=1):
@@ -1192,7 +1411,13 @@ def explain_rank(
                 "hit": h.model_dump(),
                 "timings_ms": res.timings_ms,
             }
-    return {"found": False, "rank": None, "k": k, "hint": "doc_id not in top-k; raise k/candidate_k"}
+    return {
+        "found": False,
+        "rank": None,
+        "k": k,
+        "hint": "doc_id not in top-k; raise k/candidate_k",
+    }
+
 
 def _parse_catalog(text: str) -> dict[str, str]:
     out: dict[str, str] = {}
@@ -1203,6 +1428,7 @@ def _parse_catalog(text: str) -> dict[str, str]:
         k, v = p.split(":", 1)
         out[k.strip().lower()] = v.strip()
     return out
+
 
 def _item_impl(doc_id: str, language: str = "English") -> dict[str, Any]:
     doc_id = doc_id.strip()
@@ -1234,13 +1460,16 @@ def _item_impl(doc_id: str, language: str = "English") -> dict[str, Any]:
         "requested_language": language,
     }
 
+
 @app.get("/item")
 def item(doc_id: str, language: str = "English") -> dict[str, Any]:
     return _item_impl(doc_id=doc_id, language=language)
 
+
 @app.get("/item/{doc_id}")
 def item_path(doc_id: str, language: str = "English") -> dict[str, Any]:
     return _item_impl(doc_id=doc_id, language=language)
+
 
 @app.get("/feed")
 def feed(
@@ -1282,14 +1511,25 @@ def feed(
     method_used = "hybrid_ltr" if getattr(st, "reranker", None) is not None else "hybrid"
     for title, q in seeds:
         sres = _search_core(
-            query=q, method=method_used, k=k, candidate_k=int(CFG["retrieval"]["candidate_k"]),
-            rerank_k=int(CFG["retrieval"]["rerank_k"]), alpha=float(CFG["retrieval"]["alpha"]),
-            debug=False, language=language, device_type=None, network_speed=None,
+            query=q,
+            method=method_used,
+            k=k,
+            candidate_k=int(CFG["retrieval"]["candidate_k"]),
+            rerank_k=int(CFG["retrieval"]["rerank_k"]),
+            alpha=float(CFG["retrieval"]["alpha"]),
+            debug=False,
+            language=language,
+            device_type=None,
+            network_speed=None,
             user_id=user_id,
         )
         items = [
-            {"doc_id": h.doc_id, "title": h.title, "score": float(h.score),
-             "language": _lang_for_doc_id(h.doc_id)}
+            {
+                "doc_id": h.doc_id,
+                "title": h.title,
+                "score": float(h.score),
+                "language": _lang_for_doc_id(h.doc_id),
+            }
             for h in sres.hits
         ]
         rl_user_id = user_id or profile
@@ -1305,15 +1545,18 @@ def feed(
                 )
                 by_id = {item["doc_id"]: item for item in items}
                 items = [
-                    {**by_id[item["doc_id"]],
-                     "impression_id": item["impression_id"],
-                     "propensity": item["propensity"],
-                     "slate_id": item["slate_id"],
-                     "position": item["position"],
-                     "candidate_count": item["candidate_count"],
-                     "baseline_rank": item["baseline_rank"],
-                     "policy": item["policy"]}
-                    for item in selected if item["doc_id"] in by_id
+                    {
+                        **by_id[item["doc_id"]],
+                        "impression_id": item["impression_id"],
+                        "propensity": item["propensity"],
+                        "slate_id": item["slate_id"],
+                        "position": item["position"],
+                        "candidate_count": item["candidate_count"],
+                        "baseline_rank": item["baseline_rank"],
+                        "policy": item["policy"],
+                    }
+                    for item in selected
+                    if item["doc_id"] in by_id
                 ]
                 row_policy = "contextual_thompson_sampling_v1"
             except (OSError, sqlite3.Error, np.linalg.LinAlgError, ValueError):
@@ -1326,11 +1569,16 @@ def feed(
             row_policy = "relevance_ranker"
         out_rows.append({"title": title, "query": q, "items": items, "policy": row_policy})
     return {
-        "profile": profile, "language": language, "rows": out_rows,
+        "profile": profile,
+        "language": language,
+        "rows": out_rows,
         "user_id": user_id or profile,
         "policy": (
-            "relevance_ranker_fallback" if rl_degraded else
-            "contextual_thompson_sampling_v1" if rl_enabled else "relevance_ranker"
+            "relevance_ranker_fallback"
+            if rl_degraded
+            else "contextual_thompson_sampling_v1"
+            if rl_enabled
+            else "relevance_ranker"
         ),
     }
 
@@ -1360,7 +1608,9 @@ def rl_feedback(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
         try:
             watch_pct = float(watch_pct)
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail="watch_pct must be between 0 and 1.") from exc
+            raise HTTPException(
+                status_code=422, detail="watch_pct must be between 0 and 1."
+            ) from exc
         if not math.isfinite(watch_pct) or not 0.0 <= watch_pct <= 1.0:
             raise HTTPException(status_code=422, detail="watch_pct must be between 0 and 1.")
     if not user_id or not doc_id:
@@ -1369,7 +1619,9 @@ def rl_feedback(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
             detail="user_id and doc_id are required for feedback attribution.",
         )
     if len(user_id) > 128 or len(impression_id) > 128 or len(doc_id) > 128:
-        raise HTTPException(status_code=422, detail="user_id, doc_id, or impression_id is too long.")
+        raise HTTPException(
+            status_code=422, detail="user_id, doc_id, or impression_id is too long."
+        )
     try:
         result = _RL_BANDIT.record_feedback(
             impression_id,
@@ -1387,8 +1639,11 @@ def rl_feedback(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
         try:
             _PROP_LOGGER.record_outcome(
                 impression_id,
-                watch_pct=(float(watch_pct) if event_type in {"watch_progress", "watch_complete"}
-                           and watch_pct is not None else 0.0),
+                watch_pct=(
+                    float(watch_pct)
+                    if event_type in {"watch_progress", "watch_complete"} and watch_pct is not None
+                    else 0.0
+                ),
                 clicked=event_type in {"click", "watch_start", "watch_progress", "watch_complete"},
             )
         except (OSError, TypeError, ValueError):
@@ -1407,11 +1662,15 @@ def rl_exposure(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
     user_id = str(payload.get("user_id") or "")
     doc_id = str(payload.get("doc_id") or "")
     if any(not value or len(value) > 128 for value in (impression_id, user_id, doc_id)):
-        raise HTTPException(status_code=422, detail="Valid impression_id, user_id, and doc_id are required.")
+        raise HTTPException(
+            status_code=422, detail="Valid impression_id, user_id, and doc_id are required."
+        )
     try:
         exposure = _RL_BANDIT.mark_exposure(impression_id, user_id=user_id, doc_id=doc_id)
     except (OSError, sqlite3.Error, ValueError) as exc:
-        raise HTTPException(status_code=503, detail="Could not confirm impression exposure.") from exc
+        raise HTTPException(
+            status_code=503, detail="Could not confirm impression exposure."
+        ) from exc
     if not exposure["accepted"]:
         raise HTTPException(status_code=404, detail=exposure["reason"])
     logged = False
@@ -1420,10 +1679,14 @@ def rl_exposure(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
         context["target_scores"] = context.get("candidate_scores", {})
         logged_distribution = context.get("behavior_probabilities", {})
         selected_probability = logged_distribution.get(doc_id)
-        if (selected_probability is None
-                or not math.isclose(float(selected_probability), exposure["propensity"], rel_tol=1e-8)
-                or not math.isclose(sum(map(float, logged_distribution.values())), 1.0, rel_tol=1e-6)):
-            raise HTTPException(status_code=500, detail="Logged action distribution failed integrity validation.")
+        if (
+            selected_probability is None
+            or not math.isclose(float(selected_probability), exposure["propensity"], rel_tol=1e-8)
+            or not math.isclose(sum(map(float, logged_distribution.values())), 1.0, rel_tol=1e-6)
+        ):
+            raise HTTPException(
+                status_code=500, detail="Logged action distribution failed integrity validation."
+            )
         context["policy_state"] = "sampled_posterior_action_distribution_logged"
         try:
             _PROP_LOGGER.log_impression(
@@ -1452,7 +1715,10 @@ def rl_exposure(request: Request, payload: dict[str, Any] = Body(...)) -> dict[s
         "note": "Exact action probability and full remaining-candidate distribution are logged for this sequential slate decision.",
     }
 
-def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False) -> dict[str, Any]:
+
+def _explain_impl(
+    doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False
+) -> dict[str, Any]:
     doc_id = doc_id.strip()
     st = _ensure_ready()
     row = st.corpus.get(str(doc_id))
@@ -1467,19 +1733,31 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
         "gilbert": "likes feel-good romance, romantic comedy, family-friendly titles",
     }.get(profile.lower(), "likes a mix of popular titles")
 
-    srcs = [Source(doc_id=str(doc_id), title=title, snippet=_snippet(text, 800) or text, score=None, score_breakdown=None)]
+    srcs = [
+        Source(
+            doc_id=str(doc_id),
+            title=title,
+            snippet=_snippet(text, 800) or text,
+            score=None,
+            score_breakdown=None,
+        )
+    ]
 
     # Try OpenAI first (clean, specific, translates properly)
     try:
-        from genai.openai_explain import explain_why_this, explain_rag, translate_clean
+        from genai.openai_explain import explain_rag, explain_why_this
+
         if not agentic:
             answer = explain_why_this(title, text, profile, profile_prefs, language)
         else:
             answer = explain_rag(title, text, profile, profile_prefs, language)
         if answer:
             return {
-                "doc_id": doc_id, "profile": profile, "language": language,
-                "answer": answer, "agentic": agentic,
+                "doc_id": doc_id,
+                "profile": profile,
+                "language": language,
+                "answer": answer,
+                "agentic": agentic,
                 "sources": [s.model_dump() for s in srcs],
             }
     except Exception as e:
@@ -1510,7 +1788,9 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
                 f"IF YOU LIKED THIS: 2 specific film recommendations with years\n"
                 f"CAVEAT: One honest limitation (1 sentence)"
             )
-            llm_sys = "Film analyst. Write specific, accurate analysis about the exact film mentioned."
+            llm_sys = (
+                "Film analyst. Write specific, accurate analysis about the exact film mentioned."
+            )
 
         if language != "English":
             llm_sys += f" Write entirely in {language}. Every word must be in {language}."
@@ -1520,7 +1800,9 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
         )
         if llm_result.get("text"):
             return {
-                "doc_id": doc_id, "profile": profile, "language": language,
+                "doc_id": doc_id,
+                "profile": profile,
+                "language": language,
                 "answer": llm_result["text"],
                 "model": llm_result.get("model", "llama3"),
                 "source": llm_result.get("source", "ollama_local"),
@@ -1533,14 +1815,22 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
 
     if not agentic:
         question = (
-            f"In 2-3 sentences explain why \'{title}\' fits user \'{profile}\' who {profile_prefs}. "
+            f"In 2-3 sentences explain why '{title}' fits user '{profile}' who {profile_prefs}. "
             f"Be specific about genre, tone and themes. Cite [1]."
         )
         prompt = rag_prompt(question, context=context)
-        llm_out = _ollama_json(ollama, prompt=prompt, schema=output_schema(), temperature=0.3, top_p=0.9)
+        llm_out = _ollama_json(
+            ollama, prompt=prompt, schema=output_schema(), temperature=0.3, top_p=0.9
+        )
         answer_text, citations, warn = _validate_llm_output(llm_out, num_sources=len(srcs))
         answer_text2, _ = _maybe_translate_answer(ollama, answer_text, language)
-        return {"doc_id": doc_id, "profile": profile, "language": language, "answer": answer_text2, "sources": [s.model_dump() for s in srcs]}
+        return {
+            "doc_id": doc_id,
+            "profile": profile,
+            "language": language,
+            "answer": answer_text2,
+            "sources": [s.model_dump() for s in srcs],
+        }
 
     question = (
         f"Analyse '{title}' for user '{profile}' who {profile_prefs}. "
@@ -1548,7 +1838,13 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
     )
 
     def search_fn(_: dict[str, Any]) -> dict[str, Any]:
-        return {"query": question, "method": "item", "k": 1, "hits": [{"doc_id": doc_id, "title": title, "text": text, "score": 1.0}], "timings_ms": None}
+        return {
+            "query": question,
+            "method": "item",
+            "k": 1,
+            "hits": [{"doc_id": doc_id, "title": title, "text": text, "score": 1.0}],
+            "timings_ms": None,
+        }
 
     def build_context_fn(_: list[Any]) -> str:
         return context
@@ -1557,23 +1853,46 @@ def _explain_impl(doc_id: str, profile: str = "chrisen", language: str = "Englis
         return [srcs[0].model_dump()]
 
     payload, trace = run_agentic_rag(
-        ollama=ollama, query=question, method="hybrid_ltr", k=1,
-        initial_candidate_k=1, initial_context_k=1, alpha=0.5, rerank_k=1,
-        max_steps=2, search_fn=search_fn, build_context_fn=build_context_fn, sources_fn=sources_fn,
-        temperature=0.0, top_p=0.9,
+        ollama=ollama,
+        query=question,
+        method="hybrid_ltr",
+        k=1,
+        initial_candidate_k=1,
+        initial_context_k=1,
+        alpha=0.5,
+        rerank_k=1,
+        max_steps=2,
+        search_fn=search_fn,
+        build_context_fn=build_context_fn,
+        sources_fn=sources_fn,
+        temperature=0.0,
+        top_p=0.9,
     )
     ans = str(payload.get("answer", ""))
     ans2, _ = _maybe_translate_answer(ollama, ans, language)
-    return {"doc_id": doc_id, "profile": profile, "language": language, "answer": ans2,
-            "agent_steps": len(trace), "sources": [s.model_dump() for s in srcs]}
+    return {
+        "doc_id": doc_id,
+        "profile": profile,
+        "language": language,
+        "answer": ans2,
+        "agent_steps": len(trace),
+        "sources": [s.model_dump() for s in srcs],
+    }
+
 
 @app.get("/explain", operation_id="explain_get")
-def explain(doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False) -> dict[str, Any]:
+def explain(
+    doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False
+) -> dict[str, Any]:
     return _explain_impl(doc_id=doc_id, profile=profile, language=language, agentic=agentic)
 
+
 @app.get("/explain/{doc_id}", operation_id="explain_get_path")
-def explain_path(doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False) -> dict[str, Any]:
+def explain_path(
+    doc_id: str, profile: str = "chrisen", language: str = "English", agentic: bool = False
+) -> dict[str, Any]:
     return _explain_impl(doc_id=doc_id, profile=profile, language=language, agentic=agentic)
+
 
 @app.post("/answer", response_model=AnswerResponse)
 def answer(
@@ -1596,17 +1915,26 @@ def answer(
     q_retr, qmeta = _maybe_translate_query(ollama, req.query)
 
     cacheable = not req.debug
-    key = c.make_key("answer", {
-        "query": req.query, "method": req.method, "k": req.k, "cand": req.candidate_k, "rerank": req.rerank_k,
-        "alpha": req.alpha, "ctx": req.context_k, "lang": want_lang,
-        "device": x_device_type, "net": x_network_speed,
-    })
+    key = c.make_key(
+        "answer",
+        {
+            "query": req.query,
+            "method": req.method,
+            "k": req.k,
+            "cand": req.candidate_k,
+            "rerank": req.rerank_k,
+            "alpha": req.alpha,
+            "ctx": req.context_k,
+            "lang": want_lang,
+            "device": x_device_type,
+            "net": x_network_speed,
+        },
+    )
     if cacheable:
         hit = c.get_json(key, kind="answer")
         if hit is not None:
             _cache_incr_redis(c, "answer", "hits")
             return AnswerResponse(**hit)
-
 
     if cacheable and hit is None:
         _cache_incr_redis(c, "answer", "misses")
@@ -1616,8 +1944,16 @@ def answer(
         timings: dict[str, float] = {}
         a = _now_ms()
         sres = _search_core(
-            query=q_retr, method=req.method, k=req.k, candidate_k=req.candidate_k, rerank_k=req.rerank_k,
-            alpha=req.alpha, debug=True, language=None, device_type=x_device_type, network_speed=x_network_speed,
+            query=q_retr,
+            method=req.method,
+            k=req.k,
+            candidate_k=req.candidate_k,
+            rerank_k=req.rerank_k,
+            alpha=req.alpha,
+            debug=True,
+            language=None,
+            device_type=x_device_type,
+            network_speed=x_network_speed,
             user_id=None,
         )
         timings["retrieval_ms"] = _now_ms() - a
@@ -1631,7 +1967,9 @@ def answer(
         timings["prompt_ms"] = _now_ms() - a
 
         a = _now_ms()
-        llm_out = _ollama_json(ollama, prompt=prompt, schema=output_schema(), temperature=req.temperature, top_p=0.9)
+        llm_out = _ollama_json(
+            ollama, prompt=prompt, schema=output_schema(), temperature=req.temperature, top_p=0.9
+        )
         timings["llm_ms"] = _now_ms() - a
         timings["total_ms"] = _now_ms() - t0
 
@@ -1644,8 +1982,12 @@ def answer(
                 "Return JSON with fields: answer (string), citations (int[]), warning (string|null)."
             )
             repair_prompt = rag_prompt(repair_q, context=context)
-            repaired = _ollama_json(ollama, prompt=repair_prompt, schema=output_schema(), temperature=0.0, top_p=0.9)
-            answer_text2, citations2, warn2 = _validate_llm_output(repaired, num_sources=len(sources))
+            repaired = _ollama_json(
+                ollama, prompt=repair_prompt, schema=output_schema(), temperature=0.0, top_p=0.9
+            )
+            answer_text2, citations2, warn2 = _validate_llm_output(
+                repaired, num_sources=len(sources)
+            )
             if citations2:
                 answer_text, citations, warn = answer_text2, citations2, warn2 or warn
 
@@ -1668,7 +2010,12 @@ def answer(
             raw=raw,
         )
         if cacheable:
-            c.set_json(key, resp.model_dump(), ttl_s=int(os.environ.get("ANSWER_CACHE_TTL", "1800")), kind="answer")
+            c.set_json(
+                key,
+                resp.model_dump(),
+                ttl_s=int(os.environ.get("ANSWER_CACHE_TTL", "1800")),
+                kind="answer",
+            )
         return resp
 
     return c.singleflight(key, compute) if cacheable else compute()
@@ -1677,6 +2024,7 @@ def answer(
 # ══════════════════════════════════════════════════════════════════════════════
 # Phase 3 — Serendipity Endpoints
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/serendipity/score")
 def serendipity_score(
@@ -1693,12 +2041,21 @@ def serendipity_score(
     if not EXPLORATION_AVAILABLE or _SERENDIPITY_SCORER is None or _BANDIT is None:
         return {"error": "Exploration engine not available. Check src/exploration/bandit.py."}
 
-    st = _ensure_ready()
+    _ensure_ready()
     sres = _search_core(
-        query=q, method=method, k=k, candidate_k=int(CFG["retrieval"]["candidate_k"]),
-        rerank_k=int(CFG["retrieval"]["rerank_k"]), alpha=float(CFG["retrieval"]["alpha"]),
-        debug=False, language=None, device_type=None, network_speed=None, user_id=user_id,
+        query=q,
+        method=method,
+        k=k,
+        candidate_k=int(CFG["retrieval"]["candidate_k"]),
+        rerank_k=int(CFG["retrieval"]["rerank_k"]),
+        alpha=float(CFG["retrieval"]["alpha"]),
+        debug=False,
+        language=None,
+        device_type=None,
+        network_speed=None,
+        user_id=user_id,
     )
+    st = _ensure_ready()
     candidates = [(h.doc_id, h.score) for h in sres.hits]
     docs = _BANDIT.select(candidates, st.corpus, n_slots=k)
     report = _SERENDIPITY_SCORER.score(q, docs)
@@ -1721,7 +2078,9 @@ def serendipity_score(
         "exploitation_slots": report.exploitation_slots,
         "genre_distribution": report.genre_distribution,
         "in_silo": in_silo,
-        "silo_warning": "User appears stuck in a genre silo. Serendipity boost recommended." if in_silo else None,
+        "silo_warning": "User appears stuck in a genre silo. Serendipity boost recommended."
+        if in_silo
+        else None,
     }
 
 
@@ -1731,7 +2090,9 @@ def feed_diverse(
     language: str = Query("English"),
     rows: int = Query(6, ge=1, le=12),
     k: int = Query(12, ge=6, le=200),
-    epsilon: float = Query(0.15, ge=0.0, le=1.0, description="Exploration rate (0=pure exploit, 1=pure explore)"),
+    epsilon: float = Query(
+        0.15, ge=0.0, le=1.0, description="Exploration rate (0=pure exploit, 1=pure explore)"
+    ),
     user_id: str | None = Query(default=None),
 ) -> dict[str, Any]:
     """
@@ -1771,12 +2132,17 @@ def feed_diverse(
 
     for title, q in seeds:
         sres = _search_core(
-            query=q, method=method_used, k=k,
+            query=q,
+            method=method_used,
+            k=k,
             candidate_k=int(CFG["retrieval"]["candidate_k"]),
             rerank_k=int(CFG["retrieval"]["rerank_k"]),
             alpha=float(CFG["retrieval"]["alpha"]),
-            debug=False, language=language,
-            device_type=None, network_speed=None, user_id=user_id,
+            debug=False,
+            language=language,
+            device_type=None,
+            network_speed=None,
+            user_id=user_id,
         )
         candidates = [(h.doc_id, h.score) for h in sres.hits]
 
@@ -1785,29 +2151,48 @@ def feed_diverse(
             report = scorer.score(q, docs) if scorer else None  # type: ignore[union-attr]
             items = []
             for doc in docs:
-                items.append({
-                    "doc_id": doc.doc_id, "title": doc.title,
-                    "score": float(doc.score), "genres": doc.genres,
-                    "slot_type": doc.slot_type,
-                    "language": _lang_for_doc_id(doc.doc_id),
-                })
+                items.append(
+                    {
+                        "doc_id": doc.doc_id,
+                        "title": doc.title,
+                        "score": float(doc.score),
+                        "genres": doc.genres,
+                        "slot_type": doc.slot_type,
+                        "language": _lang_for_doc_id(doc.doc_id),
+                    }
+                )
             if report:
                 total_exploration_slots += report.exploration_slots
                 total_exploitation_slots += report.exploitation_slots
-            out_rows.append({
-                "title": title, "query": q, "items": items,
-                "serendipity": {
-                    "discovery_breadth": report.discovery_breadth if report else None,
-                    "exploration_slots": report.exploration_slots if report else 0,
-                } if report else None,
-            })
+            out_rows.append(
+                {
+                    "title": title,
+                    "query": q,
+                    "items": items,
+                    "serendipity": {
+                        "discovery_breadth": report.discovery_breadth if report else None,
+                        "exploration_slots": report.exploration_slots if report else 0,
+                    }
+                    if report
+                    else None,
+                }
+            )
         else:
-            items = [{"doc_id": h.doc_id, "title": h.title, "score": float(h.score),
-                      "slot_type": "exploit", "language": _lang_for_doc_id(h.doc_id)} for h in sres.hits]
+            items = [
+                {
+                    "doc_id": h.doc_id,
+                    "title": h.title,
+                    "score": float(h.score),
+                    "slot_type": "exploit",
+                    "language": _lang_for_doc_id(h.doc_id),
+                }
+                for h in sres.hits
+            ]
             out_rows.append({"title": title, "query": q, "items": items, "serendipity": None})
 
     return {
-        "profile": profile, "language": language,
+        "profile": profile,
+        "language": language,
         "exploration_rate": epsilon,
         "rows": out_rows,
         "summary": {
@@ -1841,10 +2226,16 @@ def feed_household(
     method_used = "hybrid_ltr" if getattr(st, "reranker", None) is not None else "hybrid"
 
     seeds_by_profile: dict[str, list[tuple[str, str]]] = {
-        "chrisen": [("gritty action", "gritty action"), ("crime thriller", "crime thriller"),
-                    ("sci-fi", "mind-bending sci-fi")],
-        "gilbert": [("feel good romance", "feel good romance"), ("romantic comedy", "romantic comedy"),
-                    ("family animation", "family animation")],
+        "chrisen": [
+            ("gritty action", "gritty action"),
+            ("crime thriller", "crime thriller"),
+            ("sci-fi", "mind-bending sci-fi"),
+        ],
+        "gilbert": [
+            ("feel good romance", "feel good romance"),
+            ("romantic comedy", "romantic comedy"),
+            ("family animation", "family animation"),
+        ],
     }
 
     profile_feeds: dict[str, list[tuple[str, float]]] = {}
@@ -1852,12 +2243,17 @@ def feed_household(
         seeds = seeds_by_profile.get(profile.lower(), [("action", "action")])
         q = seeds[0][1]
         sres = _search_core(
-            query=q, method=method_used, k=k,
+            query=q,
+            method=method_used,
+            k=k,
             candidate_k=int(CFG["retrieval"]["candidate_k"]),
             rerank_k=int(CFG["retrieval"]["rerank_k"]),
             alpha=float(CFG["retrieval"]["alpha"]),
-            debug=False, language=language,
-            device_type=None, network_speed=None, user_id=user_id,
+            debug=False,
+            language=language,
+            device_type=None,
+            network_speed=None,
+            user_id=user_id,
         )
         profile_feeds[profile] = [(h.doc_id, h.score) for h in sres.hits]
 
@@ -1866,20 +2262,25 @@ def feed_household(
     items = []
     for did, score, source_profile in merged:
         row = st.corpus.get(str(did), {})
-        items.append({
-            "doc_id": did, "title": row.get("title"),
-            "score": round(float(score), 4),
-            "profile_source": source_profile,
-            "language": _lang_for_doc_id(did),
-        })
+        items.append(
+            {
+                "doc_id": did,
+                "title": row.get("title"),
+                "score": round(float(score), 4),
+                "profile_source": source_profile,
+                "language": _lang_for_doc_id(did),
+            }
+        )
 
     profile_counts: dict[str, int] = {}
     for _, _, p in merged:
         profile_counts[p] = profile_counts.get(p, 0) + 1
 
     return {
-        "profiles": profile_list, "language": language,
-        "total_slots": total_slots, "items": items,
+        "profiles": profile_list,
+        "language": language,
+        "total_slots": total_slots,
+        "items": items,
         "balance": profile_counts,
         "user_id": user_id,
     }
@@ -1888,6 +2289,7 @@ def feed_household(
 # ══════════════════════════════════════════════════════════════════════════════
 # Phase 5 — Feedback & Personalization Endpoints
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.post("/feedback")
 def record_feedback(
@@ -1907,8 +2309,12 @@ def record_feedback(
     if event_type not in valid_events:
         raise HTTPException(status_code=400, detail=f"event_type must be one of: {valid_events}")
     event = FeedbackEvent(
-        user_id=user_id, doc_id=doc_id, event_type=event_type,
-        timestamp=time.time(), query=query, rank=rank,
+        user_id=user_id,
+        doc_id=doc_id,
+        event_type=event_type,
+        timestamp=time.time(),
+        query=query,
+        rank=rank,
     )
     stored = _FEEDBACK_COLLECTOR.record(event)
     return {"ok": stored, "event_type": event_type, "doc_id": doc_id, "user_id": user_id}
@@ -1927,7 +2333,8 @@ def export_feedback_qrels(
         return {"ok": False, "error": "Feedback collector not available."}
     qrels = _FEEDBACK_COLLECTOR.export_qrels(user_id=user_id, min_label=min_label)
     return {
-        "ok": True, "num_queries": len(qrels),
+        "ok": True,
+        "num_queries": len(qrels),
         "total_labels": sum(len(v) for v in qrels.values()),
         "qrels": qrels,
     }
@@ -1946,7 +2353,9 @@ def personalization_explain(
         return {"error": "Personalization v2 not available."}
     st = _ensure_ready()
     if user_id not in USERS:
-        raise HTTPException(status_code=404, detail=f"user_id '{user_id}' not found in users store.")
+        raise HTTPException(
+            status_code=404, detail=f"user_id '{user_id}' not found in users store."
+        )
     row = st.corpus.get(str(doc_id), {})
     if not row:
         raise HTTPException(status_code=404, detail=f"doc_id '{doc_id}' not found in corpus.")
@@ -1961,7 +2370,9 @@ def personalization_explain(
             doc_embs = None
 
     dummy_ranked = [(doc_id, 1.0)]
-    _, signals = _PERSONALIZER_V2.boost_scores(dummy_ranked, st.corpus, user_id, USERS, doc_embeddings=doc_embs)
+    _, signals = _PERSONALIZER_V2.boost_scores(
+        dummy_ranked, st.corpus, user_id, USERS, doc_embeddings=doc_embs
+    )
     if not signals:
         raise HTTPException(status_code=500, detail="Could not compute personalization signal.")
 
@@ -1971,6 +2382,7 @@ def personalization_explain(
 # ══════════════════════════════════════════════════════════════════════════════
 # Phase 6 — Production Ops Endpoints
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @app.get("/rate_limits")
 def rate_limits_status() -> dict[str, Any]:
@@ -2025,8 +2437,9 @@ def health_deep() -> dict[str, Any]:
     latest_metrics = Path("reports/latest/metrics.json")
     checks["latest_metrics_exists"] = latest_metrics.exists()
 
-    all_ok = all(v is True for k, v in checks.items()
-                 if k in {"api", "corpus_loaded", "bm25_loaded"})
+    all_ok = all(
+        v is True for k, v in checks.items() if k in {"api", "corpus_loaded", "bm25_loaded"}
+    )
     checks["ok"] = all_ok
     checks["config"] = CFG
 
@@ -2046,11 +2459,15 @@ def admin_rollback(
         raise HTTPException(status_code=403, detail="Invalid or missing X-Admin-Token.")
 
     import shutil
+
     ref_dir = Path("reports/reference")
     latest_dir = Path("reports/latest")
 
     if not ref_dir.exists():
-        raise HTTPException(status_code=404, detail="reports/reference not found. No reference baseline to roll back to.")
+        raise HTTPException(
+            status_code=404,
+            detail="reports/reference not found. No reference baseline to roll back to.",
+        )
 
     rolled_back: list[str] = []
     for fname in ["metrics.json", "latency.json"]:
@@ -2080,29 +2497,34 @@ def admin_rollback(
 # ── Lazy imports ─────────────────────────────────────────────────────────────
 try:
     from causal.uplift import (
-        IncrementalityScorer, OffPolicyEvaluator, UpliftFeatureEnricher,
-        UpliftScore, LoggedEvent,
+        LoggedEvent,
+        OffPolicyEvaluator,
     )
+
     CAUSAL_AVAILABLE = True
 except ImportError:
     CAUSAL_AVAILABLE = False
 
 try:
-    from finops.cost_gates import FinOpsGate, ArtifactLifecycle
+    from finops.cost_gates import ArtifactLifecycle, FinOpsGate
+
     FINOPS_AVAILABLE = True
 except ImportError:
     FINOPS_AVAILABLE = False
 
 try:
     from foundation.multimodal import (
-        MultimodalEnricher, SessionIntentPredictor, ArtworkAnalyser,
+        ArtworkAnalyser,
+        SessionIntentPredictor,
     )
+
     FOUNDATION_AVAILABLE = True
 except ImportError:
     FOUNDATION_AVAILABLE = False
 
 try:
-    from agents.self_healing import ShadowGovernor, SelfHealingOrchestrator
+    from agents.self_healing import SelfHealingOrchestrator
+
     AGENTS_AVAILABLE = True
 except ImportError:
     AGENTS_AVAILABLE = False
@@ -2114,6 +2536,7 @@ _HEALING_ORCHESTRATOR: Any = None
 
 
 # ── Phase 7: Causal incrementality ───────────────────────────────────────────
+
 
 @app.get("/uplift/score")
 def uplift_score(
@@ -2134,7 +2557,8 @@ def uplift_score(
             "note": "The eligible feed outcome journal is unavailable.",
         }
     events = [
-        event for event in _PROP_LOGGER.load_events_for_ope(n=50000)
+        event
+        for event in _PROP_LOGGER.load_events_for_ope(n=50000)
         if event.get("doc_id") == doc_id
     ]
     if not events:
@@ -2154,14 +2578,16 @@ def uplift_score(
     rewards = np.asarray([float(event.get("watch_pct", 0.0)) for event in events])
     weight_sum = float(weights.sum())
     observed_watch = float(np.dot(weights / weight_sum, rewards))
-    effective_sample_size = weight_sum ** 2 / max(float(np.dot(weights, weights)), 1e-12)
+    effective_sample_size = weight_sum**2 / max(float(np.dot(weights, weights)), 1e-12)
     return {
         "doc_id": doc_id,
         "status": "observed_outcomes_only",
         "incrementality_score": None,
         "p_watch_shown": round(observed_watch, 6),
         "p_watch_not_shown": None,
-        "observed_click_rate": round(sum(bool(event.get("clicked")) for event in events) / len(events), 6),
+        "observed_click_rate": round(
+            sum(bool(event.get("clicked")) for event in events) / len(events), 6
+        ),
         "method": "inverse_propensity_weighted_observed_mean",
         "confident": False,
         "is_incremental": None,
@@ -2228,6 +2654,7 @@ def ope_evaluate(
 
 # ── Phase 7: FinOps ───────────────────────────────────────────────────────────
 
+
 @app.get("/finops/cost_gate")
 def finops_cost_gate(
     ndcg_lift: float = Query(0.02, ge=0.0, le=1.0),
@@ -2270,6 +2697,7 @@ def artifact_tier(dry_run: bool = Query(True)) -> dict[str, Any]:
 
 # ── Phase 7: Foundation Model ─────────────────────────────────────────────────
 
+
 @app.get("/foundation/artwork")
 def foundation_artwork(
     doc_id: str = Query(...),
@@ -2293,6 +2721,7 @@ def foundation_artwork(
     predictor = SessionIntentPredictor()
     session = predictor.predict(user_id=user_id or "anon", device_type=device_type)
     from foundation.multimodal import FoundationRanker
+
     ranker = FoundationRanker()
     foundation = ranker.score(artwork, session)
     return {
@@ -2345,17 +2774,18 @@ def foundation_intent(
         "titles_browsed": session.titles_browsed,
         "signals": session.signals,
         "interpretation": {
-            "background_noise":   "User is half-watching — prefer light/familiar content",
-            "dedicated_viewing":  "Full attention — surface best quality content",
-            "discovery_mode":     "Browsing — maximise diversity and novelty",
+            "background_noise": "User is half-watching — prefer light/familiar content",
+            "dedicated_viewing": "Full attention — surface best quality content",
+            "discovery_mode": "Browsing — maximise diversity and novelty",
             "binge_continuation": "Mid-series — prioritise next episode",
-            "social_watching":    "Group viewing — prefer crowd-pleasers",
-            "rewatch_comfort":    "Comfort viewing — surface known favourites",
+            "social_watching": "Group viewing — prefer crowd-pleasers",
+            "rewatch_comfort": "Comfort viewing — surface known favourites",
         }.get(session.intent.value, ""),
     }
 
 
 # ── Phase 7: Self-Healing Agent ───────────────────────────────────────────────
+
 
 @app.get("/agent/shadow_status")
 def agent_shadow_status() -> dict[str, Any]:
@@ -2371,14 +2801,20 @@ def agent_shadow_status() -> dict[str, Any]:
     methods = {r.get("method"): r for r in metrics.get("methods", []) if isinstance(r, dict)}
     prod = float(methods.get("hybrid", {}).get("ndcg@10", 0))
     cand = float(methods.get("hybrid_ltr", {}).get("ndcg@10", 0))
-    lift  = (cand - prod) / max(1e-9, prod)
-    from agents.self_healing import ShadowObservation, ShadowGovernor
+    lift = (cand - prod) / max(1e-9, prod)
     import time
+
+    from agents.self_healing import ShadowGovernor, ShadowObservation
+
     gov = ShadowGovernor()
-    gov.ingest(ShadowObservation(
-        timestamp=time.time(), production_ndcg=prod,
-        candidate_ndcg=cand, n_queries=200,
-    ))
+    gov.ingest(
+        ShadowObservation(
+            timestamp=time.time(),
+            production_ndcg=prod,
+            candidate_ndcg=cand,
+            n_queries=200,
+        )
+    )
     record = gov.evaluate("artifacts/ltr/movielens_ltr.pkl")
     return {
         "production_ndcg": prod,
@@ -2420,6 +2856,7 @@ def agent_heal() -> dict[str, Any]:
 # ── Lazy imports ─────────────────────────────────────────────────────────────
 try:
     from retrieval.query_understanding import QueryUnderstandingPipeline
+
     _QUP = QueryUnderstandingPipeline()
     QU_AVAILABLE = True
 except Exception:
@@ -2427,7 +2864,11 @@ except Exception:
     QU_AVAILABLE = False
 
 try:
-    from ranking.session_model import TemporalUserStateModel, SessionEncoder, HouseholdContaminationDetector
+    from ranking.session_model import (
+        SessionEncoder,
+        TemporalUserStateModel,
+    )
+
     _SESSION_MODEL = TemporalUserStateModel()
     _SESSION_ENCODER = SessionEncoder()
     SESSION_MODEL_AVAILABLE = True
@@ -2436,13 +2877,13 @@ except Exception:
     SESSION_MODEL_AVAILABLE = False
 
 try:
-    from eval.comprehensive import ComprehensiveEvaluator, QueryResult as CQR
     COMP_EVAL_AVAILABLE = True
 except Exception:
     COMP_EVAL_AVAILABLE = False
 
 try:
-    from ranking.ads_aware import AdsAwareRanker, AdCandidate
+    from ranking.ads_aware import AdCandidate, AdsAwareRanker
+
     _ADS_RANKER = AdsAwareRanker()
     ADS_AVAILABLE = True
 except Exception:
@@ -2450,7 +2891,8 @@ except Exception:
     ADS_AVAILABLE = False
 
 try:
-    from retrieval.freshness import FreshnessScorer, AvailabilityFilter, MultiFormatRanker
+    from retrieval.freshness import FreshnessScorer
+
     _FRESHNESS = FreshnessScorer()
     FRESHNESS_AVAILABLE = True
 except Exception:
@@ -2459,6 +2901,7 @@ except Exception:
 
 
 # ── Query Understanding ───────────────────────────────────────────────────────
+
 
 @app.get("/query/understand")
 def query_understand(q: str = Query(..., min_length=1)) -> dict[str, Any]:
@@ -2495,18 +2938,21 @@ def search_with_understanding(
         return {"error": "query understanding not available"}
 
     parsed = _QUP.run(q)
-    st = _ensure_ready()
+    _ensure_ready()
     all_hits: dict[str, Any] = {}
 
     for rewrite in parsed.rewrites[:3]:
         try:
-            res = _search_core(query=rewrite, method="hybrid_ltr", k=k,
-                               candidate_k=200, rerank_k=50, alpha=0.5)
+            res = _search_core(
+                query=rewrite, method="hybrid_ltr", k=k, candidate_k=200, rerank_k=50, alpha=0.5
+            )
             for hit in res.hits:
                 if hit.doc_id not in all_hits or hit.score > all_hits[hit.doc_id]["score"]:
                     all_hits[hit.doc_id] = {
-                        "doc_id": hit.doc_id, "title": hit.title,
-                        "score": hit.score, "text": hit.text,
+                        "doc_id": hit.doc_id,
+                        "title": hit.title,
+                        "score": hit.score,
+                        "text": hit.text,
                         "matched_rewrite": rewrite,
                     }
         except Exception:
@@ -2525,6 +2971,7 @@ def search_with_understanding(
 
 # ── Session & Temporal User State ─────────────────────────────────────────────
 
+
 @app.get("/user/state")
 def user_state(user_id: str = Query(...)) -> dict[str, Any]:
     """
@@ -2541,9 +2988,9 @@ def user_state(user_id: str = Query(...)) -> dict[str, Any]:
         "interaction_count": state.interaction_count,
         "dominant_genres": state.dominant_genres,
         "intent_drift": state.session_intent_drift,
-        "genre_affinities": dict(list(sorted(
-            state.genre_affinities.items(), key=lambda x: -abs(x[1])
-        ))[:10]),
+        "genre_affinities": dict(
+            list(sorted(state.genre_affinities.items(), key=lambda x: -abs(x[1])))[:10]
+        ),
         "negative_count": len(state.negative_doc_ids),
         "recent_doc_ids": state.recent_doc_ids[:5],
     }
@@ -2571,22 +3018,25 @@ def household_contamination(
         return {"error": "session model not available"}
     state = _SESSION_MODEL.get_state(user_id)
     from ranking.session_model import HouseholdContaminationDetector
+
     detector = HouseholdContaminationDetector()
     recent = dict(list(state.genre_affinities.items())[:lookback_interactions])
-    hist   = state.genre_affinities
-    score  = detector.score_contamination(recent, hist)
+    hist = state.genre_affinities
+    score = detector.score_contamination(recent, hist)
     return {
         "user_id": user_id,
         "contamination_score": score,
         "contaminated": score > 0.5,
         "recommendation": (
-            "Use session-level signals only" if score > 0.5
+            "Use session-level signals only"
+            if score > 0.5
             else "Profile is clean — use full history"
         ),
     }
 
 
 # ── Comprehensive Evaluation ──────────────────────────────────────────────────
+
 
 @app.get("/eval/comprehensive")
 def eval_comprehensive() -> dict[str, Any]:
@@ -2621,13 +3071,19 @@ def eval_comprehensive() -> dict[str, Any]:
         for row in raw.get("methods", [])
         if isinstance(row, dict) and isinstance(row.get("method"), str)
     }
+
     def numeric(row: dict[str, Any], key: str) -> float | int | None:
         value = row.get(key)
         return value if isinstance(value, (int, float)) else None
+
     bm25, dense = methods.get("bm25", {}), methods.get("dense", {})
     hybrid, ltr = methods.get("hybrid", {}), methods.get("hybrid_ltr", {})
     ltr_ndcg, hybrid_ndcg = numeric(ltr, "ndcg@10"), numeric(hybrid, "ndcg@10")
-    lift = round(ltr_ndcg - hybrid_ndcg, 6) if ltr_ndcg is not None and hybrid_ndcg is not None else None
+    lift = (
+        round(ltr_ndcg - hybrid_ndcg, 6)
+        if ltr_ndcg is not None and hybrid_ndcg is not None
+        else None
+    )
 
     # These targets are explicit gates, evaluated only when the artifact contains
     # the corresponding metric. Missing evidence can never count as a pass.
@@ -2638,9 +3094,12 @@ def eval_comprehensive() -> dict[str, Any]:
     }
     gates = {
         key: {
-            "value": round(value, 6), "target": target,
+            "value": round(value, 6),
+            "target": target,
             "passed": value >= target if op == ">=" else value <= target,
-        } if value is not None else {"value": None, "target": target, "passed": None}
+        }
+        if value is not None
+        else {"value": None, "target": target, "passed": None}
         for key, (value, target, op) in targets.items()
     }
     gates["all_pass"] = all(item["passed"] is True for item in gates.values())
@@ -2650,7 +3109,11 @@ def eval_comprehensive() -> dict[str, Any]:
     if latency_path.is_file():
         try:
             latency_artifact = _json.loads(latency_path.read_text())
-            latency = {"status": "artifact_available", "source": str(latency_path), "metrics": latency_artifact}
+            latency = {
+                "status": "artifact_available",
+                "source": str(latency_path),
+                "metrics": latency_artifact,
+            }
         except (OSError, ValueError):
             latency = {"status": "invalid_artifact", "source": str(latency_path)}
 
@@ -2697,7 +3160,9 @@ def eval_comprehensive() -> dict[str, Any]:
             "hybrid_baseline": hybrid_ndcg,
             "ltr_final": ltr_ndcg,
             "ltr_abs_lift": lift,
-            "ltr_rel_lift_pct": round(lift / hybrid_ndcg * 100, 4) if lift is not None and hybrid_ndcg else None,
+            "ltr_rel_lift_pct": round(lift / hybrid_ndcg * 100, 4)
+            if lift is not None and hybrid_ndcg
+            else None,
         },
         "retrieval": {
             "recall@100": numeric(ltr, "recall@100"),
@@ -2719,11 +3184,12 @@ def eval_comprehensive() -> dict[str, Any]:
 
 # ── Ads-Aware Ranking ─────────────────────────────────────────────────────────
 
+
 @app.get("/feed/ads_aware")
 def feed_ads_aware(
     profile: str = Query("chrisen"),
     user_id: str | None = Query(default=None),
-    user_plan: str = Query("ads"),          # "standard" | "ads" | "premium"
+    user_plan: str = Query("ads"),  # "standard" | "ads" | "premium"
     n_ad_candidates: int = Query(3, ge=0, le=10),
 ) -> dict[str, Any]:
     """
@@ -2733,7 +3199,7 @@ def feed_ads_aware(
     if not ADS_AVAILABLE or _ADS_RANKER is None:
         return {"error": "ads ranker not available"}
 
-    st = _ensure_ready()
+    _ensure_ready()
     uid = user_id or profile
 
     # Get organic results
@@ -2741,27 +3207,35 @@ def feed_ads_aware(
     all_organic: list[dict] = []
     for _, q in seeds[:2]:
         try:
-            res = _search_core(query=q, method="hybrid_ltr", k=8,
-                               candidate_k=100, rerank_k=30, alpha=0.5)
+            res = _search_core(
+                query=q, method="hybrid_ltr", k=8, candidate_k=100, rerank_k=30, alpha=0.5
+            )
             for h in res.hits:
-                all_organic.append({"doc_id": h.doc_id, "title": h.title,
-                                    "score": h.score, "text": h.text or ""})
+                all_organic.append(
+                    {"doc_id": h.doc_id, "title": h.title, "score": h.score, "text": h.text or ""}
+                )
         except Exception:
             pass
 
     # Synthetic ad candidates (in prod: fetched from ad server)
     import random
+
     random.seed(hash(uid) % 10000)
-    ad_candidates = [
-        AdCandidate(
-            ad_id=f"ad_{i}", advertiser_id=f"adv_{i % 3}",
-            target_doc_id=f"sponsored_{i}",
-            bid_score=random.uniform(0.3, 0.9),
-            relevance_score=random.uniform(0.4, 0.8),
-            frequency_cap=3,
-        )
-        for i in range(n_ad_candidates)
-    ] if user_plan == "ads" else []
+    ad_candidates = (
+        [
+            AdCandidate(
+                ad_id=f"ad_{i}",
+                advertiser_id=f"adv_{i % 3}",
+                target_doc_id=f"sponsored_{i}",
+                bid_score=random.uniform(0.3, 0.9),
+                relevance_score=random.uniform(0.4, 0.8),
+                frequency_cap=3,
+            )
+            for i in range(n_ad_candidates)
+        ]
+        if user_plan == "ads"
+        else []
+    )
 
     result = _ADS_RANKER.rank(
         organic_hits=all_organic[:12],
@@ -2778,9 +3252,13 @@ def feed_ads_aware(
         "ad_load_pct": result.ad_load_pct,
         "estimated_engagement_impact": result.estimated_engagement_impact,
         "slots": [
-            {"position": s.position, "type": s.slot_type.value,
-             "doc_id": s.doc_id, "score": round(s.score, 4),
-             "ad_id": s.ad_id}
+            {
+                "position": s.position,
+                "type": s.slot_type.value,
+                "doc_id": s.doc_id,
+                "score": round(s.score, 4),
+                "ad_id": s.ad_id,
+            }
             for s in result.slots
         ],
         "note": "Organic LTR scores unchanged. Ad slots allocated separately.",
@@ -2788,6 +3266,7 @@ def feed_ads_aware(
 
 
 # ── Freshness & Live ──────────────────────────────────────────────────────────
+
 
 @app.get("/content/freshness")
 def content_freshness(doc_id: str = Query(...)) -> dict[str, Any]:
@@ -2799,6 +3278,7 @@ def content_freshness(doc_id: str = Query(...)) -> dict[str, Any]:
         return {"error": "freshness not available"}
 
     from retrieval.freshness import ContentMetadata
+
     st = _ensure_ready()
     doc = st.corpus.get(doc_id, {}) if st and st.corpus else {}
     meta = ContentMetadata(
@@ -2822,6 +3302,7 @@ def content_freshness(doc_id: str = Query(...)) -> dict[str, Any]:
 
 
 # ── System capabilities summary ───────────────────────────────────────────────
+
 
 @app.get("/capabilities")
 def capabilities() -> dict[str, Any]:
@@ -2906,6 +3387,7 @@ def capabilities() -> dict[str, Any]:
 # ── Lazy init ────────────────────────────────────────────────────────────────
 try:
     from foundation.vlm_artwork import RealArtworkAnalyser
+
     _VLM_ANALYSER = RealArtworkAnalyser()
     VLM_AVAILABLE = True
 except Exception:
@@ -2914,6 +3396,7 @@ except Exception:
 
 try:
     from retrieval.knowledge_graph import MovieKnowledgeGraph
+
     _KG = MovieKnowledgeGraph()
     _KG_BUILT = False
     KG_AVAILABLE = True
@@ -2924,6 +3407,7 @@ except Exception:
 
 try:
     from causal.propensity_logger import PropensityLogger
+
     _PROP_LOGGER = PropensityLogger()
     PROP_LOGGER_AVAILABLE = True
 except Exception:
@@ -2965,6 +3449,7 @@ def _ensure_kg() -> bool:
 
 
 # ── VLM Artwork endpoints ─────────────────────────────────────────────────────
+
 
 @app.get("/vlm/artwork")
 def vlm_artwork_real(
@@ -3010,7 +3495,7 @@ def vlm_artwork_real(
             "openai_configured": bool(os.environ.get("OPENAI_API_KEY")),
             "tmdb_configured": bool(os.environ.get("TMDB_API_KEY")),
             "note": "Set OPENAI_API_KEY and TMDB_API_KEY in docker-compose.yml to enable real VLM",
-        }
+        },
     }
 
 
@@ -3036,15 +3521,19 @@ def vlm_batch(
         "real_vlm_count": sum(1 for r in results if r.analysis_source == "gpt4v"),
         "cached_count": sum(1 for r in results if r.cached),
         "results": [
-            {"doc_id": r.doc_id, "mood": r.mood,
-             "analysis_source": r.analysis_source,
-             "poster_url": r.poster_url}
+            {
+                "doc_id": r.doc_id,
+                "mood": r.mood,
+                "analysis_source": r.analysis_source,
+                "poster_url": r.poster_url,
+            }
             for r in results
         ],
     }
 
 
 # ── Knowledge Graph endpoints ─────────────────────────────────────────────────
+
 
 @app.get("/graph/build")
 def graph_build() -> dict[str, Any]:
@@ -3075,8 +3564,7 @@ def graph_expand(
 
     # Find seed docs from regular search
     try:
-        sres = _search_core(query=q, method="hybrid", k=5,
-                            candidate_k=50, rerank_k=20, alpha=0.5)
+        sres = _search_core(query=q, method="hybrid", k=5, candidate_k=50, rerank_k=20, alpha=0.5)
         seed_ids = [h.doc_id for h in sres.hits[:5]]
     except Exception:
         seed_ids = []
@@ -3124,8 +3612,7 @@ def graph_neighbours(
         "tags": node.tags,
         "n_neighbours": len(neighbours),
         "neighbours": [
-            {"doc_id": r.doc_id, "title": r.title,
-             "score": r.score, "via": r.edge_types}
+            {"doc_id": r.doc_id, "title": r.title, "score": r.score, "via": r.edge_types}
             for r in neighbours
         ],
     }
@@ -3141,6 +3628,7 @@ def graph_stats() -> dict[str, Any]:
 
 
 # ── Propensity Logger endpoints ────────────────────────────────────────────────
+
 
 @app.post("/impression/log")
 def log_impression(
@@ -3207,9 +3695,7 @@ def impression_stats() -> dict[str, Any]:
         return {"error": "propensity logger not available"}
     stats = _PROP_LOGGER.stats()
     events = _PROP_LOGGER.load_events_for_ope(n=1000)
-    avg_propensity = (
-        sum(e["propensity"] for e in events) / len(events) if events else 0.0
-    )
+    avg_propensity = sum(e["propensity"] for e in events) / len(events) if events else 0.0
     return {
         **stats,
         "avg_propensity": round(avg_propensity, 4),
@@ -3244,6 +3730,7 @@ def impression_export(n: int = Query(1000, ge=1, le=50000)) -> dict[str, Any]:
 # ── Lazy imports ─────────────────────────────────────────────────────────────
 try:
     from causal.traffic_simulator import CausalValidationPipeline
+
     _CAUSAL_PIPELINE = CausalValidationPipeline()
     CAUSAL_PIPELINE_AVAILABLE = True
 except Exception:
@@ -3252,23 +3739,27 @@ except Exception:
 
 try:
     from retrieval.live_events import (
-        LiveEventScheduler, LiveScoreBooster,
-        LiveFeedComposer, LiveRankingUpdateStream,
+        LiveEventScheduler,
+        LiveFeedComposer,
+        LiveRankingUpdateStream,
+        LiveScoreBooster,
     )
+
     _LIVE_SCHEDULER = LiveEventScheduler()
-    _LIVE_BOOSTER   = LiveScoreBooster(_LIVE_SCHEDULER)
-    _LIVE_COMPOSER  = LiveFeedComposer(_LIVE_SCHEDULER, _LIVE_BOOSTER)
-    _LIVE_STREAM    = LiveRankingUpdateStream(_LIVE_SCHEDULER, _LIVE_BOOSTER)
-    LIVE_AVAILABLE  = True
+    _LIVE_BOOSTER = LiveScoreBooster(_LIVE_SCHEDULER)
+    _LIVE_COMPOSER = LiveFeedComposer(_LIVE_SCHEDULER, _LIVE_BOOSTER)
+    _LIVE_STREAM = LiveRankingUpdateStream(_LIVE_SCHEDULER, _LIVE_BOOSTER)
+    LIVE_AVAILABLE = True
 except Exception:
     _LIVE_SCHEDULER = None
-    _LIVE_BOOSTER   = None
-    _LIVE_COMPOSER  = None
-    _LIVE_STREAM    = None
-    LIVE_AVAILABLE  = False
+    _LIVE_BOOSTER = None
+    _LIVE_COMPOSER = None
+    _LIVE_STREAM = None
+    LIVE_AVAILABLE = False
 
 try:
     from ranking.ad_server import AdServer
+
     _AD_SERVER = AdServer()
     AD_SERVER_AVAILABLE = True
 except Exception:
@@ -3277,6 +3768,7 @@ except Exception:
 
 
 # ── Causal Validation ─────────────────────────────────────────────────────────
+
 
 @app.get("/causal/validate")
 def causal_validate(
@@ -3310,6 +3802,7 @@ def causal_validation_report() -> dict[str, Any]:
 
 
 # ── Live Events ───────────────────────────────────────────────────────────────
+
 
 @app.get("/live/status")
 def live_status() -> dict[str, Any]:
@@ -3388,6 +3881,7 @@ def live_register(
     if not LIVE_AVAILABLE or _LIVE_SCHEDULER is None:
         return {"error": "live events not available"}
     from retrieval.live_events import LiveEvent
+
     now = time.time()
     event = LiveEvent(
         event_id=event_id,
@@ -3403,6 +3897,7 @@ def live_register(
 
 
 # ── Ad Server ─────────────────────────────────────────────────────────────────
+
 
 @app.get("/ads/serve")
 def ads_serve(
@@ -3474,6 +3969,7 @@ def ads_budgets() -> dict[str, Any]:
 
 # ── TTS Endpoint ──────────────────────────────────────────────────────────────
 
+
 @app.get("/tts")
 async def tts(
     text: str = Query(..., min_length=1, max_length=4000),
@@ -3484,26 +3980,67 @@ async def tts(
     Returns audio/mpeg stream.
     Falls back to 204 No Content if OpenAI key not set.
     """
-    from fastapi.responses import Response, StreamingResponse
     import urllib.request as urlreq
+
+    from fastapi.responses import Response
 
     openai_key = os.environ.get("OPENAI_API_KEY", "")
     if not openai_key:
         return Response(status_code=204)
 
     # Map all 44 languages to best OpenAI TTS voice
-    shimmer_langs = {"Japanese","Korean","Chinese","Cantonese","Mandarin","Vietnamese","Thai","Indonesian","Malay"}
-    echo_langs    = {"Arabic","Hebrew","Turkish"}
-    onyx_langs    = {"Russian","Ukrainian","Polish","Czech","Romanian","Croatian","Hungarian"}
-    fable_langs   = {"French","French (including Canadian)","Spanish","Italian","Portuguese","Catalan","Galician","Dutch","German","Swedish","Norwegian","Norwegian (Bokmal)","Danish","Finnish","Icelandic","Greek"}
-    voice = ("shimmer" if lang in shimmer_langs else "echo" if lang in echo_langs else "onyx" if lang in onyx_langs else "fable" if lang in fable_langs else "nova")
+    shimmer_langs = {
+        "Japanese",
+        "Korean",
+        "Chinese",
+        "Cantonese",
+        "Mandarin",
+        "Vietnamese",
+        "Thai",
+        "Indonesian",
+        "Malay",
+    }
+    echo_langs = {"Arabic", "Hebrew", "Turkish"}
+    onyx_langs = {"Russian", "Ukrainian", "Polish", "Czech", "Romanian", "Croatian", "Hungarian"}
+    fable_langs = {
+        "French",
+        "French (including Canadian)",
+        "Spanish",
+        "Italian",
+        "Portuguese",
+        "Catalan",
+        "Galician",
+        "Dutch",
+        "German",
+        "Swedish",
+        "Norwegian",
+        "Norwegian (Bokmal)",
+        "Danish",
+        "Finnish",
+        "Icelandic",
+        "Greek",
+    }
+    voice = (
+        "shimmer"
+        if lang in shimmer_langs
+        else "echo"
+        if lang in echo_langs
+        else "onyx"
+        if lang in onyx_langs
+        else "fable"
+        if lang in fable_langs
+        else "nova"
+    )
     import json as _json
-    payload = _json.dumps({
-        "model": "tts-1",
-        "input": text[:4000],
-        "voice": voice,
-        "response_format": "mp3",
-    }).encode()
+
+    payload = _json.dumps(
+        {
+            "model": "tts-1",
+            "input": text[:4000],
+            "voice": voice,
+            "response_format": "mp3",
+        }
+    ).encode()
 
     req = urlreq.Request(
         "https://api.openai.com/v1/audio/speech",
@@ -3534,24 +4071,28 @@ async def tts(
 
 try:
     from ranking.slate_optimizer import (
-        SlateOptimizer, LongTermSatisfactionModel,
-        IntentAwareReranker, SatisfactionSignal,
+        IntentAwareReranker,
+        LongTermSatisfactionModel,
+        SatisfactionSignal,
+        SlateOptimizer,
     )
+
     _SLATE_OPT = SlateOptimizer()
-    _LT_SAT    = LongTermSatisfactionModel()
+    _LT_SAT = LongTermSatisfactionModel()
     _INTENT_RR = IntentAwareReranker()
     SLATE_AVAILABLE = True
-except Exception as e:
+except Exception:
     _SLATE_OPT = None
-    _LT_SAT    = None
+    _LT_SAT = None
     _INTENT_RR = None
     SLATE_AVAILABLE = False
 
 try:
     from foundation.poster_embeddings import CLIPPosterEmbedder
+
     _CLIP = CLIPPosterEmbedder()
     CLIP_AVAILABLE = True
-except Exception as e:
+except Exception:
     _CLIP = None
     CLIP_AVAILABLE = False
 
@@ -3575,34 +4116,55 @@ def slate_optimized(
     uid = user_id or profile
     # Get candidates from regular feed
     st = _ensure_ready()
-    seeds = [
-        ("gritty action", "action"), ("crime thriller", "thriller"),
-        ("sci-fi", "sci-fi"), ("drama", "drama"),
-    ] if profile.lower() == "chrisen" else [
-        ("romance", "romance"), ("comedy", "comedy"),
-        ("family", "family"), ("drama", "drama"),
-    ]
+    seeds = (
+        [
+            ("gritty action", "action"),
+            ("crime thriller", "thriller"),
+            ("sci-fi", "sci-fi"),
+            ("drama", "drama"),
+        ]
+        if profile.lower() == "chrisen"
+        else [
+            ("romance", "romance"),
+            ("comedy", "comedy"),
+            ("family", "family"),
+            ("drama", "drama"),
+        ]
+    )
 
     candidates = []
     for seed_q, _ in seeds:
         try:
-            res = _search_core(query=seed_q, method="hybrid_ltr", k=20,
-                               candidate_k=100, rerank_k=30, alpha=0.5)
+            res = _search_core(
+                query=seed_q, method="hybrid_ltr", k=20, candidate_k=100, rerank_k=30, alpha=0.5
+            )
             for h in res.hits:
                 if not any(c["doc_id"] == h.doc_id for c in candidates):
-                    candidates.append({
-                        "doc_id": h.doc_id, "title": h.title,
-                        "score": h.score, "text": h.text or "",
-                    })
+                    candidates.append(
+                        {
+                            "doc_id": h.doc_id,
+                            "title": h.title,
+                            "score": h.score,
+                            "text": h.text or "",
+                        }
+                    )
         except Exception as e:
             log.warning(f"Slate search failed for {seed_q!r}: {e}")
-    
+
     # Fallback: sample from corpus directly if search returns nothing
     if not candidates and st and st.corpus:
         import random
+
         sample = random.sample(list(st.corpus.values()), min(40, len(st.corpus)))
-        candidates = [{"doc_id": d.get("doc_id",""), "title": d.get("title",""),
-                       "score": 0.5, "text": d.get("text","")} for d in sample]
+        candidates = [
+            {
+                "doc_id": d.get("doc_id", ""),
+                "title": d.get("title", ""),
+                "score": 0.5,
+                "text": d.get("text", ""),
+            }
+            for d in sample
+        ]
 
     # Intent-aware reranking
     if intent and _INTENT_RR:
@@ -3623,8 +4185,10 @@ def slate_optimized(
         "page_coherence": slate.page_coherence,
         "items": [
             {
-                "doc_id": i.doc_id, "title": i.title,
-                "score": i.score, "genres": i.genres,
+                "doc_id": i.doc_id,
+                "title": i.title,
+                "score": i.score,
+                "genres": i.genres,
                 "slot_type": i.slot_type,
                 "satisfaction_score": i.satisfaction_score,
                 "content_type": i.content_type,
@@ -3638,7 +4202,9 @@ def slate_optimized(
 def record_satisfaction(
     user_id: str = Query(...),
     doc_id: str = Query(...),
-    signal: str = Query(..., description="completed|binge_next|returned_7d|abandoned_10|thumbs_down|rewatch"),
+    signal: str = Query(
+        ..., description="completed|binge_next|returned_7d|abandoned_10|thumbs_down|rewatch"
+    ),
 ) -> dict[str, Any]:
     """
     Record a long-term satisfaction signal.
@@ -3647,6 +4213,7 @@ def record_satisfaction(
     if not SLATE_AVAILABLE or _LT_SAT is None:
         return {"error": "satisfaction model not available"}
     import time
+
     signal_map = {
         "completed": SatisfactionSignal.COMPLETED,
         "binge_next": SatisfactionSignal.BINGE_NEXT,
@@ -3662,7 +4229,9 @@ def record_satisfaction(
     _LT_SAT.record(user_id, doc_id, sig, time.time())
     return {
         "recorded": True,
-        "user_id": user_id, "doc_id": doc_id, "signal": signal,
+        "user_id": user_id,
+        "doc_id": doc_id,
+        "signal": signal,
         "profile": _LT_SAT.user_satisfaction_profile(user_id),
     }
 
@@ -3695,7 +4264,8 @@ def multimodal_embed(
             title = doc.get("title", doc_id)
     pe = _CLIP.embed(doc_id=doc_id, title=title, poster_url=poster_url)
     return {
-        "doc_id": doc_id, "title": title,
+        "doc_id": doc_id,
+        "title": title,
         "source": pe.source,
         "cached": pe.cached,
         "embedding_dim": len(pe.embedding),
@@ -3746,6 +4316,7 @@ def multimodal_stats() -> dict[str, Any]:
 # PHENOMENAL TIER - OpenAI-enhanced features
 # ============================================================================
 
+
 @app.get("/search/agentic")
 async def agentic_search(
     q: str = Query(..., min_length=1),
@@ -3754,27 +4325,40 @@ async def agentic_search(
     language: str = Query("English"),
 ) -> dict[str, Any]:
     """Agentic NL search: GPT-4o-mini extracts intent, then hybrid_ltr retrieves."""
-    import os, json, urllib.request as urlreq
+    import json
+    import os
+    import urllib.request as urlreq
+
     key = os.environ.get("OPENAI_API_KEY", "")
     expanded_q, mood, avoid, intent = q, "", [], "exploratory"
     if key:
         try:
-            sp = ("Extract search intent. Return JSON only, no markdown. "
-                  "Keys: keywords (list of 3-5 terms), mood (str), "
-                  "avoid (list), intent (navigational|exploratory|mood).")
-            payload = json.dumps({
-                "model": "gpt-4o-mini", "max_tokens": 150,
-                "messages": [{"role":"system","content":sp},
-                             {"role":"user","content":f"Query: {q}"}]
-            }).encode()
+            sp = (
+                "Extract search intent. Return JSON only, no markdown. "
+                "Keys: keywords (list of 3-5 terms), mood (str), "
+                "avoid (list), intent (navigational|exploratory|mood)."
+            )
+            payload = json.dumps(
+                {
+                    "model": "gpt-4o-mini",
+                    "max_tokens": 150,
+                    "messages": [
+                        {"role": "system", "content": sp},
+                        {"role": "user", "content": f"Query: {q}"},
+                    ],
+                }
+            ).encode()
             req = urlreq.Request(
-                "https://api.openai.com/v1/chat/completions", data=payload,
-                headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},
-                method="POST")
+                "https://api.openai.com/v1/chat/completions",
+                data=payload,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                method="POST",
+            )
             with urlreq.urlopen(req, timeout=10) as r:
                 d = json.loads(r.read())
             txt = d["choices"][0]["message"]["content"].strip()
-            if "```" in txt: txt = txt.split("```")[1].lstrip("json").strip()
+            if "```" in txt:
+                txt = txt.split("```")[1].lstrip("json").strip()
             parsed = json.loads(txt)
             expanded_q = " ".join(parsed.get("keywords", [q]))
             mood = parsed.get("mood", "")
@@ -3783,23 +4367,35 @@ async def agentic_search(
         except Exception:
             pass
     try:
-        res = _search_core(query=expanded_q, method="hybrid_ltr", k=k,
-                           candidate_k=200, rerank_k=50, alpha=0.5)
-        hits = [{"doc_id":h.doc_id,"title":h.title,"score":h.score,
-                 "text":(h.text or "")[:200]}
-                for h in res.hits
-                if not (avoid and any(a.lower() in (h.text or "").lower() for a in avoid))]
+        res = _search_core(
+            query=expanded_q, method="hybrid_ltr", k=k, candidate_k=200, rerank_k=50, alpha=0.5
+        )
+        hits = [
+            {"doc_id": h.doc_id, "title": h.title, "score": h.score, "text": (h.text or "")[:200]}
+            for h in res.hits
+            if not (avoid and any(a.lower() in (h.text or "").lower() for a in avoid))
+        ]
     except Exception as e:
         return {"error": str(e)}
-    return {"original_query":q,"expanded_query":expanded_q,"detected_mood":mood,
-            "avoided":avoid,"intent":intent,"n_results":len(hits),"hits":hits[:k],
-            "powered_by":"gpt-4o-mini + hybrid_ltr"}
+    return {
+        "original_query": q,
+        "expanded_query": expanded_q,
+        "detected_mood": mood,
+        "avoided": avoid,
+        "intent": intent,
+        "n_results": len(hits),
+        "hits": hits[:k],
+        "powered_by": "gpt-4o-mini + hybrid_ltr",
+    }
 
 
 @app.post("/voice/transcribe")
 async def voice_transcribe(request: Request) -> dict[str, Any]:
     """Whisper voice transcription. POST audio bytes to get text."""
-    import os, json, urllib.request as urlreq
+    import json
+    import os
+    import urllib.request as urlreq
+
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key:
         return {"error": "OPENAI_API_KEY not set"}
@@ -3812,7 +4408,8 @@ async def voice_transcribe(request: Request) -> dict[str, Any]:
         b"--" + SEP + NL,
         b'Content-Disposition: form-data; name="file"; filename="audio.webm"' + NL,
         b"Content-Type: audio/webm" + NL + NL,
-        body, NL,
+        body,
+        NL,
         b"--" + SEP + NL,
         b'Content-Disposition: form-data; name="model"' + NL + NL,
         b"whisper-1" + NL,
@@ -3821,14 +4418,19 @@ async def voice_transcribe(request: Request) -> dict[str, Any]:
     req = urlreq.Request(
         "https://api.openai.com/v1/audio/transcriptions",
         data=b"".join(parts),
-        headers={"Authorization":f"Bearer {key}",
-                 "Content-Type":f"multipart/form-data; boundary={SEP.decode()}"},
-        method="POST")
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": f"multipart/form-data; boundary={SEP.decode()}",
+        },
+        method="POST",
+    )
     try:
         with urlreq.urlopen(req, timeout=20) as r:
             result = json.loads(r.read())
-        return {"transcribed":result.get("text","").strip(),
-                "language_detected":result.get("language","en")}
+        return {
+            "transcribed": result.get("text", "").strip(),
+            "language_detected": result.get("language", "en"),
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -3840,25 +4442,30 @@ async def generate_poster(
     style: str = Query("cinematic movie poster, dramatic lighting"),
 ) -> dict[str, Any]:
     """AI poster generation via gpt-image-1 for cold-start titles (~$0.005)."""
-    import os, json, urllib.request as urlreq
+    import json
+    import os
+    import urllib.request as urlreq
+
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key:
         return {"error": "OPENAI_API_KEY not set", "available": False}
-    import re, hashlib
-    clean = re.sub(r'\s*\(\d{4}\)\s*$', '', title).strip()
+    import hashlib
+    import re
+
+    clean = re.sub(r"\s*\(\d{4}\)\s*$", "", title).strip()
     genre_styles = {
-        "Crime":"neo-noir atmosphere, rain-slicked streets, dramatic shadows, neon reflections",
-        "Thriller":"tense dark atmosphere, high contrast, psychological intensity",
-        "Action":"explosive dynamic composition, motion blur, cinematic scale",
-        "Sci-Fi":"neon blue cyberpunk, futuristic skyline, holographic elements",
-        "Horror":"dark fog, blood red accents, ominous gothic atmosphere",
-        "Romance":"golden hour warmth, soft bokeh, intimate composition",
-        "Comedy":"vibrant saturated colours, playful warm lighting",
-        "Drama":"desaturated realism, shallow depth of field, emotional lighting",
-        "Animation":"bold vibrant illustration, clean graphic style",
-        "Fantasy":"magical golden light, epic scale, ethereal fog",
-        "War":"desaturated smoke, dramatic epic sky, historical scale",
-        "Western":"dusty golden hour, vast landscape, warm tones",
+        "Crime": "neo-noir atmosphere, rain-slicked streets, dramatic shadows, neon reflections",
+        "Thriller": "tense dark atmosphere, high contrast, psychological intensity",
+        "Action": "explosive dynamic composition, motion blur, cinematic scale",
+        "Sci-Fi": "neon blue cyberpunk, futuristic skyline, holographic elements",
+        "Horror": "dark fog, blood red accents, ominous gothic atmosphere",
+        "Romance": "golden hour warmth, soft bokeh, intimate composition",
+        "Comedy": "vibrant saturated colours, playful warm lighting",
+        "Drama": "desaturated realism, shallow depth of field, emotional lighting",
+        "Animation": "bold vibrant illustration, clean graphic style",
+        "Fantasy": "magical golden light, epic scale, ethereal fog",
+        "War": "desaturated smoke, dramatic epic sky, historical scale",
+        "Western": "dusty golden hour, vast landscape, warm tones",
     }
     g = genre.split(",")[0].strip()
     vis = genre_styles.get(g, "cinematic dramatic lighting, professional composition")
@@ -3868,31 +4475,52 @@ async def generate_poster(
         f"dramatic lighting, rich colours, portrait orientation, "
         f"no text, no words, no letters."
     )
-    payload = json.dumps({"model":"dall-e-3","prompt":prompt,
-                          "n":1,"size":"1024x1792","quality":"hd",
-                          "response_format":"b64_json"}).encode()
+    payload = json.dumps(
+        {
+            "model": "dall-e-3",
+            "prompt": prompt,
+            "n": 1,
+            "size": "1024x1792",
+            "quality": "hd",
+            "response_format": "b64_json",
+        }
+    ).encode()
     req = urlreq.Request(
-        "https://api.openai.com/v1/images/generations", data=payload,
-        headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},
-        method="POST")
+        "https://api.openai.com/v1/images/generations",
+        data=payload,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        method="POST",
+    )
     try:
         with urlreq.urlopen(req, timeout=90) as r:
             result = json.loads(r.read())
-        import base64, pathlib
+        import base64
+        import pathlib
+
         img_bytes = base64.b64decode(result["data"][0]["b64_json"])
         cache_key = hashlib.md5(f"{title}{genre}".encode()).hexdigest()[:8]
         out = pathlib.Path(f"artifacts/sd_posters/live_{cache_key}.png")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(img_bytes)
-        return {"url": f"/static/sd_posters/live_{cache_key}.png",
-                "title": title, "genre": genre, "generated": True,
-                "model": "dall-e-3", "cost": "$0.04"}
+        return {
+            "url": f"/static/sd_posters/live_{cache_key}.png",
+            "title": title,
+            "genre": genre,
+            "generated": True,
+            "model": "dall-e-3",
+            "cost": "$0.04",
+        }
         img = result["data"][0]
-        return {"title":title,"generated":True,"url":img.get("url",""),
-                "b64_preview":(img.get("b64_json","")[:80]+"..."),
-                "prompt_used":prompt,"cost_estimate":"$0.005"}
+        return {
+            "title": title,
+            "generated": True,
+            "url": img.get("url", ""),
+            "b64_preview": (img.get("b64_json", "")[:80] + "..."),
+            "prompt_used": prompt,
+            "cost_estimate": "$0.005",
+        }
     except Exception as e:
-        return {"error":str(e),"generated":False}
+        return {"error": str(e), "generated": False}
 
 
 @app.get("/explain/deep")
@@ -3903,42 +4531,61 @@ async def explain_deep(
     style: str = Query("analytical", description="analytical|casual|cinephile|child"),
 ) -> dict[str, Any]:
     """Deep explanation in 4 styles: analytical, casual, cinephile, child."""
-    import os, json, urllib.request as urlreq
+    import json
+    import os
+    import urllib.request as urlreq
+
     key = os.environ.get("OPENAI_API_KEY", "")
     st = _ensure_ready()
     row = st.corpus.get(str(doc_id))
     if not row:
         raise HTTPException(status_code=404, detail="doc_id not found")
-    title = str(row.get("title","Unknown"))
-    text  = str(row.get("text",""))
-    prefs = {"chrisen":"high-energy action, crime thrillers, sci-fi",
-             "gilbert":"feel-good romance, comedy, family"}.get(profile.lower(),"popular films")
+    title = str(row.get("title", "Unknown"))
+    text = str(row.get("text", ""))
+    prefs = {
+        "chrisen": "high-energy action, crime thrillers, sci-fi",
+        "gilbert": "feel-good romance, comedy, family",
+    }.get(profile.lower(), "popular films")
     styles = {
         "analytical": "Write as a film critic. Reference narrative structure and themes.",
-        "casual":     "Write as a friend. Be warm, direct, use you.",
-        "cinephile":  "Write as a cinema expert. Reference directors and genre history.",
-        "child":      "Explain for a 10-year-old. Simple words, exciting tone.",
+        "casual": "Write as a friend. Be warm, direct, use you.",
+        "cinephile": "Write as a cinema expert. Reference directors and genre history.",
+        "child": "Explain for a 10-year-old. Simple words, exciting tone.",
     }
     if not key:
         return {"error": "OPENAI_API_KEY not set"}
     lang_note = f" Respond in {language}." if language != "English" else ""
     system = styles.get(style, styles["analytical"]) + lang_note
-    user_msg = f"Movie: {title}\nDetails: {text[:400]}\nUser likes: {prefs}\nExplain why worth watching."
-    payload = json.dumps({
-        "model":"gpt-4o-mini","max_tokens":400,
-        "messages":[{"role":"system","content":system},
-                    {"role":"user","content":user_msg}]
-    }).encode()
+    user_msg = (
+        f"Movie: {title}\nDetails: {text[:400]}\nUser likes: {prefs}\nExplain why worth watching."
+    )
+    payload = json.dumps(
+        {
+            "model": "gpt-4o-mini",
+            "max_tokens": 400,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ],
+        }
+    ).encode()
     req = urlreq.Request(
-        "https://api.openai.com/v1/chat/completions", data=payload,
-        headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},
-        method="POST")
+        "https://api.openai.com/v1/chat/completions",
+        data=payload,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        method="POST",
+    )
     try:
         with urlreq.urlopen(req, timeout=20) as r:
             result = json.loads(r.read())
-        return {"doc_id":doc_id,"title":title,"style":style,"language":language,
-                "explanation":result["choices"][0]["message"]["content"].strip(),
-                "model":"gpt-4o-mini"}
+        return {
+            "doc_id": doc_id,
+            "title": title,
+            "style": style,
+            "language": language,
+            "explanation": result["choices"][0]["message"]["content"].strip(),
+            "model": "gpt-4o-mini",
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -3957,14 +4604,20 @@ def cold_start_ranking(
         src = pe.source
     similar = []
     try:
-        res = _search_core(query=f"{title} {genre}", method="hybrid",
-                           k=k, candidate_k=50, rerank_k=k, alpha=0.5)
-        similar = [{"doc_id":h.doc_id,"title":h.title,"score":h.score} for h in res.hits]
+        res = _search_core(
+            query=f"{title} {genre}", method="hybrid", k=k, candidate_k=50, rerank_k=k, alpha=0.5
+        )
+        similar = [{"doc_id": h.doc_id, "title": h.title, "score": h.score} for h in res.hits]
     except Exception:
         pass
-    return {"new_title":title,"genre":genre,"year":year,"embedding_source":src,
-            "similar_known_titles":similar[:k],
-            "cold_start_strategy":"pretrained CLIP ViT-B/32 + hybrid text similarity"}
+    return {
+        "new_title": title,
+        "genre": genre,
+        "year": year,
+        "embedding_source": src,
+        "similar_known_titles": similar[:k],
+        "cold_start_strategy": "pretrained CLIP ViT-B/32 + hybrid text similarity",
+    }
 
 
 @app.get("/system/phenomenal_status")
@@ -3979,7 +4632,11 @@ def phenomenal_status() -> dict[str, Any]:
         log.exception("Could not read saved scale benchmark artifact.")
     scale_levels = scale_report.get("levels", [])
     scale_1000 = next(
-        (level for level in scale_levels if isinstance(level, dict) and level.get("concurrency") == 1000),
+        (
+            level
+            for level in scale_levels
+            if isinstance(level, dict) and level.get("concurrency") == 1000
+        ),
         None,
     )
     return {
@@ -4038,7 +4695,8 @@ def phenomenal_status() -> dict[str, Any]:
 
 # ── Imports for new features ─────────────────────────────────────────────────
 try:
-    from causal.traffic_simulator import TrafficSimulator, ipw_estimate
+    from causal.traffic_simulator import TrafficSimulator
+
     _SIM = TrafficSimulator(n_users=200)
     SIM_AVAILABLE = True
 except Exception:
@@ -4047,6 +4705,7 @@ except Exception:
 
 try:
     from retrieval.cross_format import CrossFormatRanker
+
     _CF_RANKER = CrossFormatRanker()
     CF_AVAILABLE = True
 except Exception:
@@ -4063,7 +4722,7 @@ def simulate_policy_comparison(
     """
     Compare relevance-only vs satisfaction-aware ranking policy
     using synthetic user simulation over n_days.
-    
+
     Honest caveat: simulated with synthetic users.
     Online validation needs real traffic.
     """
@@ -4071,36 +4730,64 @@ def simulate_policy_comparison(
         return {"error": "simulator not available"}
 
     # Get candidates from two different ranking approaches
-    seeds = ["gritty action", "crime thriller", "sci-fi"] \
-        if profile.lower() == "chrisen" else ["romance", "comedy", "family"]
+    seeds = (
+        ["gritty action", "crime thriller", "sci-fi"]
+        if profile.lower() == "chrisen"
+        else ["romance", "comedy", "family"]
+    )
 
     policy_a_items, policy_b_items = [], []
     for seed in seeds:
         try:
-            res_a = _search_core(query=seed, method="hybrid", k=k,
-                                 candidate_k=100, rerank_k=k, alpha=0.5)
+            res_a = _search_core(
+                query=seed, method="hybrid", k=k, candidate_k=100, rerank_k=k, alpha=0.5
+            )
             for h in res_a.hits:
                 if not any(x["doc_id"] == h.doc_id for x in policy_a_items):
-                    policy_a_items.append({"doc_id": h.doc_id, "title": h.title,
-                        "score": h.score, "text": h.text or "", "genres": h.text or ""})
+                    policy_a_items.append(
+                        {
+                            "doc_id": h.doc_id,
+                            "title": h.title,
+                            "score": h.score,
+                            "text": h.text or "",
+                            "genres": h.text or "",
+                        }
+                    )
         except Exception:
             pass
         try:
-            res_b = _search_core(query=seed, method="hybrid_ltr", k=k,
-                                 candidate_k=100, rerank_k=k, alpha=0.5)
+            res_b = _search_core(
+                query=seed, method="hybrid_ltr", k=k, candidate_k=100, rerank_k=k, alpha=0.5
+            )
             for h in res_b.hits:
                 if not any(x["doc_id"] == h.doc_id for x in policy_b_items):
-                    policy_b_items.append({"doc_id": h.doc_id, "title": h.title,
-                        "score": h.score, "text": h.text or "", "genres": h.text or ""})
+                    policy_b_items.append(
+                        {
+                            "doc_id": h.doc_id,
+                            "title": h.title,
+                            "score": h.score,
+                            "text": h.text or "",
+                            "genres": h.text or "",
+                        }
+                    )
         except Exception:
             pass
 
     if not policy_a_items:
         st = _ensure_ready()
         import random
+
         sample = random.sample(list(st.corpus.values()), min(30, len(st.corpus)))
-        policy_a_items = [{"doc_id": d.get("doc_id",""), "title": d.get("title",""),
-            "score": 0.5, "text": d.get("text",""), "genres": d.get("text","")} for d in sample]
+        policy_a_items = [
+            {
+                "doc_id": d.get("doc_id", ""),
+                "title": d.get("title", ""),
+                "score": 0.5,
+                "text": d.get("text", ""),
+                "genres": d.get("text", ""),
+            }
+            for d in sample
+        ]
         policy_b_items = policy_a_items.copy()
 
     result = _SIM.compare_policies(
@@ -4114,7 +4801,6 @@ def simulate_policy_comparison(
     return result
 
 
-
 @app.get("/reports/ablation")
 def ablation_report() -> dict[str, Any]:
     """
@@ -4122,15 +4808,17 @@ def ablation_report() -> dict[str, Any]:
     Shows what each layer adds to the baseline.
     """
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         metrics_path = pathlib.Path("reports/latest/metrics.json")
         if metrics_path.exists():
             m = json.loads(metrics_path.read_text())
             methods = {r["method"]: r for r in m.get("methods", []) if isinstance(r, dict)}
-            bm25_ndcg   = float(methods.get("bm25", {}).get("ndcg@10", 0.31))
-            dense_ndcg  = float(methods.get("dense", {}).get("ndcg@10", 0.33))
+            bm25_ndcg = float(methods.get("bm25", {}).get("ndcg@10", 0.31))
+            dense_ndcg = float(methods.get("dense", {}).get("ndcg@10", 0.33))
             hybrid_ndcg = float(methods.get("hybrid", {}).get("ndcg@10", 0.34))
-            ltr_ndcg    = float(methods.get("hybrid_ltr", {}).get("ndcg@10", 0.35))
+            ltr_ndcg = float(methods.get("hybrid_ltr", {}).get("ndcg@10", 0.35))
         else:
             bm25_ndcg, dense_ndcg, hybrid_ndcg, ltr_ndcg = 0.31, 0.33, 0.34, 0.35
     except Exception:
@@ -4161,13 +4849,13 @@ def ablation_report() -> dict[str, Any]:
             "total_lift_over_bm25": round(ltr_ndcg - bm25_ndcg, 4),
         },
         "feature_importance": {
-            "bm25_score":     "~25% — keyword match strength",
-            "dense_score":    "~30% — semantic similarity",
-            "hybrid_score":   "~20% — combined signal",
-            "title_overlap":  "~10% — query-title match",
-            "text_jaccard":   "~8%  — document coverage",
-            "query_len":      "~4%  — query complexity proxy",
-            "doc_len":        "~3%  — document richness",
+            "bm25_score": "~25% — keyword match strength",
+            "dense_score": "~30% — semantic similarity",
+            "hybrid_score": "~20% — combined signal",
+            "title_overlap": "~10% — query-title match",
+            "text_jaccard": "~8%  — document coverage",
+            "query_len": "~4%  — query complexity proxy",
+            "doc_len": "~3%  — document richness",
         },
         "multimodal_ablation": {
             "text_only_retrieval": "baseline",
@@ -4238,15 +4926,19 @@ def architecture_report() -> dict[str, Any]:
             "rate_limiting": "Sliding window per profile",
         },
         "scale_benchmark": {
-            "status": "artifact_available" if Path("reports/latest/scale_bench.json").is_file() else "unavailable",
-            "source": "reports/latest/scale_bench.json" if Path("reports/latest/scale_bench.json").is_file() else None,
+            "status": "artifact_available"
+            if Path("reports/latest/scale_bench.json").is_file()
+            else "unavailable",
+            "source": "reports/latest/scale_bench.json"
+            if Path("reports/latest/scale_bench.json").is_file()
+            else None,
         },
         "honest_gaps": {
             "production_argo": "Airflow shown locally, Argo needs K8s cluster",
             "real_ab_testing": "Offline simulation only, needs real users",
-            "real_cdn":        "No CDN, live events use mock data",
-            "238m_scale":      "Single machine benchmark only",
-            "foundation_model":"Using pretrained CLIP, not training MediaFM",
+            "real_cdn": "No CDN, live events use mock data",
+            "238m_scale": "Single machine benchmark only",
+            "foundation_model": "Using pretrained CLIP, not training MediaFM",
         },
         "honest_claim": (
             "Search, ranking, personalization, experimentation, and ML workflow "
@@ -4324,40 +5016,72 @@ def cross_format_feed(
     if not CF_AVAILABLE or _CF_RANKER is None:
         return {"error": "cross-format ranker not available"}
 
-    seeds = ["gritty action", "crime thriller"]         if profile.lower() == "chrisen" else ["romance comedy", "family drama"]
+    seeds = (
+        ["gritty action", "crime thriller"]
+        if profile.lower() == "chrisen"
+        else ["romance comedy", "family drama"]
+    )
 
     items = []
     for seed in seeds:
         try:
-            res = _search_core(query=seed, method="hybrid_ltr", k=k,
-                               candidate_k=100, rerank_k=k, alpha=0.5)
+            res = _search_core(
+                query=seed, method="hybrid_ltr", k=k, candidate_k=100, rerank_k=k, alpha=0.5
+            )
             for h in res.hits:
                 if not any(x["doc_id"] == h.doc_id for x in items):
-                    items.append({
-                        "doc_id": h.doc_id, "title": h.title,
-                        "score": h.score, "text": h.text or "",
-                        "content_type": "film",
-                    })
+                    items.append(
+                        {
+                            "doc_id": h.doc_id,
+                            "title": h.title,
+                            "score": h.score,
+                            "text": h.text or "",
+                            "content_type": "film",
+                        }
+                    )
         except Exception as e:
             log.warning(f"Cross-format search failed: {e}")
-    
+
     # Fallback if no results
     if not items:
         st = _ensure_ready()
         import random
+
         sample = random.sample(list(st.corpus.values()), min(k, len(st.corpus)))
-        items = [{"doc_id": d.get("doc_id",""), "title": d.get("title",""),
-                  "score": 0.5, "text": d.get("text",""), "content_type": "film"}
-                 for d in sample]
+        items = [
+            {
+                "doc_id": d.get("doc_id", ""),
+                "title": d.get("title", ""),
+                "score": 0.5,
+                "text": d.get("text", ""),
+                "content_type": "film",
+            }
+            for d in sample
+        ]
 
     # Add mock live/series/podcast items to show cross-format
     items += [
-        {"doc_id": "live_001", "title": "Live: Championship Finals", "score": 0.85,
-         "content_type": "live_event", "text": "Genres: Sports, Live"},
-        {"doc_id": "pod_001", "title": "The Film Analysis Podcast", "score": 0.72,
-         "content_type": "podcast", "text": "Genres: Documentary, Discussion"},
-        {"doc_id": "game_001", "title": "Netflix Game: Into the Breach", "score": 0.68,
-         "content_type": "game", "text": "Genres: Strategy, Puzzle"},
+        {
+            "doc_id": "live_001",
+            "title": "Live: Championship Finals",
+            "score": 0.85,
+            "content_type": "live_event",
+            "text": "Genres: Sports, Live",
+        },
+        {
+            "doc_id": "pod_001",
+            "title": "The Film Analysis Podcast",
+            "score": 0.72,
+            "content_type": "podcast",
+            "text": "Genres: Documentary, Discussion",
+        },
+        {
+            "doc_id": "game_001",
+            "title": "Netflix Game: Into the Breach",
+            "score": 0.68,
+            "content_type": "game",
+            "text": "Genres: Strategy, Puzzle",
+        },
     ]
 
     ranked = _CF_RANKER.rerank(items, surface=surface, intent=intent)
@@ -4389,53 +5113,21 @@ def eval_slice_analysis() -> dict[str, Any]:
     """
     # Get baseline nDCG from ablation
     try:
-        ab = eval_comprehensive_fallback()
-        base = ab.get("ablation", {}).get("ltr_final", 0.75)
-    except Exception:
-        base = 0.75
-    
+        evaluation = eval_comprehensive()
+    except Exception as exc:
+        return {
+            "status": "unavailable",
+            "note": f"Evaluation artifact could not be loaded ({type(exc).__name__}).",
+            "slices": {},
+        }
+
     return {
-        "base_ndcg_ltr": round(base, 4),
-        "slices": {
-            "by_query_length": {
-                "short_query_1_2_words":  round(base * 0.95, 4),
-                "medium_query_3_4_words": round(base * 1.00, 4),
-                "long_query_5plus_words": round(base * 1.05, 4),
-                "note": "Long queries benefit from dense retrieval semantic understanding",
-            },
-            "by_query_type": {
-                "clean_query":        round(base * 1.00, 4),
-                "typo_query":         round(base * 0.82, 4),
-                "entity_query":       round(base * 1.06, 4),
-                "mood_query":         round(base * 0.94, 4),
-                "cross_format_query": round(base * 0.91, 4),
-                "multilingual_query": round(base * 0.88, 4),
-                "note": "Typo queries handled by BK-tree correction (+12% vs no correction)",
-            },
-            "by_user_type": {
-                "sparse_user_lt5_interactions":  round(base * 0.78, 4),
-                "normal_user_5_50_interactions": round(base * 1.00, 4),
-                "heavy_user_50plus_interactions":round(base * 1.08, 4),
-                "note": "Sparse users rely more on content features; heavy users benefit from personalization",
-            },
-            "by_title_type": {
-                "popular_titles_top20pct":    round(base * 1.12, 4),
-                "mid_tier_titles":            round(base * 1.00, 4),
-                "cold_start_new_titles":      round(base * 0.75, 4),
-                "cold_start_plus_clip":       round(base * 0.86, 4),
-                "note": "CLIP embeddings recover +15% on cold-start titles vs text-only",
-            },
-            "by_language": {
-                "english":    round(base * 1.00, 4),
-                "multilingual_with_translation": round(base * 0.91, 4),
-                "note": "Multilingual handled via query translation + language-filtered corpus",
-            },
-        },
-        "integrity": {
-            "all_slices_computed_on_held_out_test_set": True,
-            "no_train_test_leakage": True,
-            "split": "80/20 by query_id",
-        },
+        "status": evaluation.get("slice_analysis", {}).get("status", "unavailable"),
+        "source": evaluation.get("source"),
+        "dataset": evaluation.get("dataset"),
+        "split": evaluation.get("split"),
+        "slices": {},
+        "note": "No per-slice measurements are present in the evaluation artifact.",
     }
 
 
@@ -4445,13 +5137,15 @@ def eval_slice_analysis() -> dict[str, Any]:
 
 # ── Imports ──────────────────────────────────────────────────────────────────
 try:
-    from causal.ab_stats import run_ab_test, ABTestResult
+    from causal.ab_stats import run_ab_test
+
     AB_STATS_AVAILABLE = True
 except Exception:
     AB_STATS_AVAILABLE = False
 
 try:
     from app.shadow import ShadowRunner
+
     _SHADOW = ShadowRunner(redis_client=None)
     SHADOW_AVAILABLE = True
 except Exception:
@@ -4460,6 +5154,7 @@ except Exception:
 
 try:
     from app.feature_store import FeatureStore
+
     _FEATURE_STORE = FeatureStore(redis_client=None)
     FS_AVAILABLE = True
 except Exception:
@@ -4467,7 +5162,8 @@ except Exception:
     FS_AVAILABLE = False
 
 try:
-    from retrieval.multilingual import normalize_query, multilingual_expand
+    from retrieval.multilingual import normalize_query
+
     ML_AVAILABLE = True
 except Exception:
     ML_AVAILABLE = False
@@ -4484,6 +5180,7 @@ def ab_test_endpoint(
     if not AB_STATS_AVAILABLE:
         return {"error": "ab_stats not available"}
     import random
+
     random.seed(42)
     # Simulate control (hybrid) vs treatment (hybrid_ltr) rewards
     control = [random.gauss(0.32, 0.12) for _ in range(n_samples)]
@@ -4563,14 +5260,18 @@ def beir_eval(dataset: str = Query("nfcorpus")) -> dict[str, Any]:
     """
     BEIR benchmark evaluation — standard IR benchmark beyond MovieLens.
     """
-    import pathlib, glob as _glob
+    import pathlib
+
     data_path = pathlib.Path("data/beir") / dataset
-    
+
     # Show debug info about what files exist
     all_files = list(data_path.rglob("*"))[:30] if data_path.exists() else []
-    
+
     try:
-        import importlib, eval.beir_eval as _beir_mod
+        import importlib
+
+        import eval.beir_eval as _beir_mod
+
         importlib.reload(_beir_mod)
         evaluate_bm25_beir = _beir_mod.evaluate_bm25_beir
         BEIR_DATASETS = _beir_mod.BEIR_DATASETS
@@ -4684,22 +5385,14 @@ def sync_artifacts_to_minio() -> dict[str, Any]:
     Sync local artifacts and reports to MinIO S3 buckets.
     Populates metaflow bucket with run metadata.
     """
-    import subprocess, json, pathlib, time
+    import json
+    import pathlib
+    import subprocess
+    import time
 
     results = {"uploaded": [], "errors": []}
 
     # Files to sync
-    sync_map = {
-        "artifacts": [
-            ("artifacts/ltr/movielens_ltr.pkl", "artifacts/ltr/movielens_ltr.pkl"),
-            ("artifacts/bm25/movielens_bm25.pkl", "artifacts/bm25/movielens_bm25.pkl"),
-        ],
-        "reports": [
-            ("reports/latest/metrics.json", "reports/latest/metrics.json"),
-        ],
-        "metaflow": [],
-    }
-
     # Create metaflow run metadata
     metaflow_meta = {
         "run_id": f"streamlens_{int(time.time())}",
@@ -4715,15 +5408,15 @@ def sync_artifacts_to_minio() -> dict[str, Any]:
             "ndcg_at_10": 0.7506,
             "mrr": 0.8256,
             "recall_100": 0.881,
-        }
+        },
     }
 
     # Write metaflow metadata to MinIO via mc
     try:
-        import tempfile, os
-        with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False
-        ) as f:
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(metaflow_meta, f, indent=2)
             tmp_path = f.name
 
@@ -4731,7 +5424,7 @@ def sync_artifacts_to_minio() -> dict[str, Any]:
 
         # Use mc to copy to MinIO
         cmds = [
-            f"mc alias set local http://minio:9000 minioadmin minioadmin 2>/dev/null",
+            "mc alias set local http://minio:9000 minioadmin minioadmin 2>/dev/null",
             f"mc cp {tmp_path} local/metaflow/runs/{run_id}/metadata.json",
             f"mc cp {tmp_path} local/metaflow/runs/latest/metadata.json",
         ]
@@ -4748,8 +5441,10 @@ def sync_artifacts_to_minio() -> dict[str, Any]:
         mp = pathlib.Path("reports/latest/metrics.json")
         if mp.exists():
             r2 = subprocess.run(
-                f"mc cp reports/latest/metrics.json local/reports/latest/metrics.json",
-                shell=True, capture_output=True, text=True
+                "mc cp reports/latest/metrics.json local/reports/latest/metrics.json",
+                shell=True,
+                capture_output=True,
+                text=True,
             )
             if r2.returncode == 0:
                 results["uploaded"].append("reports/latest/metrics.json")
@@ -4770,7 +5465,8 @@ def sync_artifacts_to_minio() -> dict[str, Any]:
 # ============================================================================
 
 try:
-    from foundation.vlm_layer import VLMPosterAnalyzer, MultimodalColdStartRanker
+    from foundation.vlm_layer import MultimodalColdStartRanker, VLMPosterAnalyzer
+
     _VLM_ANALYZER = VLMPosterAnalyzer(clip_model=_CLIP)
     _MM_RANKER = MultimodalColdStartRanker(_VLM_ANALYZER)
     MM_AVAILABLE = True
@@ -4836,8 +5532,9 @@ def multimodal_cold_start(
     try:
         st = _ensure_ready()
         import random
+
         # Use corpus sample for cold-start (no user history)
-        sample_ids = random.sample(list(st.corpus.keys()), min(k*4, len(st.corpus)))
+        sample_ids = random.sample(list(st.corpus.keys()), min(k * 4, len(st.corpus)))
         candidates = []
         for doc_id in sample_ids:
             doc = st.corpus[doc_id]
@@ -4846,18 +5543,21 @@ def multimodal_cold_start(
             genres = []
             if "Genres:" in text:
                 genre_part = text.split("Genres:")[1].split("|")[0]
-                genres = [g.strip() for g in genre_part.split(",") if g.strip() and len(g.strip()) < 30]
-            candidates.append({
-                "doc_id": doc_id,
-                "title": doc.get("title", ""),
-                "score": 0.5,
-                "text": text,
-                "genres": genres,
-            })
+                genres = [
+                    g.strip() for g in genre_part.split(",") if g.strip() and len(g.strip()) < 30
+                ]
+            candidates.append(
+                {
+                    "doc_id": doc_id,
+                    "title": doc.get("title", ""),
+                    "score": 0.5,
+                    "text": text,
+                    "genres": genres,
+                }
+            )
         # Also try search to get relevant candidates
         try:
-            from retrieval.hybrid import hybrid_merge
-            bm25_hits = st.bm25.query(q, k=k*3)
+            bm25_hits = st.bm25.query(q, k=k * 3)
             candidates = [
                 {
                     "doc_id": d,
@@ -4865,13 +5565,16 @@ def multimodal_cold_start(
                     "score": float(s),
                     "text": st.corpus.get(d, {}).get("text", ""),
                     "genres": [
-                        g.strip() for g in
-                        st.corpus.get(d, {}).get("text", "")
-                        .split("Genres:")[-1].split("|")[0].split(",")
+                        g.strip()
+                        for g in st.corpus.get(d, {})
+                        .get("text", "")
+                        .split("Genres:")[-1]
+                        .split("|")[0]
+                        .split(",")
                         if g.strip() and len(g.strip()) < 30
                     ],
                 }
-                for d, s in bm25_hits[:k*3]
+                for d, s in bm25_hits[: k * 3]
             ]
         except Exception:
             pass
@@ -4888,9 +5591,7 @@ def multimodal_cold_start(
         )
 
     # Run shadow ablation
-    ablation = _MM_RANKER.ablation_comparison(
-        q, candidates, poster_analyses, k=k
-    )
+    ablation = _MM_RANKER.ablation_comparison(q, candidates, poster_analyses, k=k)
 
     # Get multimodal ranked results
     mm_results = _MM_RANKER.rerank_cold_start(q, candidates, poster_analyses)[:k]
@@ -4930,6 +5631,7 @@ def multimodal_mood_catalog(limit: int = Query(20, ge=5, le=100)) -> dict[str, A
 
     st = _ensure_ready()
     import random
+
     sample_ids = random.sample(list(st.corpus.keys()), min(limit, len(st.corpus)))
 
     catalog = []
@@ -4939,28 +5641,29 @@ def multimodal_mood_catalog(limit: int = Query(20, ge=5, le=100)) -> dict[str, A
         genres = []
         if "Genres:" in text:
             genre_part = text.split("Genres:")[1].split("|")[0]
-            genres = [g.strip() for g in genre_part.split(",")
-                     if g.strip() and len(g.strip()) < 25]
+            genres = [g.strip() for g in genre_part.split(",") if g.strip() and len(g.strip()) < 25]
         elif "|" in text:
             genre_part = text.split("|")[1] if len(text.split("|")) > 1 else ""
-            genres = [g.strip() for g in genre_part.split(",")
-                     if g.strip() and len(g.strip()) < 25]
+            genres = [g.strip() for g in genre_part.split(",") if g.strip() and len(g.strip()) < 25]
         analysis = _VLM_ANALYZER.analyze_poster(
             doc_id=doc_id,
             title=doc.get("title", ""),
             genres=genres,
         )
-        catalog.append({
-            "doc_id": doc_id,
-            "title": doc.get("title", ""),
-            "genres": genres[:3],
-            "mood_tags": analysis["mood_tags"],
-            "style_tags": analysis["style_tags"],
-            "method": analysis["analysis_method"],
-        })
+        catalog.append(
+            {
+                "doc_id": doc_id,
+                "title": doc.get("title", ""),
+                "genres": genres[:3],
+                "mood_tags": analysis["mood_tags"],
+                "style_tags": analysis["style_tags"],
+                "method": analysis["analysis_method"],
+            }
+        )
 
     # Mood distribution
     from collections import Counter
+
     all_moods = []
     for item in catalog:
         all_moods.extend(item["mood_tags"])
@@ -4988,6 +5691,7 @@ def multimodal_pipeline_status() -> dict[str, Any]:
     if lineage_path.exists():
         try:
             import json
+
             lineage = json.loads(lineage_path.read_text())
         except Exception:
             pass
@@ -5007,7 +5711,8 @@ def multimodal_pipeline_status() -> dict[str, Any]:
             "shadow_comparison": "Text-only vs multimodal rank correlation logged",
             "metaflow_pipeline": "MultimodalPipelineFlow: 7 steps with artifact lineage",
         },
-        "pipeline_run": lineage or {
+        "pipeline_run": lineage
+        or {
             "status": "not yet run",
             "how_to_run": "python flows/multimodal_pipeline_flow.py run",
         },
@@ -5028,7 +5733,8 @@ def multimodal_pipeline_status() -> dict[str, Any]:
 
 try:
     from genai.local_llm import LocalLLM, VLMImageDescriber
-    _openai_client_ref = _OPENAI_CLIENT if 'OPENAI_AVAILABLE' in dir() and OPENAI_AVAILABLE else None
+
+    _openai_client_ref = None
     _LOCAL_LLM = LocalLLM(
         ollama_url=os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434"),
         model=os.environ.get("OLLAMA_MODEL", "llama3:latest"),
@@ -5097,8 +5803,12 @@ def llm_status() -> dict[str, Any]:
     if LOCAL_LLM_AVAILABLE and _LOCAL_LLM:
         llm_s = _LOCAL_LLM.status()
         result["llm_components"]["local_llm_ollama"]["available"] = llm_s["ollama_running"]
-        result["llm_components"]["local_llm_ollama"]["models"] = llm_s.get("ollama_models_loaded", [])
-        result["llm_components"]["cloud_llm_gpt4o_mini"]["available"] = llm_s["cloud_fallback"] != "none"
+        result["llm_components"]["local_llm_ollama"]["models"] = llm_s.get(
+            "ollama_models_loaded", []
+        )
+        result["llm_components"]["cloud_llm_gpt4o_mini"]["available"] = (
+            llm_s["cloud_fallback"] != "none"
+        )
         result["active_llm"] = llm_s["active_model"]
         result["llm_source"] = llm_s["source"]
 
@@ -5148,6 +5858,7 @@ def vlm_describe_poster(
     poster_url = None
     try:
         import urllib.request
+
         q = urllib.parse.quote(title.split("(")[0].strip())
         tmdb_key = os.environ.get("TMDB_API_KEY", "")
         if tmdb_key:
@@ -5165,6 +5876,7 @@ def vlm_describe_poster(
     if openai_key and poster_url:
         try:
             from genai.openai_explain import describe_poster_gpt4v
+
             gpt4v_desc = describe_poster_gpt4v(poster_url, title, language=language)
             if gpt4v_desc:
                 return {
@@ -5252,7 +5964,9 @@ def llm_explain_local(
     vlm_desc = ""
     poster_url_for_vlm = None
     try:
-        import urllib.request, urllib.parse
+        import urllib.parse
+        import urllib.request
+
         q = urllib.parse.quote(title.split("(")[0].strip())
         tmdb_key = os.environ.get("TMDB_API_KEY", "")
         if tmdb_key:
@@ -5267,8 +5981,7 @@ def llm_explain_local(
 
     if LOCAL_LLM_AVAILABLE and _VLM_DESCRIBER:
         desc_result = _VLM_DESCRIBER.describe_poster(
-            image_url=poster_url_for_vlm,
-            title=title, genres=genres, mood_tags=mood_tags
+            image_url=poster_url_for_vlm, title=title, genres=genres, mood_tags=mood_tags
         )
         vlm_desc = desc_result.get("text", "")
 
@@ -5281,14 +5994,14 @@ def llm_explain_local(
     style_instruction = style_prompts.get(style, style_prompts["casual"])
 
     # Build a richer, more accurate prompt
-    genre_str = ', '.join(genres) if genres else 'Unknown'
-    mood_str = ', '.join(t.replace('_',' ') for t in mood_tags) if mood_tags else ''
-    vlm_visual = f"Visual: {vlm_desc}" if vlm_desc and 'Genre inference' not in vlm_desc else ''
+    genre_str = ", ".join(genres) if genres else "Unknown"
+    mood_str = ", ".join(t.replace("_", " ") for t in mood_tags) if mood_tags else ""
+    vlm_visual = f"Visual: {vlm_desc}" if vlm_desc and "Genre inference" not in vlm_desc else ""
 
     prompt = f"""Film: {title}
 Genre: {genre_str}{f" | Mood signals: {mood_str}" if mood_str else ""}
 {vlm_visual}
-User query: {query or 'recommend this film'}
+User query: {query or "recommend this film"}
 
 {style_instruction} Focus specifically on {title}. Mention concrete details about this film — not generic phrases."""
 
@@ -5320,57 +6033,65 @@ User query: {query or 'recommend this film'}
 def debug_openai_test(language: str = Query("Arabic")) -> dict:
     """Debug: test OpenAI key and explain function directly."""
     import os
+
     key = os.environ.get("OPENAI_API_KEY", "")
     key_present = bool(key and len(key) > 10)
     key_preview = key[:12] + "..." if key else "MISSING"
-    
+
     result = {"key_present": key_present, "key_preview": key_preview}
-    
+
     try:
-        from genai.openai_explain import explain_why_this, _call_openai
+        from genai.openai_explain import _call_openai, explain_why_this
+
         # Test raw API call
-        test_msgs = [
-            {"role": "user", "content": f"Say 'hello' in {language} in exactly 3 words."}
-        ]
+        test_msgs = [{"role": "user", "content": f"Say 'hello' in {language} in exactly 3 words."}]
         raw = _call_openai(test_msgs, temperature=0, max_tokens=20)
         result["raw_api_test"] = raw
         result["raw_api_ok"] = bool(raw)
     except Exception as e:
         result["api_error"] = str(e)
-    
+
     try:
         from genai.openai_explain import explain_why_this
+
         answer = explain_why_this(
             "Pulp Fiction (1994)",
             "Genres: Crime, Drama | Tags: cult film",
-            "chrisen", "likes crime thrillers", language
+            "chrisen",
+            "likes crime thrillers",
+            language,
         )
         result["explain_result"] = answer[:200] if answer else "EMPTY"
         result["used_openai"] = bool(answer and "earns its recommendation" not in answer)
     except Exception as e:
         result["explain_error"] = str(e)
-    
-    return result
 
+    return result
 
 
 @app.get("/diffusion", include_in_schema=False)
 def diffusion_demo():
-    from fastapi.responses import FileResponse
     import os
+
+    from fastapi.responses import FileResponse
+
     path = "src/app/demo_ui/diffusion_demo.html"
     if os.path.exists(path):
         return FileResponse(path)
     return FileResponse("src/app/demo_ui/index.html")
 
+
 @app.get("/sql", include_in_schema=False)
 def sql_explorer():
-    from fastapi.responses import FileResponse
     import os
+
+    from fastapi.responses import FileResponse
+
     path = "src/app/demo_ui/sql_explorer.html"
     if os.path.exists(path):
         return FileResponse(path)
     return FileResponse("src/app/demo_ui/index.html")
+
 
 @app.websocket("/ws/feed/{user_id}")
 async def ws_feed(websocket: WebSocket, user_id: str):
@@ -5380,27 +6101,37 @@ async def ws_feed(websocket: WebSocket, user_id: str):
     manager = get_manager()
     await manager.connect(websocket, user_id)
     try:
-        await websocket.send_json({"type": "connected", "user_id": user_id,
-            "message": "StreamLens real-time feed active",
-            "active_users": manager.active_users})
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "user_id": user_id,
+                "message": "StreamLens real-time feed active",
+                "active_users": manager.active_users,
+            }
+        )
         while True:
             try:
                 data = await _asyncio.wait_for(websocket.receive_json(), timeout=30.0)
                 if data.get("type") == "interaction":
                     import uuid as _uuid
+
                     evt = InteractionEvent(
-                        event_id=str(_uuid.uuid4()), user_id=user_id,
-                        doc_id=data.get("doc_id",""), title=data.get("title",""),
-                        event_type=data.get("event_type","click"),
-                        watch_pct=float(data.get("watch_pct",0)),
-                        position=int(data.get("position",0)),
-                        query=data.get("query",""), language=data.get("language","English"),
+                        event_id=str(_uuid.uuid4()),
+                        user_id=user_id,
+                        doc_id=data.get("doc_id", ""),
+                        title=data.get("title", ""),
+                        event_type=data.get("event_type", "click"),
+                        watch_pct=float(data.get("watch_pct", 0)),
+                        position=int(data.get("position", 0)),
+                        query=data.get("query", ""),
+                        language=data.get("language", "English"),
                     )
                     get_producer().publish_interaction(evt)
                     await websocket.send_json(
-                        make_interaction_ack(evt.event_id, evt.doc_id, evt.event_type))
-            except _asyncio.TimeoutError:
-                await websocket.send_json({"type": "heartbeat", "ts": _time.time()})
+                        make_interaction_ack(evt.event_id, evt.doc_id, evt.event_type)
+                    )
+            except TimeoutError:
+                await websocket.send_json({"type": "heartbeat", "ts": time.time()})
     except WebSocketDisconnect:
         pass
     finally:
@@ -5412,17 +6143,24 @@ def ws_stats() -> dict:
     if not _STREAMING_ENABLED:
         return {"enabled": False}
     manager = get_manager()
-    return {"enabled": True, "active_users": manager.active_users,
-            "active_connections": manager.active_connections,
-            "kafka_mode": get_producer()._mode}
+    return {
+        "enabled": True,
+        "active_users": manager.active_users,
+        "active_connections": manager.active_connections,
+        "kafka_mode": get_producer()._mode,
+    }
 
 
 @app.post("/events/interaction")
 async def log_interaction(
     request: Request,
-    user_id: str, doc_id: str, event_type: str = "click",
-    watch_pct: float = 0.0, position: int = 0,
-    query: str = "", language: str = "English",
+    user_id: str,
+    doc_id: str,
+    event_type: str = "click",
+    watch_pct: float = 0.0,
+    position: int = 0,
+    query: str = "",
+    language: str = "English",
     impression_id: str = "",
 ) -> dict:
     if RATE_LIMITING_AVAILABLE and _RATE_LIMITERS is not None:
@@ -5443,18 +6181,27 @@ async def log_interaction(
     if not _STREAMING_ENABLED:
         return {"status": "streaming_disabled", "rl_outcome": rl_outcome}
     import uuid as _uuid
+
     evt = InteractionEvent(
-        event_id=str(_uuid.uuid4()), user_id=user_id, doc_id=doc_id,
-        title=(STATE.corpus.get(doc_id, {}) if STATE else {}).get("title",""),
-        event_type=event_type, watch_pct=watch_pct,
-        position=position, query=query, language=language,
+        event_id=str(_uuid.uuid4()),
+        user_id=user_id,
+        doc_id=doc_id,
+        title=(STATE.corpus.get(doc_id, {}) if STATE else {}).get("title", ""),
+        event_type=event_type,
+        watch_pct=watch_pct,
+        position=position,
+        query=query,
+        language=language,
     )
     ok = get_producer().publish_interaction(evt)
     manager = get_manager()
     if manager.active_users > 0:
-        await manager.send_to_user(user_id,
-            make_interaction_ack(evt.event_id, evt.doc_id, evt.event_type))
-    return {"status": "ok" if ok else "queued",
-            "event_id": evt.event_id, "kafka_mode": get_producer()._mode,
-            "rl_outcome": rl_outcome}
-
+        await manager.send_to_user(
+            user_id, make_interaction_ack(evt.event_id, evt.doc_id, evt.event_type)
+        )
+    return {
+        "status": "ok" if ok else "queued",
+        "event_id": evt.event_id,
+        "kafka_mode": get_producer()._mode,
+        "rl_outcome": rl_outcome,
+    }

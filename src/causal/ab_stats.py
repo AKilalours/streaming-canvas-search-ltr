@@ -4,11 +4,11 @@ A/B Statistical Testing with proper inference.
 Computes t-tests, p-values, confidence intervals, and MDE.
 This is what real experimentation platforms do before declaring a winner.
 """
+
 from __future__ import annotations
+
 import math
-import random
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass
@@ -23,7 +23,7 @@ class ABTestResult:
     ci_lower: float
     ci_upper: float
     significant: bool
-    mde: float          # minimum detectable effect at 80% power
+    mde: float  # minimum detectable effect at 80% power
     n_control: int
     n_treatment: int
     recommendation: str
@@ -100,8 +100,8 @@ def minimum_detectable_effect(
     Compute MDE: smallest lift detectable with given sample size and power.
     Uses normal approximation.
     """
-    z_alpha = 1.96   # two-tailed alpha=0.05
-    z_beta = 0.842   # power=0.80
+    z_alpha = 1.96  # two-tailed alpha=0.05
+    z_beta = 0.842  # power=0.80
     if n <= 0 or baseline_std <= 0:
         return float("inf")
     return (z_alpha + z_beta) * baseline_std * math.sqrt(2 / n)
@@ -136,10 +136,19 @@ def run_ab_test(
 
     if not control_rewards or not treatment_rewards:
         return ABTestResult(
-            metric=metric_name, control_mean=0, treatment_mean=0,
-            absolute_lift=0, relative_lift_pct=0, t_statistic=0,
-            p_value=1.0, ci_lower=0, ci_upper=0, significant=False,
-            mde=0, n_control=n_c, n_treatment=n_t,
+            metric=metric_name,
+            control_mean=0,
+            treatment_mean=0,
+            absolute_lift=0,
+            relative_lift_pct=0,
+            t_statistic=0,
+            p_value=1.0,
+            ci_lower=0,
+            ci_upper=0,
+            significant=False,
+            mde=0,
+            n_control=n_c,
+            n_treatment=n_t,
             recommendation="Insufficient data",
         )
 
@@ -151,15 +160,15 @@ def run_ab_test(
     t_stat, p_value = welch_t_test(control_rewards, treatment_rewards, alpha)
     ci_lo, ci_hi = confidence_interval(treatment_rewards)
 
-    ctrl_std = math.sqrt(
-        sum((x - ctrl_mean) ** 2 for x in control_rewards) / max(n_c - 1, 1)
-    )
+    ctrl_std = math.sqrt(sum((x - ctrl_mean) ** 2 for x in control_rewards) / max(n_c - 1, 1))
     mde = minimum_detectable_effect(n_c, ctrl_mean, ctrl_std)
 
     significant = p_value < alpha
 
     if significant and abs_lift > 0:
-        rec = f"Ship treatment — statistically significant lift of {rel_lift:.1f}% (p={p_value:.4f})"
+        rec = (
+            f"Ship treatment — statistically significant lift of {rel_lift:.1f}% (p={p_value:.4f})"
+        )
     elif significant and abs_lift < 0:
         rec = f"Do NOT ship — statistically significant regression of {rel_lift:.1f}% (p={p_value:.4f})"
     elif not significant and abs(abs_lift) < mde:

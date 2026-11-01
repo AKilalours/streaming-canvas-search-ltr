@@ -15,17 +15,39 @@ Why this matters:
   - NER-aware: identify "Tom Hanks" as ACTOR entity → direct lookup in actor index
   - Closes vocabulary gap between natural language and structured metadata
 """
+
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 
 # Known genres in MovieLens
 GENRES = {
-    "action", "adventure", "animation", "children", "comedy", "crime",
-    "documentary", "drama", "fantasy", "film-noir", "horror", "musical",
-    "mystery", "romance", "sci-fi", "thriller", "war", "western",
+    "action",
+    "adventure",
+    "animation",
+    "children",
+    "comedy",
+    "crime",
+    "documentary",
+    "drama",
+    "fantasy",
+    "film-noir",
+    "horror",
+    "musical",
+    "mystery",
+    "romance",
+    "sci-fi",
+    "thriller",
+    "war",
+    "western",
     # Common aliases
-    "animated", "romantic", "scary", "funny", "dark", "light",
+    "animated",
+    "romantic",
+    "scary",
+    "funny",
+    "dark",
+    "light",
 }
 
 # Decade patterns
@@ -36,43 +58,41 @@ DECADE_PATTERNS = {
 
 # Intent patterns
 INTENT_PATTERNS = {
-    "similar_to":  [r"(?:like|similar to|reminds me of|same as)\s+([A-Z][\w\s]+?)(?:\s*$|\s*[,;.])"],
+    "similar_to": [r"(?:like|similar to|reminds me of|same as)\s+([A-Z][\w\s]+?)(?:\s*$|\s*[,;.])"],
     "by_director": [r"(?:by|directed by|from director)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
-    "with_actor":  [r"(?:with|starring|featuring)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
-    "decade":      [r"\b([12][90][0-9]0)s\b"],
+    "with_actor": [r"(?:with|starring|featuring)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
+    "decade": [r"\b([12][90][0-9]0)s\b"],
 }
 
 
 @dataclass
 class QueryEntities:
     """Structured representation of extracted query entities."""
-    genres:     list[str] = field(default_factory=list)
-    actors:     list[str] = field(default_factory=list)
-    directors:  list[str] = field(default_factory=list)
-    decades:    list[str] = field(default_factory=list)
+
+    genres: list[str] = field(default_factory=list)
+    actors: list[str] = field(default_factory=list)
+    directors: list[str] = field(default_factory=list)
+    decades: list[str] = field(default_factory=list)
     similar_to: list[str] = field(default_factory=list)
-    keywords:   list[str] = field(default_factory=list)
-    raw_query:  str = ""
+    keywords: list[str] = field(default_factory=list)
+    raw_query: str = ""
 
     def has_entities(self) -> bool:
-        return any([self.genres, self.actors, self.directors,
-                    self.decades, self.similar_to])
+        return any([self.genres, self.actors, self.directors, self.decades, self.similar_to])
 
 
 def extract_entities(query: str) -> QueryEntities:
     """
     Extract named entities from a query string.
-    
+
     Args:
         query: Raw user query
-    
+
     Returns:
         QueryEntities with extracted actors, genres, decades, etc.
     """
     entities = QueryEntities(raw_query=query)
-    q_lower  = query.lower()
-    q_words  = set(q_lower.split())
-
+    q_lower = query.lower()
     # Extract genres
     entities.genres = [g for g in GENRES if g in q_lower]
 
@@ -102,12 +122,27 @@ def extract_entities(query: str) -> QueryEntities:
         entities.actors.extend([m.strip() for m in matches])
 
     # Remaining words as keywords
-    stop_words = {"movies", "films", "show", "watch", "like", "want",
-                  "good", "best", "top", "similar", "with", "by", "the", "a", "an"}
+    stop_words = {
+        "movies",
+        "films",
+        "show",
+        "watch",
+        "like",
+        "want",
+        "good",
+        "best",
+        "top",
+        "similar",
+        "with",
+        "by",
+        "the",
+        "a",
+        "an",
+    }
     entity_words = set(" ".join(entities.genres + entities.decades).split())
-    entities.keywords = [w for w in q_lower.split()
-                         if w not in stop_words and w not in entity_words
-                         and len(w) > 2]
+    entities.keywords = [
+        w for w in q_lower.split() if w not in stop_words and w not in entity_words and len(w) > 2
+    ]
 
     return entities
 
@@ -120,7 +155,7 @@ def entity_boost_scores(
 ) -> list[dict]:
     """
     Boost candidate scores based on extracted entities.
-    
+
     Entity matches provide a relevance signal that BM25 misses
     when the query uses natural language (e.g., "Tom Hanks movies"
     vs the metadata key "cast: Tom Hanks").

@@ -15,6 +15,7 @@ Components:
 
 Netflix standard: Every model deployment must have ROI > 1.0 (revenue > cost).
 """
+
 from __future__ import annotations
 
 import json
@@ -23,18 +24,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 # ── Config ────────────────────────────────────────────────────────────────────
 
 # These are illustrative unit costs — replace with your cloud billing data
-COST_PER_CPU_SEC   = 0.000048    # $/CPU-second (c5.2xlarge on-demand)
-COST_PER_GB_RAM_HR = 0.006       # $/GB-hour
-REVENUE_PER_USER   = 0.45        # $/user/month (avg Netflix ARPU / 30 / 24h)
-NDCG_TO_RETENTION  = 0.12        # 1 unit nDCG@10 lift ≈ 12% retention improvement
-RETENTION_TO_REV   = 0.08        # 1% retention ≈ 0.08% revenue per user
+COST_PER_CPU_SEC = 0.000048  # $/CPU-second (c5.2xlarge on-demand)
+COST_PER_GB_RAM_HR = 0.006  # $/GB-hour
+REVENUE_PER_USER = 0.45  # $/user/month (avg Netflix ARPU / 30 / 24h)
+NDCG_TO_RETENTION = 0.12  # 1 unit nDCG@10 lift ≈ 12% retention improvement
+RETENTION_TO_REV = 0.08  # 1% retention ≈ 0.08% revenue per user
 
 
 # ── Data structures ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class InferenceCost:
@@ -61,7 +62,7 @@ class RevenueLift:
 @dataclass
 class FinOpsDecision:
     approved: bool
-    roi: float                     # revenue_lift / cost — must be > threshold
+    roi: float  # revenue_lift / cost — must be > threshold
     roi_threshold: float
     reason: str
     cost: InferenceCost
@@ -70,6 +71,7 @@ class FinOpsDecision:
 
 
 # ── Cost Estimator ────────────────────────────────────────────────────────────
+
 
 class CostEstimator:
     """
@@ -98,11 +100,11 @@ class CostEstimator:
             p50 = float(data.get("p50_ms", 50))
             p99 = float(data.get("p99_ms", 200))
         else:
-            p50, p99 = 50.0, 200.0   # fallback estimates
+            p50, p99 = 50.0, 200.0  # fallback estimates
 
         # Cost per query: CPU time * cores * rate + RAM * rate
         cpu_sec = p50 / 1000 * self.cpu_cores
-        ram_hr  = (p50 / 1000 / 3600) * self.ram_gb
+        ram_hr = (p50 / 1000 / 3600) * self.ram_gb
         cpq = cpu_sec * COST_PER_CPU_SEC + ram_hr * COST_PER_GB_RAM_HR
         cpd = cpq * self.queries_per_day
 
@@ -121,6 +123,7 @@ class CostEstimator:
 
 # ── Revenue Calculator ────────────────────────────────────────────────────────
 
+
 class RevenueCalculator:
     """
     Converts nDCG@10 lift into expected revenue per user.
@@ -136,7 +139,7 @@ class RevenueCalculator:
     def calculate(self, ndcg_lift: float) -> RevenueLift:
         retention_lift_pct = ndcg_lift * NDCG_TO_RETENTION * 100
         rev_per_user = retention_lift_pct * RETENTION_TO_REV * REVENUE_PER_USER
-        rev_per_day  = rev_per_user * self.n_users / 30   # monthly → daily
+        rev_per_day = rev_per_user * self.n_users / 30  # monthly → daily
 
         return RevenueLift(
             ndcg_lift=round(ndcg_lift, 4),
@@ -148,6 +151,7 @@ class RevenueCalculator:
 
 
 # ── FinOps Gate ───────────────────────────────────────────────────────────────
+
 
 class FinOpsGate:
     """
@@ -170,7 +174,7 @@ class FinOpsGate:
     ) -> FinOpsDecision:
         cost_est = CostEstimator(queries_per_day=queries_per_day)
         cost = cost_est.estimate_from_latency_report(latency_report_path)
-        rev  = RevenueCalculator(n_users=n_users).calculate(ndcg_lift)
+        rev = RevenueCalculator(n_users=n_users).calculate(ndcg_lift)
 
         roi = rev.revenue_lift_per_day_usd / max(1e-9, cost.cost_per_day_usd)
         approved = roi >= self.roi_threshold
@@ -183,10 +187,13 @@ class FinOpsGate:
             rec = f"Rejected. ROI={roi:.2f}x is below threshold. Optimise latency or increase lift first."
 
         return FinOpsDecision(
-            approved=approved, roi=round(roi, 3),
+            approved=approved,
+            roi=round(roi, 3),
             roi_threshold=self.roi_threshold,
             reason=f"nDCG lift={ndcg_lift:.4f}, rev/day=${rev.revenue_lift_per_day_usd:.2f}, cost/day=${cost.cost_per_day_usd:.4f}",
-            cost=cost, revenue=rev, recommendation=rec,
+            cost=cost,
+            revenue=rev,
+            recommendation=rec,
         )
 
     def to_dict(self, decision: FinOpsDecision) -> dict[str, Any]:
@@ -204,6 +211,7 @@ class FinOpsGate:
 
 
 # ── Artifact Lifecycle Manager ────────────────────────────────────────────────
+
 
 @dataclass
 class ArtifactTieringResult:
@@ -272,4 +280,4 @@ class ArtifactLifecycle:
         try:
             path.rename(archived_path)
         except Exception:
-            pass   # best-effort
+            pass  # best-effort

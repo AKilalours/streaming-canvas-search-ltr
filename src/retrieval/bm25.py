@@ -30,6 +30,7 @@ class BM25Artifact:
     """
     Pickle-safe BM25 artifact (lives in retrieval.bm25, NOT __main__).
     """
+
     doc_ids: list[str]
     doc_len: list[int]
     avgdl: float

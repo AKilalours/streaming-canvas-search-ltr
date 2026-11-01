@@ -51,31 +51,40 @@ def test_contextual_bandit_feed_connects_exposure_outcome_and_live_ope(tmp_path,
         assert items[0]["slate_id"]
         assert items[0]["position"] == 1
 
-        premature = c.post("/rl/feedback", json={
-            "impression_id": impression,
-            "doc_id": items[0]["doc_id"],
-            "user_id": "chrisen",
-            "event_type": "click",
-        })
+        premature = c.post(
+            "/rl/feedback",
+            json={
+                "impression_id": impression,
+                "doc_id": items[0]["doc_id"],
+                "user_id": "chrisen",
+                "event_type": "click",
+            },
+        )
         assert premature.status_code == 409
         assert premature.json()["detail"] == "exposure_not_confirmed"
 
-        exposure = c.post("/rl/exposure", json={
-            "impression_id": impression,
-            "doc_id": items[0]["doc_id"],
-            "user_id": "chrisen",
-        })
+        exposure = c.post(
+            "/rl/exposure",
+            json={
+                "impression_id": impression,
+                "doc_id": items[0]["doc_id"],
+                "user_id": "chrisen",
+            },
+        )
         assert exposure.status_code == 200
         assert exposure.json()["ope_eligible"] is True
         assert exposure.json()["propensity"] == items[0]["propensity"]
 
-        outcome = c.post("/rl/feedback", json={
-            "impression_id": impression,
-            "doc_id": items[0]["doc_id"],
-            "user_id": "chrisen",
-            "event_type": "watch_complete",
-            "watch_pct": 0.92,
-        })
+        outcome = c.post(
+            "/rl/feedback",
+            json={
+                "impression_id": impression,
+                "doc_id": items[0]["doc_id"],
+                "user_id": "chrisen",
+                "event_type": "watch_complete",
+                "watch_pct": 0.92,
+            },
+        )
         assert outcome.status_code == 200
         assert outcome.json()["reward"] == pytest.approx(0.956)
         status = c.get("/rl/status").json()
@@ -86,27 +95,36 @@ def test_contextual_bandit_feed_connects_exposure_outcome_and_live_ope(tmp_path,
         assert ope["synthetic_only"] is False
         assert ope["deployment_eligible"] is False
         assert ope["n_samples"] == 1
-        duplicate = c.post("/rl/feedback", json={
-            "impression_id": impression,
-            "doc_id": items[0]["doc_id"],
-            "user_id": "chrisen",
-            "event_type": "watch_complete",
-        })
+        duplicate = c.post(
+            "/rl/feedback",
+            json={
+                "impression_id": impression,
+                "doc_id": items[0]["doc_id"],
+                "user_id": "chrisen",
+                "event_type": "watch_complete",
+            },
+        )
         assert duplicate.status_code == 409
 
-        forged = c.post("/rl/feedback", json={
-            "impression_id": items[1]["impression_id"],
-            "doc_id": "not-the-served-item",
-            "user_id": "chrisen",
-            "event_type": "dislike",
-        })
+        forged = c.post(
+            "/rl/feedback",
+            json={
+                "impression_id": items[1]["impression_id"],
+                "doc_id": "not-the-served-item",
+                "user_id": "chrisen",
+                "event_type": "dislike",
+            },
+        )
         assert forged.status_code == 409
 
-        missing_doc = c.post("/rl/feedback", json={
-            "impression_id": items[2]["impression_id"],
-            "user_id": "chrisen",
-            "event_type": "dislike",
-        })
+        missing_doc = c.post(
+            "/rl/feedback",
+            json={
+                "impression_id": items[2]["impression_id"],
+                "user_id": "chrisen",
+                "event_type": "dislike",
+            },
+        )
         assert missing_doc.status_code == 422
 
 
@@ -150,17 +168,26 @@ def test_impression_endpoint_does_not_invent_propensity_from_rank_score(tmp_path
     monkeypatch.setattr(main_module, "_PROP_LOGGER", logger)
     monkeypatch.setattr(main_module, "PROP_LOGGER_AVAILABLE", True)
     with TestClient(app) as client:
-        response = client.post("/impression/log", params={
-            "user_id": "u1", "doc_id": "d1", "ltr_score": 0.9,
-        })
+        response = client.post(
+            "/impression/log",
+            params={
+                "user_id": "u1",
+                "doc_id": "d1",
+                "ltr_score": 0.9,
+            },
+        )
         event = response.json()
         assert response.status_code == 200
         assert event["propensity"] is None
         assert event["ope_eligible"] is False
 
-        outcome = client.post("/impression/outcome", params={
-            "event_id": event["event_id"], "watch_pct": 0.8,
-        })
+        outcome = client.post(
+            "/impression/outcome",
+            params={
+                "event_id": event["event_id"],
+                "watch_pct": 0.8,
+            },
+        )
         stats = client.get("/impression/stats").json()
 
     assert outcome.status_code == 200
@@ -168,14 +195,20 @@ def test_impression_endpoint_does_not_invent_propensity_from_rank_score(tmp_path
     assert stats["n_ope_eligible_outcomes"] == 0
 
 
-def test_uplift_score_api_uses_live_events_without_claiming_missing_control_lift(tmp_path, monkeypatch):
+def test_uplift_score_api_uses_live_events_without_claiming_missing_control_lift(
+    tmp_path, monkeypatch
+):
     monkeypatch.setattr(main_module, "CAUSAL_AVAILABLE", True)
     monkeypatch.setattr(propensity_module, "LOG_DIR", tmp_path / "propensity")
     monkeypatch.setattr(propensity_module.PropensityLogger, "_connect_redis", lambda _self: None)
     logger = propensity_module.PropensityLogger()
     event = logger.log_impression(
-        user_id="u1", doc_id="movie-1", ltr_score=0.9,
-        propensity=0.5, randomized=True, serving_verified=True,
+        user_id="u1",
+        doc_id="movie-1",
+        ltr_score=0.9,
+        propensity=0.5,
+        randomized=True,
+        serving_verified=True,
         context={
             "target_scores": {"movie-1": 0.9, "movie-2": 0.5},
             "behavior_probabilities": {"movie-1": 0.5, "movie-2": 0.5},
@@ -199,9 +232,9 @@ def test_uplift_score_api_uses_live_events_without_claiming_missing_control_lift
 def test_project_summary_uses_saved_reports_and_does_not_claim_gates_passed(tmp_path, monkeypatch):
     latest = tmp_path / "reports" / "latest"
     latest.mkdir(parents=True)
-    (latest / "metrics.json").write_text(json.dumps({
-        "methods": [{"method": "hybrid_ltr", "ndcg@10": 0.81, "recall@100": 0.92}]
-    }))
+    (latest / "metrics.json").write_text(
+        json.dumps({"methods": [{"method": "hybrid_ltr", "ndcg@10": 0.81, "recall@100": 0.92}]})
+    )
     (latest / "latency.json").write_text(json.dumps({"p95_ms": 80, "p99_ms": 120}))
     monkeypatch.chdir(tmp_path)
 
@@ -214,18 +247,29 @@ def test_project_summary_uses_saved_reports_and_does_not_claim_gates_passed(tmp_
     assert result["key_metrics"]["mrr_at_10"] is None
 
 
-def test_comprehensive_eval_reports_artifact_values_without_synthesizing_metrics(tmp_path, monkeypatch):
+def test_comprehensive_eval_reports_artifact_values_without_synthesizing_metrics(
+    tmp_path, monkeypatch
+):
     latest = tmp_path / "reports" / "latest"
     latest.mkdir(parents=True)
-    (latest / "metrics.json").write_text(json.dumps({
-        "k": 10,
-        "split": "test",
-        "diagnostics": {"num_queries": 12, "has_ltr": True},
-        "methods": [
-            {"method": "hybrid", "ndcg@10": 0.30, "num_queries": 12},
-            {"method": "hybrid_ltr", "ndcg@10": 0.31, "recall@100": 0.42, "num_queries": 12},
-        ],
-    }))
+    (latest / "metrics.json").write_text(
+        json.dumps(
+            {
+                "k": 10,
+                "split": "test",
+                "diagnostics": {"num_queries": 12, "has_ltr": True},
+                "methods": [
+                    {"method": "hybrid", "ndcg@10": 0.30, "num_queries": 12},
+                    {
+                        "method": "hybrid_ltr",
+                        "ndcg@10": 0.31,
+                        "recall@100": 0.42,
+                        "num_queries": 12,
+                    },
+                ],
+            }
+        )
+    )
     monkeypatch.chdir(tmp_path)
 
     result = main_module.eval_comprehensive()

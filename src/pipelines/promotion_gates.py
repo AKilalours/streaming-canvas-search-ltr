@@ -14,6 +14,7 @@ Design rules
 * This module only needs the standard library, so the Airflow scheduler process
   can import it without the ML stack.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -36,7 +37,9 @@ def _method(metrics: dict[str, Any], name: str) -> dict[str, Any]:
     for m in metrics.get("methods", []):
         if isinstance(m, dict) and m.get("method") == name:
             return m
-    raise KeyError(f"method '{name}' not in metrics (have {[m.get('method') for m in metrics.get('methods', [])]})")
+    raise KeyError(
+        f"method '{name}' not in metrics (have {[m.get('method') for m in metrics.get('methods', [])]})"
+    )
 
 
 def evaluate_gates(
@@ -60,42 +63,71 @@ def evaluate_gates(
     out: list[GateResult] = []
 
     # 1. data validation
-    out.append(GateResult(
-        "data_validation_passed", bool(data_report.get("passed")), data_report.get("passed"), True,
-        "; ".join(data_report.get("errors", [])) or "all data checks passed",
-    ))
+    out.append(
+        GateResult(
+            "data_validation_passed",
+            bool(data_report.get("passed")),
+            data_report.get("passed"),
+            True,
+            "; ".join(data_report.get("errors", [])) or "all data checks passed",
+        )
+    )
 
     # 2. the eval really scored the candidate (evaluate.py can fall back to another pickle)
     diag = challenger.get("diagnostics", {})
     loaded = str(diag.get("ltr_path") or "")
     ok = bool(diag.get("has_ltr")) and loaded == str(candidate_model_path)
-    out.append(GateResult(
-        "candidate_model_was_evaluated", ok, loaded, str(candidate_model_path),
-        "eval loaded the candidate pickle" if ok else "eval did not load the candidate model",
-    ))
+    out.append(
+        GateResult(
+            "candidate_model_was_evaluated",
+            ok,
+            loaded,
+            str(candidate_model_path),
+            "eval loaded the candidate pickle" if ok else "eval did not load the candidate model",
+        )
+    )
 
     # 3. training and serving use the same feature schema, in the same order
     ok = list(candidate_feature_names) == list(serving_feature_names)
-    out.append(GateResult(
-        "feature_schema_matches_serving", ok, len(candidate_feature_names), len(serving_feature_names),
-        "feature names and order match ranking.features.FEATURE_NAMES" if ok
-        else f"mismatch: candidate={candidate_feature_names} serving={serving_feature_names}",
-    ))
+    out.append(
+        GateResult(
+            "feature_schema_matches_serving",
+            ok,
+            len(candidate_feature_names),
+            len(serving_feature_names),
+            "feature names and order match ranking.features.FEATURE_NAMES"
+            if ok
+            else f"mismatch: candidate={candidate_feature_names} serving={serving_feature_names}",
+        )
+    )
 
     ltr = _method(challenger, LTR_METHOD)
 
     # 4. every query was scored
     nq = int(ltr.get("num_queries", 0))
-    out.append(GateResult(
-        "full_query_coverage", nq == expected_num_queries, nq, expected_num_queries,
-        "all validation queries scored" if nq == expected_num_queries else "queries were dropped",
-    ))
+    out.append(
+        GateResult(
+            "full_query_coverage",
+            nq == expected_num_queries,
+            nq,
+            expected_num_queries,
+            "all validation queries scored"
+            if nq == expected_num_queries
+            else "queries were dropped",
+        )
+    )
 
     # 5. absolute floor (safety net for the first run, before a champion exists)
     v = float(ltr["ndcg@10"])
-    out.append(GateResult(
-        "ndcg10_above_floor", v >= t["min_ndcg10"], round(v, 4), t["min_ndcg10"], "val nDCG@10",
-    ))
+    out.append(
+        GateResult(
+            "ndcg10_above_floor",
+            v >= t["min_ndcg10"],
+            round(v, 4),
+            t["min_ndcg10"],
+            "val nDCG@10",
+        )
+    )
 
     # 6. the reranker must add value over the retrieval it reranks
     best_name, best_v = max(
@@ -103,10 +135,15 @@ def evaluate_gates(
         key=lambda x: x[1],
     )
     lift = v - best_v
-    out.append(GateResult(
-        "beats_best_first_stage", lift > t["min_lift_over_first_stage"], round(lift, 4),
-        t["min_lift_over_first_stage"], f"LTR {v:.4f} vs best first stage {best_name} {best_v:.4f}",
-    ))
+    out.append(
+        GateResult(
+            "beats_best_first_stage",
+            lift > t["min_lift_over_first_stage"],
+            round(lift, 4),
+            t["min_lift_over_first_stage"],
+            f"LTR {v:.4f} vs best first stage {best_name} {best_v:.4f}",
+        )
+    )
 
     # 7-9. non-regression vs the current production model on the same split
     for gate, metric, key in (
@@ -123,10 +160,15 @@ def evaluate_gates(
         if metric == "ndcg@10" and best_promoted_ndcg10 is not None and best_promoted_ndcg10 > ref:
             ref, label = float(best_promoted_ndcg10), "best promoted"
         drop = ref - cur
-        out.append(GateResult(
-            gate, drop <= t[key], round(drop, 4), t[key],
-            f"{label} {ref:.4f} -> challenger {cur:.4f} (drop {drop:+.4f})",
-        ))
+        out.append(
+            GateResult(
+                gate,
+                drop <= t[key],
+                round(drop, 4),
+                t[key],
+                f"{label} {ref:.4f} -> challenger {cur:.4f} (drop {drop:+.4f})",
+            )
+        )
 
     return out
 

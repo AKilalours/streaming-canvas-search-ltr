@@ -26,8 +26,14 @@ def test_deterministic_rank_scores_do_not_create_fake_propensities(tmp_path, mon
 def test_ope_log_requires_exact_randomized_propensity_and_mature_outcome(tmp_path, monkeypatch):
     logger = _logger(tmp_path, monkeypatch)
     event = logger.log_impression(
-        user_id="u1", doc_id="d1", ltr_score=0.9, propensity=0.25,
-        randomized=True, serving_verified=True, position=0, event_id="bandit-impression-1",
+        user_id="u1",
+        doc_id="d1",
+        ltr_score=0.9,
+        propensity=0.25,
+        randomized=True,
+        serving_verified=True,
+        position=0,
+        event_id="bandit-impression-1",
         context={
             "target_scores": {"d1": 0.9, "d2": 0.5},
             "behavior_probabilities": {"d1": 0.25, "d2": 0.75},
@@ -50,7 +56,10 @@ def test_ope_log_requires_exact_randomized_propensity_and_mature_outcome(tmp_pat
 def test_non_randomized_probability_is_not_ope_eligible(tmp_path, monkeypatch):
     logger = _logger(tmp_path, monkeypatch)
     event = logger.log_impression(
-        user_id="u1", doc_id="d1", ltr_score=0.9, propensity=1.0,
+        user_id="u1",
+        doc_id="d1",
+        ltr_score=0.9,
+        propensity=1.0,
         randomized=False,
     )
     logger.record_outcome(event.event_id, watch_pct=0.75)
@@ -62,9 +71,12 @@ def test_non_randomized_probability_is_not_ope_eligible(tmp_path, monkeypatch):
 def test_caller_supplied_random_flag_cannot_make_event_ope_eligible(tmp_path, monkeypatch):
     logger = _logger(tmp_path, monkeypatch)
     event = logger.log_impression(
-        user_id="u1", doc_id="d1", ltr_score=0.9, propensity=0.25,
-        randomized=True, context={"target_scores": {"d1": 1.0},
-                                  "behavior_probabilities": {"d1": 0.25}},
+        user_id="u1",
+        doc_id="d1",
+        ltr_score=0.9,
+        propensity=0.25,
+        randomized=True,
+        context={"target_scores": {"d1": 1.0}, "behavior_probabilities": {"d1": 0.25}},
     )
     logger.record_outcome(event.event_id, watch_pct=0.75)
 
@@ -75,8 +87,6 @@ def test_caller_supplied_random_flag_cannot_make_event_ope_eligible(tmp_path, mo
 def test_invalid_propensity_and_outcome_are_rejected(tmp_path, monkeypatch):
     logger = _logger(tmp_path, monkeypatch)
     with pytest.raises(ValueError, match="selection_probability"):
-        logger.log_impression(
-            user_id="u1", doc_id="d1", ltr_score=0.9, propensity=0.0
-        )
+        logger.log_impression(user_id="u1", doc_id="d1", ltr_score=0.9, propensity=0.0)
     with pytest.raises(ValueError, match="watch_pct"):
         logger.record_outcome("unknown", watch_pct=1.5)

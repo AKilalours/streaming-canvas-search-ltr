@@ -19,6 +19,7 @@ the joined log supports diagnostic OPE, not policy promotion.
 
 Storage: Redis (live) + JSONL file (persistent)
 """
+
 from __future__ import annotations
 
 import json
@@ -36,15 +37,16 @@ LOG_DIR = Path("reports/propensity_logs")
 @dataclass
 class ImpressionEvent:
     """One recommendation impression — the atomic unit of causal logging."""
+
     event_id: str = field(default_factory=lambda: str(uuid.uuid4())[:16])
     timestamp: float = field(default_factory=time.time)
 
     # Context
     user_id: str = ""
     session_id: str = ""
-    page_type: str = ""           # "feed" | "search" | "detail_row"
+    page_type: str = ""  # "feed" | "search" | "detail_row"
     row_title: str = ""
-    position: int = 0             # 0-indexed position in feed
+    position: int = 0  # 0-indexed position in feed
 
     # Item
     doc_id: str = ""
@@ -61,7 +63,7 @@ class ImpressionEvent:
 
     # Outcome (filled in later on watch event)
     clicked: bool = False
-    watch_pct: float = 0.0        # 0.0 = not watched, 1.0 = completed
+    watch_pct: float = 0.0  # 0.0 = not watched, 1.0 = completed
     outcome_recorded: bool = False
     outcome_ts: float = 0.0
 
@@ -114,9 +116,11 @@ class PropensityLogger:
     def _connect_redis(self):
         try:
             import redis
+
             r = redis.Redis.from_url(
                 os.environ.get("REDIS_URL", "redis://redis:6379/0"),
-                decode_responses=True, socket_timeout=1,
+                decode_responses=True,
+                socket_timeout=1,
             )
             r.ping()
             return r
@@ -155,7 +159,7 @@ class PropensityLogger:
         event = ImpressionEvent(
             event_id=event_id or str(uuid.uuid4())[:16],
             user_id=user_id,
-            session_id=session_id or f"sess_{user_id}_{int(time.time()//300)}",
+            session_id=session_id or f"sess_{user_id}_{int(time.time() // 300)}",
             page_type=page_type,
             row_title=row_title,
             position=position,
@@ -242,37 +246,54 @@ class PropensityLogger:
             try:
                 ev = json.loads(line)
                 propensity = ev.get("propensity")
-                if (not ev.get("ope_eligible") or propensity is None
-                        or not ev.get("serving_verified") or not ev.get("randomized")
-                        or propensity < min_propensity or not 0 < propensity <= 1):
+                if (
+                    not ev.get("ope_eligible")
+                    or propensity is None
+                    or not ev.get("serving_verified")
+                    or not ev.get("randomized")
+                    or propensity < min_propensity
+                    or not 0 < propensity <= 1
+                ):
                     continue
                 outcome = outcomes.get(ev["event_id"], {})
                 if not outcome:
                     continue
                 context = ev.get("context", {})
-                behavior = context.get("behavior_probabilities", {}) if isinstance(context, dict) else {}
-                target_scores = context.get("target_scores", {}) if isinstance(context, dict) else {}
-                selected_probability = behavior.get(ev.get("doc_id")) if isinstance(behavior, dict) else None
-                if (not isinstance(selected_probability, (int, float))
-                        or not isinstance(target_scores, dict)
-                        or ev.get("doc_id") not in target_scores
-                        or not math.isclose(float(selected_probability), float(propensity), rel_tol=1e-8)
-                        or not math.isclose(sum(map(float, behavior.values())), 1.0, rel_tol=1e-6)):
+                behavior = (
+                    context.get("behavior_probabilities", {}) if isinstance(context, dict) else {}
+                )
+                target_scores = (
+                    context.get("target_scores", {}) if isinstance(context, dict) else {}
+                )
+                selected_probability = (
+                    behavior.get(ev.get("doc_id")) if isinstance(behavior, dict) else None
+                )
+                if (
+                    not isinstance(selected_probability, (int, float))
+                    or not isinstance(target_scores, dict)
+                    or ev.get("doc_id") not in target_scores
+                    or not math.isclose(
+                        float(selected_probability), float(propensity), rel_tol=1e-8
+                    )
+                    or not math.isclose(sum(map(float, behavior.values())), 1.0, rel_tol=1e-6)
+                ):
                     continue
-                events.append({
-                    "event_id": ev["event_id"],
-                    "doc_id": ev["doc_id"],
-                    "user_id": ev["user_id"],
-                    "shown": True,
-                    "watched": float(outcome.get("watch_pct", 0.0)),
-                    "clicked": bool(outcome.get("clicked", False)),
-                    "watch_pct": outcome.get("watch_pct", 0.0),
-                    "propensity": propensity,
-                    "position": ev["position"],
-                    "policy_name": ev["policy_name"],
-                    "timestamp": ev["timestamp"],
-                    "context": context,
-                })
+                events.append(
+                    {
+                        "event_id": ev["event_id"],
+                        "doc_id": ev["doc_id"],
+                        "user_id": ev["user_id"],
+                        "shown": True,
+                        "watched": float(outcome.get("watch_pct", 0.0)),
+                        "clicked": bool(outcome.get("clicked", False)),
+                        "watch_pct": outcome.get("watch_pct", 0.0),
+                        "propensity": propensity,
+                        "position": ev["position"],
+                        "policy_name": ev["policy_name"],
+                        "timestamp": ev["timestamp"],
+                        "context": context,
+                    }
+                )
             except Exception:
                 pass
 

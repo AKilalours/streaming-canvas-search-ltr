@@ -17,7 +17,9 @@ Honest claim:
    embedding backbone. GPT-4o-mini as cloud LLM fallback.
    No training. No fine-tuning."
 """
+
 from __future__ import annotations
+
 import json
 import time
 from typing import Any
@@ -45,6 +47,7 @@ class LocalLLM:
             return self._ollama_available
         try:
             import urllib.request
+
             urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2)
             self._ollama_available = True
         except Exception:
@@ -78,14 +81,17 @@ class LocalLLM:
         self, prompt: str, system: str, max_tokens: int, temperature: float
     ) -> dict[str, Any]:
         import urllib.request
+
         t0 = time.time()
-        payload = json.dumps({
-            "model": self.model,
-            "prompt": prompt,
-            "system": system,
-            "stream": False,
-            "options": {"temperature": temperature, "num_predict": max_tokens},
-        }).encode()
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "prompt": prompt,
+                "system": system,
+                "stream": False,
+                "options": {"temperature": temperature, "num_predict": max_tokens},
+            }
+        ).encode()
         try:
             req = urllib.request.Request(
                 f"{self.ollama_url}/api/generate",
@@ -135,6 +141,7 @@ class LocalLLM:
         if ollama_ok:
             try:
                 import urllib.request
+
                 with urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2) as r:
                     d = json.loads(r.read())
                     models = [m["name"] for m in d.get("models", [])]
@@ -178,6 +185,7 @@ class VLMImageDescriber:
             return self._llava_available
         try:
             import urllib.request
+
             with urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2) as r:
                 d = json.loads(r.read())
                 models = [m["name"] for m in d.get("models", [])]
@@ -230,16 +238,20 @@ class VLMImageDescriber:
 
     def _llava_describe(self, image_url: str, title: str) -> dict[str, Any]:
         """Use LLaVA via Ollama for image description."""
-        import urllib.request, base64
+        import base64
+        import urllib.request
+
         try:
             with urllib.request.urlopen(image_url, timeout=10) as r:
                 img_data = base64.b64encode(r.read()).decode()
-            payload = json.dumps({
-                "model": "llava",
-                "prompt": f"Describe the mood, visual style, and atmosphere of this movie poster for '{title}'. Be concise (2-3 sentences).",
-                "images": [img_data],
-                "stream": False,
-            }).encode()
+            payload = json.dumps(
+                {
+                    "model": "llava",
+                    "prompt": f"Describe the mood, visual style, and atmosphere of this movie poster for '{title}'. Be concise (2-3 sentences).",
+                    "images": [img_data],
+                    "stream": False,
+                }
+            ).encode()
             req = urllib.request.Request(
                 f"{self.ollama_url}/api/generate",
                 data=payload,
@@ -262,13 +274,18 @@ class VLMImageDescriber:
         try:
             resp = self.openai.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                        {"type": "text", "text": f"Describe the mood, visual style, and atmosphere of this movie poster for '{title}'. Be concise (2-3 sentences)."},
-                    ],
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                            {
+                                "type": "text",
+                                "text": f"Describe the mood, visual style, and atmosphere of this movie poster for '{title}'. Be concise (2-3 sentences).",
+                            },
+                        ],
+                    }
+                ],
                 max_tokens=150,
             )
             return {
@@ -309,9 +326,11 @@ class VLMImageDescriber:
             "gpt4v_available": self.openai is not None,
             "clip_available": self.clip is not None,
             "active_vlm": (
-                "llava_local" if self._check_llava() else
-                "gpt4o_mini_vision" if self.openai else
-                "clip_zero_shot"
+                "llava_local"
+                if self._check_llava()
+                else "gpt4o_mini_vision"
+                if self.openai
+                else "clip_zero_shot"
             ),
             "tier_1_local_vlm": "LLaVA via Ollama (install: ollama pull llava)",
             "tier_2_cloud_vlm": "GPT-4o-mini vision (needs OPENAI_API_KEY)",

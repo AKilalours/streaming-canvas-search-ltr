@@ -1,8 +1,8 @@
 # src/retrieval/hybrid.py
 from __future__ import annotations
 
-from collections.abc import Iterable
 import math
+from collections.abc import Iterable
 
 
 def _minmax(scores: dict[str, float]) -> dict[str, float]:

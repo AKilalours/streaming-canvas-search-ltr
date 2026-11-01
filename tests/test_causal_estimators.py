@@ -54,9 +54,7 @@ def test_uplift_marks_extreme_propensity_overlap_as_unconfident():
 
 
 def test_snips_evaluator_reports_effective_sample_size_and_gate():
-    events = [
-        LoggedEvent("a", True, True, 0.5) for _ in range(10)
-    ] + [
+    events = [LoggedEvent("a", True, True, 0.5) for _ in range(10)] + [
         LoggedEvent("b", True, False, 0.5) for _ in range(10)
     ]
     evaluator = OffPolicyEvaluator(min_lift=0.0, min_effective_sample_size=10)
@@ -77,10 +75,13 @@ def test_snips_rejects_invalid_logged_probability():
 
 
 def test_legacy_ipw_helper_uses_snips_and_requires_real_propensity():
-    result = ipw_estimate([
-        {"doc_id": "a", "shown": True, "watched": True, "propensity": 0.5},
-        {"doc_id": "b", "shown": True, "watched": False, "propensity": 0.5},
-    ], {"a": 0.0, "b": 0.0})
+    result = ipw_estimate(
+        [
+            {"doc_id": "a", "shown": True, "watched": True, "propensity": 0.5},
+            {"doc_id": "b", "shown": True, "watched": False, "propensity": 0.5},
+        ],
+        {"a": 0.0, "b": 0.0},
+    )
 
     assert result["method"] == "snips"
     assert result["ipw_estimate"] == pytest.approx(0.5)

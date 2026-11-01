@@ -20,13 +20,11 @@ Architecture:
   → Fused with BM25+dense text features → multimodal LTR score
   → Shadow comparison: text-only vs multimodal ranker
 """
-from __future__ import annotations
-import math
-import pathlib
-import json
-import time
-from typing import Any
 
+from __future__ import annotations
+
+import math
+from typing import Any
 
 # ── Mood/Style taxonomy ───────────────────────────────────────────────────────
 # These are the visual signals extracted from poster analysis
@@ -55,26 +53,26 @@ STYLE_CATEGORIES = [
 
 # CLIP text prompts for zero-shot mood classification
 MOOD_PROMPTS = {
-    "dark_and_gritty":   "a dark gritty crime thriller movie poster",
-    "light_and_fun":     "a bright colorful fun family movie poster",
-    "romantic":          "a romantic love story movie poster",
-    "mysterious":        "a mysterious suspenseful movie poster",
-    "action_intense":    "an intense action explosion movie poster",
-    "heartwarming":      "a heartwarming emotional movie poster",
-    "scary_horror":      "a scary horror movie poster with darkness",
-    "epic_grand":        "an epic adventure grand scale movie poster",
-    "melancholic":       "a melancholic sad dramatic movie poster",
-    "comedic":           "a funny comedy movie poster with humor",
+    "dark_and_gritty": "a dark gritty crime thriller movie poster",
+    "light_and_fun": "a bright colorful fun family movie poster",
+    "romantic": "a romantic love story movie poster",
+    "mysterious": "a mysterious suspenseful movie poster",
+    "action_intense": "an intense action explosion movie poster",
+    "heartwarming": "a heartwarming emotional movie poster",
+    "scary_horror": "a scary horror movie poster with darkness",
+    "epic_grand": "an epic adventure grand scale movie poster",
+    "melancholic": "a melancholic sad dramatic movie poster",
+    "comedic": "a funny comedy movie poster with humor",
 }
 
 STYLE_PROMPTS = {
-    "animated":           "an animated cartoon movie poster",
+    "animated": "an animated cartoon movie poster",
     "live_action_modern": "a modern live action movie poster",
-    "live_action_classic":"a classic vintage live action movie poster",
-    "documentary_style":  "a documentary film poster",
-    "foreign_arthouse":   "a foreign arthouse film poster",
-    "blockbuster":        "a Hollywood blockbuster movie poster",
-    "indie_low_budget":   "an independent low budget film poster",
+    "live_action_classic": "a classic vintage live action movie poster",
+    "documentary_style": "a documentary film poster",
+    "foreign_arthouse": "a foreign arthouse film poster",
+    "blockbuster": "a Hollywood blockbuster movie poster",
+    "indie_low_budget": "an independent low budget film poster",
 }
 
 
@@ -122,32 +120,22 @@ class VLMPosterAnalyzer:
                     result["analysis_method"] = "clip_visual"
 
                     # Zero-shot mood classification
-                    mood_scores = self._zero_shot_classify(
-                        emb, MOOD_PROMPTS
-                    )
+                    mood_scores = self._zero_shot_classify(emb, MOOD_PROMPTS)
                     result["mood_tags"] = [
-                        k for k, v in sorted(
-                            mood_scores.items(), key=lambda x: -x[1]
-                        )[:3]
+                        k
+                        for k, v in sorted(mood_scores.items(), key=lambda x: -x[1])[:3]
                         if v > 0.15
                     ]
-                    result["mood_scores"] = {
-                        k: round(v, 4) for k, v in mood_scores.items()
-                    }
+                    result["mood_scores"] = {k: round(v, 4) for k, v in mood_scores.items()}
 
                     # Zero-shot style classification
-                    style_scores = self._zero_shot_classify(
-                        emb, STYLE_PROMPTS
-                    )
+                    style_scores = self._zero_shot_classify(emb, STYLE_PROMPTS)
                     result["style_tags"] = [
-                        k for k, v in sorted(
-                            style_scores.items(), key=lambda x: -x[1]
-                        )[:2]
+                        k
+                        for k, v in sorted(style_scores.items(), key=lambda x: -x[1])[:2]
                         if v > 0.15
                     ]
-                    result["style_scores"] = {
-                        k: round(v, 4) for k, v in style_scores.items()
-                    }
+                    result["style_scores"] = {k: round(v, 4) for k, v in style_scores.items()}
             except Exception as e:
                 result["error"] = str(e)
 
@@ -182,9 +170,8 @@ class VLMPosterAnalyzer:
                 if text_emb is not None and image_embedding is not None:
                     # Cosine similarity
                     score = float(
-                        np.dot(image_embedding, text_emb) /
-                        (np.linalg.norm(image_embedding) *
-                         np.linalg.norm(text_emb) + 1e-9)
+                        np.dot(image_embedding, text_emb)
+                        / (np.linalg.norm(image_embedding) * np.linalg.norm(text_emb) + 1e-9)
                     )
                     text_scores[category] = score
                 else:
@@ -330,12 +317,14 @@ class MultimodalColdStartRanker:
             if doc_id in mm_ids:
                 j = mm_ids.index(doc_id)
                 if abs(i - j) > 0:
-                    rank_changes.append({
-                        "doc_id": doc_id,
-                        "text_rank": i + 1,
-                        "mm_rank": j + 1,
-                        "delta": i - j,
-                    })
+                    rank_changes.append(
+                        {
+                            "doc_id": doc_id,
+                            "text_rank": i + 1,
+                            "mm_rank": j + 1,
+                            "delta": i - j,
+                        }
+                    )
 
         # Items promoted by multimodal
         promoted = [c for c in mm_ranked if c.get("mm_boost", 0) > 0.05]
@@ -349,9 +338,7 @@ class MultimodalColdStartRanker:
             "avg_mm_boost": round(
                 sum(c.get("mm_boost", 0) for c in mm_ranked) / max(len(mm_ranked), 1), 4
             ),
-            "significant_rank_changes": [
-                r for r in rank_changes if abs(r["delta"]) >= 2
-            ][:5],
+            "significant_rank_changes": [r for r in rank_changes if abs(r["delta"]) >= 2][:5],
             "honest_note": (
                 "Multimodal boosts are from zero-shot CLIP mood classification. "
                 "Gains are largest on cold-start items and mood-query matches. "

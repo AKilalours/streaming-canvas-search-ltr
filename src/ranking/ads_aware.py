@@ -18,9 +18,9 @@ Components:
   SponsoredRanker       - blends sponsored signals without organic pollution
   AdIncrementalityGate  - validates ad placements do not hurt organic engagement
 """
+
 from __future__ import annotations
 
-import hashlib
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -28,20 +28,20 @@ from typing import Any
 
 
 class SlotType(str, Enum):
-    ORGANIC    = "organic"
-    SPONSORED  = "sponsored"
-    HOUSE_AD   = "house_ad"    # Netflix own promos
-    EXPLORE    = "explore"     # bandit exploration slot
+    ORGANIC = "organic"
+    SPONSORED = "sponsored"
+    HOUSE_AD = "house_ad"  # Netflix own promos
+    EXPLORE = "explore"  # bandit exploration slot
 
 
 @dataclass
 class AdCandidate:
     ad_id: str
     advertiser_id: str
-    target_doc_id: str         # content being promoted
-    bid_score: float           # advertiser bid (normalised 0-1)
-    relevance_score: float     # estimated user-ad relevance
-    frequency_cap: int = 3     # max shows per user per day
+    target_doc_id: str  # content being promoted
+    bid_score: float  # advertiser bid (normalised 0-1)
+    relevance_score: float  # estimated user-ad relevance
+    frequency_cap: int = 3  # max shows per user per day
     maturity_rating: str = "PG-13"
 
 
@@ -63,10 +63,11 @@ class AdsAwareRankResult:
     sponsored_count: int
     explore_count: int
     ad_load_pct: float
-    estimated_engagement_impact: float   # negative = ad load hurting engagement
+    estimated_engagement_impact: float  # negative = ad load hurting engagement
 
 
 # ── Frequency Capper ──────────────────────────────────────────────────────────
+
 
 class FrequencyCapper:
     """Per-user per-advertiser daily frequency cap."""
@@ -89,6 +90,7 @@ class FrequencyCapper:
 
 
 # ── Ad Slot Allocator ─────────────────────────────────────────────────────────
+
 
 class AdSlotAllocator:
     """
@@ -121,7 +123,8 @@ class AdSlotAllocator:
         """Returns slot type assignment for n_slots positions."""
         slots = [SlotType.ORGANIC] * n_slots
         eligible_ads = [
-            a for a in ad_candidates
+            a
+            for a in ad_candidates
             if capper.can_show(user_id, a.advertiser_id, a.frequency_cap)
             and self._maturity_ok(a.maturity_rating, user_maturity)
         ]
@@ -153,6 +156,7 @@ class AdSlotAllocator:
 
 # ── Sponsored Ranker ──────────────────────────────────────────────────────────
 
+
 class SponsoredRanker:
     """
     Blends sponsored content into feed without polluting organic ranking signals.
@@ -180,22 +184,23 @@ class SponsoredRanker:
         scored.sort(key=lambda x: -x[0])
         return [ad for _, ad in scored[:n_slots]]
 
-    def _estimate_relevance(
-        self, ad: AdCandidate, affinities: dict[str, float]
-    ) -> float:
+    def _estimate_relevance(self, ad: AdCandidate, affinities: dict[str, float]) -> float:
         if not affinities:
             return ad.relevance_score
         # Blend pre-computed relevance with user affinities
-        affinity_boost = sum(v for k, v in affinities.items() if k in ad.target_doc_id.lower()) * 0.1
+        affinity_boost = (
+            sum(v for k, v in affinities.items() if k in ad.target_doc_id.lower()) * 0.1
+        )
         return min(1.0, ad.relevance_score + affinity_boost)
 
 
 # ── Ad Incrementality Gate ────────────────────────────────────────────────────
 
+
 class AdIncrementalityGate:
     """
     Validates that ad placements don't significantly hurt organic engagement.
-    
+
     Method: compare session engagement metrics in ad vs no-ad control groups.
     Rejects ad configuration if organic engagement drops > threshold.
     """
@@ -205,8 +210,8 @@ class AdIncrementalityGate:
 
     def evaluate(
         self,
-        organic_engagement: float,   # clicks / impressions in organic slots
-        ad_session_engagement: float, # clicks / impressions in sessions with ads
+        organic_engagement: float,  # clicks / impressions in organic slots
+        ad_session_engagement: float,  # clicks / impressions in sessions with ads
     ) -> dict[str, Any]:
         drop = (organic_engagement - ad_session_engagement) / max(organic_engagement, 1e-9)
         passed = drop <= self.max_engagement_drop
@@ -217,13 +222,15 @@ class AdIncrementalityGate:
             "ad_session_engagement": round(ad_session_engagement, 4),
             "threshold": self.max_engagement_drop,
             "recommendation": (
-                "Ad load approved" if passed else
-                f"Reduce ad load — engagement dropped {drop:.1%} > {self.max_engagement_drop:.1%} threshold"
+                "Ad load approved"
+                if passed
+                else f"Reduce ad load — engagement dropped {drop:.1%} > {self.max_engagement_drop:.1%} threshold"
             ),
         }
 
 
 # ── Full Ads-Aware Ranker ─────────────────────────────────────────────────────
+
 
 class AdsAwareRanker:
     """
@@ -238,19 +245,15 @@ class AdsAwareRanker:
 
     def rank(
         self,
-        organic_hits: list[dict[str, Any]],   # already LTR-ranked
+        organic_hits: list[dict[str, Any]],  # already LTR-ranked
         ad_candidates: list[AdCandidate],
         user_id: str,
         user_maturity: str = "PG-13",
         user_genre_affinities: dict[str, float] | None = None,
     ) -> AdsAwareRankResult:
         n = len(organic_hits)
-        slot_types = self.allocator.allocate(
-            n, ad_candidates, user_id, self.capper, user_maturity
-        )
-        ranked_ads = self.sponsored_ranker.rank_ads(
-            ad_candidates, user_genre_affinities or {}, n
-        )
+        slot_types = self.allocator.allocate(n, ad_candidates, user_id, self.capper, user_maturity)
+        ranked_ads = self.sponsored_ranker.rank_ads(ad_candidates, user_genre_affinities or {}, n)
 
         slots: list[FeedSlot] = []
         organic_idx = 0
@@ -259,22 +262,31 @@ class AdsAwareRanker:
         for pos, slot_type in enumerate(slot_types):
             if slot_type == SlotType.SPONSORED and ad_idx < len(ranked_ads):
                 ad = ranked_ads[ad_idx]
-                slots.append(FeedSlot(
-                    position=pos, slot_type=slot_type,
-                    doc_id=ad.target_doc_id, score=ad.bid_score,
-                    ad_id=ad.ad_id, advertiser_id=ad.advertiser_id,
-                ))
+                slots.append(
+                    FeedSlot(
+                        position=pos,
+                        slot_type=slot_type,
+                        doc_id=ad.target_doc_id,
+                        score=ad.bid_score,
+                        ad_id=ad.ad_id,
+                        advertiser_id=ad.advertiser_id,
+                    )
+                )
                 ad_idx += 1
             elif organic_idx < len(organic_hits):
                 hit = organic_hits[organic_idx]
-                slots.append(FeedSlot(
-                    position=pos, slot_type=SlotType.ORGANIC,
-                    doc_id=hit.get("doc_id", ""), score=float(hit.get("score", 0)),
-                ))
+                slots.append(
+                    FeedSlot(
+                        position=pos,
+                        slot_type=SlotType.ORGANIC,
+                        doc_id=hit.get("doc_id", ""),
+                        score=float(hit.get("score", 0)),
+                    )
+                )
                 organic_idx += 1
 
         sponsored_count = sum(1 for s in slots if s.slot_type == SlotType.SPONSORED)
-        organic_count   = sum(1 for s in slots if s.slot_type == SlotType.ORGANIC)
+        organic_count = sum(1 for s in slots if s.slot_type == SlotType.ORGANIC)
         ad_load = sponsored_count / max(1, len(slots))
 
         # Rough engagement impact estimate: -2% per ad slot beyond first

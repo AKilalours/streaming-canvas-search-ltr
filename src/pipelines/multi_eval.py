@@ -46,7 +46,14 @@ def main() -> None:
     # Params can live in run.*, eval.*, or top-level
     k = int(_get(cfg, "run", "k", default=_get(cfg, "eval", "k", default=10)))
     candidate_k = int(
-        _get(cfg, "run", "candidate_k", default=_get(cfg, "run", "candidates_k", default=_get(cfg, "eval", "candidates_k", default=200)))
+        _get(
+            cfg,
+            "run",
+            "candidate_k",
+            default=_get(
+                cfg, "run", "candidates_k", default=_get(cfg, "eval", "candidates_k", default=200)
+            ),
+        )
     )
     rerank_k = int(_get(cfg, "run", "rerank_k", default=_get(cfg, "eval", "rerank_k", default=50)))
     alpha = float(_get(cfg, "run", "alpha", default=_get(cfg, "eval", "alpha", default=0.5)))
@@ -55,7 +62,9 @@ def main() -> None:
     if datasets is None:
         datasets = run_cfg.get("datasets")
     if not isinstance(datasets, list) or not datasets:
-        raise KeyError("No datasets found. Provide either top-level `datasets:` or `run.datasets:` in the YAML.")
+        raise KeyError(
+            "No datasets found. Provide either top-level `datasets:` or `run.datasets:` in the YAML."
+        )
 
     results: list[dict[str, Any]] = []
 

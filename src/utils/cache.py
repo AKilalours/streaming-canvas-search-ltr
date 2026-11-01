@@ -45,7 +45,7 @@ class RedisCache:
         self._stats = CacheStats()
 
     @classmethod
-    def from_env(cls) -> "RedisCache | None":
+    def from_env(cls) -> RedisCache | None:
         url = os.environ.get("REDIS_URL", "").strip()
         if not url:
             return None
@@ -75,7 +75,9 @@ class RedisCache:
         except Exception:
             return None, ms
 
-    def set_json(self, prefix: str, payload: dict[str, Any], value: dict[str, Any], ttl_s: int = 60) -> None:
+    def set_json(
+        self, prefix: str, payload: dict[str, Any], value: dict[str, Any], ttl_s: int = 60
+    ) -> None:
         if not self.enabled:
             return
         k = self._key(prefix, payload)
@@ -121,7 +123,7 @@ class RedisCache:
                 "stats:answer:miss",
             ]
             vals = self.r.mget(keys)
-            out["redis"] = dict(zip(keys, [int(v or 0) for v in vals]))
+            out["redis"] = dict(zip(keys, [int(v or 0) for v in vals], strict=True))
         except Exception:
             pass
         return out

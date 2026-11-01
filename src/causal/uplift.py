@@ -7,6 +7,7 @@ weighting (Hajek), not doubly robust. A doubly robust estimator requires an
 outcome model that this module does not fit. Estimates are marked uncertain
 until both arms have adequate effective sample size and propensity overlap.
 """
+
 from __future__ import annotations
 
 import math
@@ -15,18 +16,20 @@ from typing import Any
 
 import numpy as np
 
-UPLIFT_THRESHOLD = 0.05   # minimum causal lift to justify a slot
+UPLIFT_THRESHOLD = 0.05  # minimum causal lift to justify a slot
 
 
 # ── Data structures ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class LoggedEvent:
     """One row of historical bandit log."""
+
     doc_id: str
-    shown: bool           # was this item shown (treatment) or not (control)?
-    watched: float | bool # bounded observed reward, usually normalized watch time
-    propensity: float     # P(shown) under the logging policy — needed for IPW
+    shown: bool  # was this item shown (treatment) or not (control)?
+    watched: float | bool  # bounded observed reward, usually normalized watch time
+    propensity: float  # P(shown) under the logging policy — needed for IPW
     user_id: str = ""
     context: dict = field(default_factory=dict)
 
@@ -34,9 +37,9 @@ class LoggedEvent:
 @dataclass
 class UpliftScore:
     doc_id: str
-    incrementality_score: float   # tau-hat: E[Y(1) - Y(0)]
-    p_watch_shown: float          # E[Y | T=1]
-    p_watch_not_shown: float      # E[Y | T=0]
+    incrementality_score: float  # tau-hat: E[Y(1) - Y(0)]
+    p_watch_shown: float  # E[Y | T=1]
+    p_watch_not_shown: float  # E[Y | T=0]
     method: str = "clipped_ipw_hajek"
     confident: bool = False
     n_treated: int = 0
@@ -60,8 +63,12 @@ class IncrementalityScorer:
         prior_beta: float = 4.0,
         max_inverse_weight: float = 20.0,
     ) -> None:
-        if not math.isfinite(threshold) or not math.isfinite(prior_alpha) \
-                or not math.isfinite(prior_beta) or not math.isfinite(max_inverse_weight):
+        if (
+            not math.isfinite(threshold)
+            or not math.isfinite(prior_alpha)
+            or not math.isfinite(prior_beta)
+            or not math.isfinite(max_inverse_weight)
+        ):
             raise ValueError("uplift configuration must be finite")
         if prior_alpha <= 0 or prior_beta <= 0 or max_inverse_weight < 1:
             raise ValueError("prior parameters must be positive and max_inverse_weight >= 1")
@@ -77,11 +84,20 @@ class IncrementalityScorer:
         """Online update from a logged event."""
         if not math.isfinite(float(event.propensity)) or not 0 < event.propensity < 1:
             raise ValueError("propensity must be finite and strictly between 0 and 1")
-        s = self._stats.setdefault(event.doc_id, {
-            "n_t": 0, "n_c": 0, "wy_t": 0.0, "wy_c": 0.0,
-            "w_t": 0.0, "w_c": 0.0, "w2_t": 0.0, "w2_c": 0.0,
-            "overlap_violations": 0,
-        })
+        s = self._stats.setdefault(
+            event.doc_id,
+            {
+                "n_t": 0,
+                "n_c": 0,
+                "wy_t": 0.0,
+                "wy_c": 0.0,
+                "w_t": 0.0,
+                "w_c": 0.0,
+                "w2_t": 0.0,
+                "w2_c": 0.0,
+                "overlap_violations": 0,
+            },
+        )
         y = float(event.watched)
         e = float(event.propensity)
         s["overlap_violations"] += int(e < 0.05 or e > 0.95)
@@ -144,6 +160,7 @@ class IncrementalityScorer:
 
 # ── Off-Policy Evaluator ──────────────────────────────────────────────────────
 
+
 @dataclass
 class OPEResult:
     policy_name: str
@@ -183,7 +200,7 @@ class OffPolicyEvaluator:
 
     def evaluate(
         self,
-        new_scores: dict[str, float] | None,   # global target scores, or per-event context scores
+        new_scores: dict[str, float] | None,  # global target scores, or per-event context scores
         log: list[LoggedEvent],
         baseline_reward: float | None = None,
     ) -> OPEResult:
@@ -200,13 +217,16 @@ class OffPolicyEvaluator:
         for event in shown:
             target_scores = event.context.get("target_scores") if event.context else None
             if target_scores:
-                if (not isinstance(target_scores, dict)
-                        or any(not math.isfinite(float(value)) for value in target_scores.values())):
+                if not isinstance(target_scores, dict) or any(
+                    not math.isfinite(float(value)) for value in target_scores.values()
+                ):
                     raise ValueError("per-event target_scores must be a finite mapping")
                 scores = np.asarray(list(map(float, target_scores.values())), dtype=np.float64)
                 ids = list(target_scores)
             else:
-                scores = np.asarray([float(value) for value in new_scores.values()], dtype=np.float64)
+                scores = np.asarray(
+                    [float(value) for value in new_scores.values()], dtype=np.float64
+                )
                 ids = list(new_scores)
             if not ids:
                 raise ValueError("each logged event needs target_scores or global new_scores")
@@ -253,6 +273,7 @@ class OffPolicyEvaluator:
 
 
 # ── Feature enricher for LTR pipeline ────────────────────────────────────────
+
 
 class UpliftFeatureEnricher:
     """

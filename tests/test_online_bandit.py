@@ -22,7 +22,9 @@ def _fixtures():
         "c": {"title": "Romance C", "text": "Genres: Romance, Comedy |"},
         "d": {"title": "Sci-Fi D", "text": "Genres: Sci-Fi, Adventure |"},
     }
-    candidates = [(doc_id, score) for doc_id, score in zip(corpus, [0.9, 0.8, 0.7, 0.6], strict=True)]
+    candidates = [
+        (doc_id, score) for doc_id, score in zip(corpus, [0.9, 0.8, 0.7, 0.6], strict=True)
+    ]
     return corpus, candidates
 
 
@@ -53,23 +55,34 @@ def test_recommend_logs_unique_actions_and_valid_propensities(tmp_path):
 
 def test_features_cover_genre_release_decade_and_hash_stable_tags(tmp_path):
     bandit = ContextualSlateBandit(tmp_path / "bandit.sqlite3", seed=7)
-    first = bandit._features({
-        "title": "Space Drama (1995)",
-        "text": "Genres: Drama | Tags: space opera, spaceship",
-    }, 0.7)
-    repeated = bandit._features({
-        "title": "Different title (1997)",
-        "text": "Genres: Drama | Tags: space opera, spaceship",
-    }, 0.7)
-    different_tags = bandit._features({
-        "title": "Other Drama (1995)",
-        "text": "Genres: Drama | Tags: romantic comedy",
-    }, 0.7)
+    first = bandit._features(
+        {
+            "title": "Space Drama (1995)",
+            "text": "Genres: Drama | Tags: space opera, spaceship",
+        },
+        0.7,
+    )
+    repeated = bandit._features(
+        {
+            "title": "Different title (1997)",
+            "text": "Genres: Drama | Tags: space opera, spaceship",
+        },
+        0.7,
+    )
+    different_tags = bandit._features(
+        {
+            "title": "Other Drama (1995)",
+            "text": "Genres: Drama | Tags: romantic comedy",
+        },
+        0.7,
+    )
 
     assert len(first) == bandit.status()["feature_count"]
     assert first[FEATURE_NAMES.index("year_1990s")] == 1
     assert np.array_equal(first, repeated)
-    tag_features = [FEATURE_NAMES.index(name) for name in FEATURE_NAMES if name.startswith("tag_hash_")]
+    tag_features = [
+        FEATURE_NAMES.index(name) for name in FEATURE_NAMES if name.startswith("tag_hash_")
+    ]
     assert first[tag_features].sum() >= 1
     assert not np.array_equal(first[tag_features], different_tags[tag_features])
 
@@ -80,8 +93,11 @@ def test_feedback_is_bounded_idempotent_and_updates_global_and_user_models(tmp_p
     impression = bandit.recommend("profile-1", candidates, corpus, k=1)[0]
 
     result = bandit.record_feedback(
-        impression["impression_id"], "watch_complete", watch_pct=0.88,
-        user_id="profile-1", doc_id=impression["doc_id"]
+        impression["impression_id"],
+        "watch_complete",
+        watch_pct=0.88,
+        user_id="profile-1",
+        doc_id=impression["doc_id"],
     )
 
     assert result["accepted"] is True
@@ -90,8 +106,10 @@ def test_feedback_is_bounded_idempotent_and_updates_global_and_user_models(tmp_p
     assert bandit.status()["global_observations"] == 1
     assert bandit.status()["users_with_feedback"] == 1
     duplicate = bandit.record_feedback(
-        impression["impression_id"], "watch_complete", user_id="profile-1",
-        doc_id=impression["doc_id"]
+        impression["impression_id"],
+        "watch_complete",
+        user_id="profile-1",
+        doc_id=impression["doc_id"],
     )
     assert duplicate == {"accepted": False, "reason": "already_labeled"}
     assert bandit.status()["global_observations"] == 1
@@ -151,8 +169,10 @@ def test_model_learning_uses_direct_reward_likelihood_not_ips_weight(tmp_path):
     corpus, candidates = _fixtures()
     impression = bandit.recommend("profile-1", candidates, corpus, k=1)[0]
     bandit.record_feedback(
-        impression["impression_id"], "watch_complete", user_id="profile-1",
-        doc_id=impression["doc_id"]
+        impression["impression_id"],
+        "watch_complete",
+        user_id="profile-1",
+        doc_id=impression["doc_id"],
     )
 
     with bandit._connect() as conn:
@@ -177,8 +197,11 @@ def test_click_reward_can_be_refined_by_delayed_watch_outcome(tmp_path):
         impression_id, "click", user_id="profile-1", doc_id=impression["doc_id"]
     )
     completed = bandit.record_feedback(
-        impression_id, "watch_complete", watch_pct=0.91,
-        user_id="profile-1", doc_id=impression["doc_id"]
+        impression_id,
+        "watch_complete",
+        watch_pct=0.91,
+        user_id="profile-1",
+        doc_id=impression["doc_id"],
     )
 
     assert clicked["accepted"] is True
@@ -197,8 +220,10 @@ def test_policy_learns_genre_reward_and_state_survives_restart(tmp_path):
         impression = bandit.recommend("profile-1", candidates, corpus, k=1)[0]
         event_type = "watch_complete" if impression["doc_id"] == "a" else "dislike"
         bandit.record_feedback(
-            impression["impression_id"], event_type, user_id="profile-1",
-            doc_id=impression["doc_id"]
+            impression["impression_id"],
+            event_type,
+            user_id="profile-1",
+            doc_id=impression["doc_id"],
         )
 
     restarted = ContextualSlateBandit(db_path, seed=11)
@@ -215,8 +240,10 @@ def test_unknown_or_mismatched_impressions_are_not_learned(tmp_path):
     impression = bandit.recommend("profile-1", candidates, corpus, k=1)[0]
 
     result = bandit.record_feedback(
-        impression["impression_id"], "click", user_id="different-profile",
-        doc_id=impression["doc_id"]
+        impression["impression_id"],
+        "click",
+        user_id="different-profile",
+        doc_id=impression["doc_id"],
     )
 
     assert result == {"accepted": False, "reason": "unknown_impression"}
@@ -237,17 +264,19 @@ def test_invalid_reward_and_empty_candidate_list(tmp_path):
     impression = bandit.recommend("profile-1", candidates, corpus, k=1)[0]
     with pytest.raises(ValueError, match="event_type"):
         bandit.record_feedback(
-            impression["impression_id"], "unknown", user_id="profile-1",
-            doc_id=impression["doc_id"]
+            impression["impression_id"], "unknown", user_id="profile-1", doc_id=impression["doc_id"]
         )
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"temperature": float("nan")},
-    {"exploration_scale": float("inf")},
-    {"exploration_scale": 100},
-    {"temperature": 20},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"temperature": float("nan")},
+        {"exploration_scale": float("inf")},
+        {"exploration_scale": 100},
+        {"temperature": 20},
+    ],
+)
 def test_unsafe_model_configuration_is_rejected(tmp_path, kwargs):
     with pytest.raises(ValueError):
         ContextualSlateBandit(tmp_path / "bandit.sqlite3", **kwargs)
@@ -263,8 +292,7 @@ def test_status_exposes_recent_feedback_health(tmp_path):
     assert exposure["accepted"] is True
     assert exposure["new_exposure"] is True
     bandit.record_feedback(
-        impression["impression_id"], "click", user_id="profile-1",
-        doc_id=impression["doc_id"]
+        impression["impression_id"], "click", user_id="profile-1", doc_id=impression["doc_id"]
     )
 
     status = bandit.status()

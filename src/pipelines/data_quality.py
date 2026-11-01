@@ -9,6 +9,7 @@ Every check here is computed from the files on disk. Hard failures raise
 DataQualityError; softer findings are returned as warnings in the report so the
 run log shows them.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -155,7 +156,10 @@ def check_data_quality(
             continue
         unknown_q = [q for q in qrels if q not in q_set]
         if unknown_q:
-            fail("qrels_reference_known_queries", f"{s}: {len(unknown_q)} qrels query_ids not in queries.jsonl")
+            fail(
+                "qrels_reference_known_queries",
+                f"{s}: {len(unknown_q)} qrels query_ids not in queries.jsonl",
+            )
         ok("qrels_reference_known_queries")
 
         unknown_d = sum(1 for rels in qrels.values() for d in rels if d not in doc_set)

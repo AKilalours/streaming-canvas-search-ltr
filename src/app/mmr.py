@@ -1,9 +1,11 @@
 """MMR Diversity Reranking for StreamLens"""
+
 import numpy as np
 
 
-def mmr_rerank(items: list[dict], embeddings: np.ndarray,
-               lam: float = 0.7, k: int = 10) -> list[dict]:
+def mmr_rerank(
+    items: list[dict], embeddings: np.ndarray, lam: float = 0.7, k: int = 10
+) -> list[dict]:
     """
     Maximal Marginal Relevance reranking.
 

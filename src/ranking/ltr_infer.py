@@ -43,7 +43,7 @@ class LTRReranker:
         self.meta = meta or {}
 
     @staticmethod
-    def load(path: str) -> "LTRReranker":
+    def load(path: str) -> LTRReranker:
         p = Path(path)
 
         if p.is_dir():
@@ -166,7 +166,9 @@ class LTRReranker:
                 hybrid_score=float(hscore),
             )
             raw = self._coerce_feature_row(feats)
-            aligned = self._align_to_model_features(raw, query=query, doc=doc, bm25_score=b, dense_score=d)
+            aligned = self._align_to_model_features(
+                raw, query=query, doc=doc, bm25_score=b, dense_score=d
+            )
 
             rows.append(aligned)
             doc_ids.append(did)

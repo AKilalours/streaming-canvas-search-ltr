@@ -13,42 +13,42 @@ This is the honest student version:
 
 No GPU required — runs on CPU, ~0.5s per poster.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 import time
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 CACHE_DIR = Path("artifacts/poster_embeddings")
-TMDB_IMG  = "https://image.tmdb.org/t/p/w300"  # smaller for speed
+TMDB_IMG = "https://image.tmdb.org/t/p/w300"  # smaller for speed
 
 
 @dataclass
 class PosterEmbedding:
     doc_id: str
     title: str
-    embedding: np.ndarray        # 512-dim CLIP embedding
-    text_embedding: np.ndarray   # text-only embedding for comparison
+    embedding: np.ndarray  # 512-dim CLIP embedding
+    text_embedding: np.ndarray  # text-only embedding for comparison
     poster_url: str = ""
-    source: str = "clip"         # "clip" | "text_only"
+    source: str = "clip"  # "clip" | "text_only"
     cached: bool = False
 
 
 class CLIPPosterEmbedder:
     """
     Real multimodal embeddings using CLIP ViT-B/32.
-    
+
     Falls back gracefully:
       1. CLIP image+text embedding (best - real multimodal)
       2. Text-only SentenceTransformer embedding (good - already in stack)
-    
+
     Usage:
         embedder = CLIPPosterEmbedder()
         emb = embedder.embed("doc_1", "The Dark Knight", poster_url)
@@ -65,6 +65,7 @@ class CLIPPosterEmbedder:
     def _load_models(self) -> None:
         try:
             from sentence_transformers import SentenceTransformer
+
             # CLIP model — encodes both images and text in same space
             self._model = SentenceTransformer("clip-ViT-B-32")
             self._available = True
@@ -73,6 +74,7 @@ class CLIPPosterEmbedder:
             print(f"[CLIPEmbedder] CLIP not available: {e} — using text fallback")
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._text_model = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception:
                 pass
@@ -107,11 +109,15 @@ class CLIPPosterEmbedder:
 
     def _save_cache(self, pe: PosterEmbedding) -> None:
         np.save(str(self._cache_path(pe.doc_id)), pe.embedding)
-        self._cache_meta_path(pe.doc_id).write_text(json.dumps({
-            "title": pe.title,
-            "poster_url": pe.poster_url,
-            "source": pe.source,
-        }))
+        self._cache_meta_path(pe.doc_id).write_text(
+            json.dumps(
+                {
+                    "title": pe.title,
+                    "poster_url": pe.poster_url,
+                    "source": pe.source,
+                }
+            )
+        )
 
     def _fetch_image(self, url: str) -> bytes | None:
         try:
@@ -129,8 +135,10 @@ class CLIPPosterEmbedder:
         # Try CLIP image embedding
         if self._available and poster_url:
             try:
-                from PIL import Image
                 import io
+
+                from PIL import Image
+
                 img_bytes = self._fetch_image(poster_url)
                 if img_bytes:
                     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
@@ -141,9 +149,12 @@ class CLIPPosterEmbedder:
                     combined = 0.7 * img_emb + 0.3 * txt_emb
                     combined = combined / (np.linalg.norm(combined) + 1e-9)
                     pe = PosterEmbedding(
-                        doc_id=doc_id, title=title,
-                        embedding=combined, text_embedding=txt_emb,
-                        poster_url=poster_url, source="clip",
+                        doc_id=doc_id,
+                        title=title,
+                        embedding=combined,
+                        text_embedding=txt_emb,
+                        poster_url=poster_url,
+                        source="clip",
                     )
                     self._save_cache(pe)
                     return pe
@@ -161,16 +172,18 @@ class CLIPPosterEmbedder:
                 txt_emb /= np.linalg.norm(txt_emb)
 
             pe = PosterEmbedding(
-                doc_id=doc_id, title=title,
-                embedding=txt_emb, text_embedding=txt_emb,
-                poster_url=poster_url, source="text_only",
+                doc_id=doc_id,
+                title=title,
+                embedding=txt_emb,
+                text_embedding=txt_emb,
+                poster_url=poster_url,
+                source="text_only",
             )
             self._save_cache(pe)
             return pe
-        except Exception as e:
+        except Exception:
             arr = np.zeros(512, dtype=np.float32)
-            return PosterEmbedding(doc_id=doc_id, title=title,
-                                   embedding=arr, text_embedding=arr)
+            return PosterEmbedding(doc_id=doc_id, title=title, embedding=arr, text_embedding=arr)
 
     def similarity(self, emb_a: np.ndarray, emb_b: np.ndarray) -> float:
         """Cosine similarity between two embeddings."""

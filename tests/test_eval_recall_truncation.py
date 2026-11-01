@@ -10,6 +10,7 @@ recall@100 == recall@10 as a result.
 Fix: keep max(k, recall_k) documents per query; the metric functions do their
 own truncation for nDCG@k and MAP@k.
 """
+
 import sys
 from pathlib import Path
 
