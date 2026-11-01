@@ -25,7 +25,7 @@ class SearchHit(BaseModel):
     score: float
     title: str | None = None
     text: str | None = None
-    score_breakdown: dict[str, float] | None = None
+    score_breakdown: dict[str, float | bool | None] | None = None
 
 
 class SearchResponse(BaseModel):
@@ -42,7 +42,7 @@ class Source(BaseModel):
     title: str | None = None
     snippet: str | None = None
     score: float | None = None
-    score_breakdown: dict[str, float] | None = None
+    score_breakdown: dict[str, float | bool | None] | None = None
 
 
 class AnswerRequest(BaseModel):
