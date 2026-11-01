@@ -37,7 +37,7 @@ Open [Search](http://localhost:8000/demo) · [SQL explorer](http://localhost:800
 
 ## Measured
 
-**nDCG@10 0.9491** · MovieLens, 150 test queries · **p99 165 ms** · local `/search`, concurrency 20. [Conditions and comparison limits](docs/evaluation/DEFINITIVE_NUMBERS.md).
+**nDCG@10 0.9491** · MovieLens, 150 test queries · **p99 165.32 ms** · local `/search`, concurrency 20. [Conditions and comparison limits](docs/evaluation/DEFINITIVE_NUMBERS.md).
 
 [Retrieval + ranking](src/retrieval) · [Personalization](src/exploration) · [Evaluation reports](reports) · [Scripts index](scripts/README.md)
 

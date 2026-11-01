@@ -7,6 +7,8 @@ docker-compose.yml
 
 # Generated data and model outputs
 data/
+!/docs/site/data/
+!/docs/site/data/**
 artifacts/
 reports/**
 !reports/**/

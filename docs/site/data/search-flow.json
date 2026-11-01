@@ -1,0 +1,46 @@
+{
+  "query": "space travel and time loops",
+  "method": "hybrid",
+  "k": 5,
+  "hits": [
+    {
+      "doc_id": "8914",
+      "score": 0.9145052145143506,
+      "title": "Primer (2004)",
+      "text": "Title: Primer (2004) | Genres: Drama, Sci-Fi | Tags: time travel | Language: Finnish",
+      "score_breakdown": null
+    },
+    {
+      "doc_id": "316",
+      "score": 0.8807045743730753,
+      "title": "Stargate (1994)",
+      "text": "Title: Stargate (1994) | Genres: Action, Adventure, Sci-Fi | Tags: time travel | Language: Basque",
+      "score_breakdown": null
+    },
+    {
+      "doc_id": "71106",
+      "score": 0.7762308747273912,
+      "title": "Frequently Asked Questions About Time Travel (2009)",
+      "text": "Title: Frequently Asked Questions About Time Travel (2009) | Genres: Comedy, Sci-Fi | Tags: none | Language: Malay",
+      "score_breakdown": null
+    },
+    {
+      "doc_id": "2968",
+      "score": 0.77066659863551,
+      "title": "Time Bandits (1981)",
+      "text": "Title: Time Bandits (1981) | Genres: Adventure, Comedy, Fantasy, Sci-Fi | Tags: time travel | Language: Japanese",
+      "score_breakdown": null
+    },
+    {
+      "doc_id": "1200",
+      "score": 0.7651012512143138,
+      "title": "Aliens (1986)",
+      "text": "Title: Aliens (1986) | Genres: Action, Adventure, Horror, Sci-Fi | Tags: space, action, aliens, horror, sci-fi, space craft, space travel, suspense | Language: Tamil",
+      "score_breakdown": null
+    }
+  ],
+  "timings_ms": null,
+  "cache_hit": false,
+  "source": "GET /search from a running local StreamLens API",
+  "captured_at_utc": "2026-11-01T02:37:11.142638+00:00"
+}
