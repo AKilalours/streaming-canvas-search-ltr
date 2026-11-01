@@ -20,24 +20,36 @@
 
 ## The app UI
 
-<a href="docs/site/assets/ui-tour.mp4"><img src="docs/site/assets/ui-tour.gif" alt="Short visual tour from the StreamLens profile picker to its recommendation home screen" width="100%" /></a>
+<a href="docs/site/assets/ui-tour.mp4"><img src="docs/site/assets/ui-tour.gif" alt="App-only StreamLens recording, trimmed to remove desktop windows and long pauses" width="100%" /></a>
 
-<sub>Click for MP4. The tour is assembled from the real UI screenshots below; it is a visual sequence, not a continuous screen recording.</sub>
+<sub><a href="docs/site/assets/ui-tour.mp4">Watch the 75-second app-only recording ↗</a> · Captured from the real app, cropped to its window, trimmed, and muted. The original recordings were left untouched.</sub>
 
 <table>
   <tr>
-    <td width="38%"><img src="docs/site/assets/ui-profile.webp" alt="StreamLens profile picker with three demo profiles and an add profile tile" width="100%" /></td>
-    <td width="62%"><img src="docs/site/assets/ui-home.webp" alt="StreamLens home screen with a featured recommendation and personalized title rows" width="100%" /></td>
+    <td><a href="docs/site/assets/ui-profile.webp"><img src="docs/site/assets/ui-profile.webp" alt="StreamLens profile picker" width="100%" /></a><b>1 · Choose a profile</b></td>
+    <td><a href="docs/site/assets/ui-home.webp"><img src="docs/site/assets/ui-home.webp" alt="StreamLens discovery home" width="100%" /></a><b>2 · Discover titles</b></td>
   </tr>
   <tr>
-    <td><b>1 · Pick a profile</b><br/>The selected demo profile is passed into feed requests.</td>
-    <td><b>2 · Discover</b><br/>Browse recommendations, search by title or mood, and open a title for details.</td>
+    <td><a href="docs/site/assets/ui-detail.jpg"><img src="docs/site/assets/ui-detail.jpg" alt="Title detail view" width="100%" /></a><b>3 · Open title details</b></td>
+    <td><a href="docs/site/assets/ui-ai-stack.jpg"><img src="docs/site/assets/ui-ai-stack.jpg" alt="AI Stack view" width="100%" /></a><b>4 · Inspect AI Stack</b></td>
+  </tr>
+  <tr>
+    <td><a href="docs/site/assets/ui-live.jpg"><img src="docs/site/assets/ui-live.jpg" alt="Live streaming controls" width="100%" /></a><b>5 · Live controls</b></td>
+    <td><a href="docs/site/assets/ui-metrics.jpg"><img src="docs/site/assets/ui-metrics.jpg" alt="Metrics view" width="100%" /></a><b>6 · Metrics</b></td>
+  </tr>
+  <tr>
+    <td><a href="docs/site/assets/ui-sql.jpg"><img src="docs/site/assets/ui-sql.jpg" alt="SQL Explorer with labeled sample fixtures" width="100%" /></a><b>7 · SQL Explorer</b></td>
+    <td><a href="docs/site/assets/ui-diffusion.jpg"><img src="docs/site/assets/ui-diffusion.jpg" alt="Diffusion poster lab" width="100%" /></a><b>8 · Poster lab</b></td>
+  </tr>
+  <tr>
+    <td><a href="docs/site/assets/ui-series.jpg"><img src="docs/site/assets/ui-series.jpg" alt="Series browse page" width="100%" /></a><b>9 · Browse series</b></td>
+    <td><a href="docs/site/assets/ui-my-list.jpg"><img src="docs/site/assets/ui-my-list.jpg" alt="My List empty state" width="100%" /></a><b>10 · My List</b></td>
   </tr>
 </table>
 
-**How the UI works:** Choose a demo profile; browse Home, Movies, or Series; search for a title, genre, or mood; open a result to see details and request a “Why this?” explanation or poster description. AI Stack and Metrics show runtime and saved evaluation information. Live exposes event and WebSocket controls; SQL Explorer and Diffusion open their own pages. The My List page is present, but saving titles is not implemented yet.
+**In the UI:** Pick a demo profile, browse or search, open title details, and explore AI Stack, Live, Metrics, SQL Explorer, Diffusion, Series, and My List. The recording shows the UI as captured; it does not imply every control was exercised. Metrics has no saved run in this capture, SQL displays explicitly labeled sample fixtures, and My List is empty.
 
-**Language choices:** Open the profile menu → **Interface Language**. The current `/languages` endpoint supplies 42 choices. The selection is sent with feed, explanation, poster-description, and text-to-speech requests. It changes generated content and responses; navigation labels remain in English. The source list is in [`src/app/main.py`](src/app/main.py), and the selector is populated in [`src/app/demo_ui/index.html`](src/app/demo_ui/index.html).
+**Languages:** The profile menu offers 42 choices for generated feed, explanation, poster-description, and text-to-speech requests. Navigation labels remain English. [Language source](src/app/main.py) · [UI selector](src/app/demo_ui/index.html).
 
 <details>
 <summary>Show all 42 language choices</summary>
